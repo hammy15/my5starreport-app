@@ -1,26 +1,303 @@
 @import "tailwindcss";
 
+/* =====================================================
+   my5starreport.com - Hammy Design System
+   Turquoise / Neumorphism / Dark Mode
+   ===================================================== */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Primary Colors - Turquoise */
+  --primary-50: #ecfeff;
+  --primary-100: #cffafe;
+  --primary-200: #a5f3fc;
+  --primary-300: #67e8f9;
+  --primary-400: #22d3ee;
+  --primary-500: #06b6d4;
+  --primary-600: #0891b2;
+  --primary-700: #0e7490;
+  --primary-800: #155e75;
+  --primary-900: #164e63;
+
+  /* Light Mode */
+  --background: #f0f4f8;
+  --background-elevated: #ffffff;
+  --foreground: #1e293b;
+  --foreground-muted: #64748b;
+
+  /* Neumorphism shadows */
+  --shadow-neumorphic: 8px 8px 16px rgba(163, 177, 198, 0.6),
+                       -8px -8px 16px rgba(255, 255, 255, 0.8);
+  --shadow-neumorphic-inset: inset 4px 4px 8px rgba(163, 177, 198, 0.4),
+                             inset -4px -4px 8px rgba(255, 255, 255, 0.6);
+  --shadow-neumorphic-sm: 4px 4px 8px rgba(163, 177, 198, 0.5),
+                          -4px -4px 8px rgba(255, 255, 255, 0.7);
+
+  /* Star rating colors */
+  --star-5: #22c55e;
+  --star-4: #84cc16;
+  --star-3: #eab308;
+  --star-2: #f97316;
+  --star-1: #ef4444;
+
+  /* Status colors */
+  --success: #10b981;
+  --warning: #f59e0b;
+  --error: #ef4444;
+  --info: #06b6d4;
+}
+
+/* Dark Mode */
+.dark {
+  --background: #0f172a;
+  --background-elevated: #1e293b;
+  --foreground: #f1f5f9;
+  --foreground-muted: #94a3b8;
+
+  /* Neumorphism shadows for dark mode */
+  --shadow-neumorphic: 8px 8px 16px rgba(0, 0, 0, 0.4),
+                       -8px -8px 16px rgba(30, 41, 59, 0.4);
+  --shadow-neumorphic-inset: inset 4px 4px 8px rgba(0, 0, 0, 0.3),
+                             inset -4px -4px 8px rgba(30, 41, 59, 0.3);
+  --shadow-neumorphic-sm: 4px 4px 8px rgba(0, 0, 0, 0.3),
+                          -4px -4px 8px rgba(30, 41, 59, 0.3);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --background: #0f172a;
+    --background-elevated: #1e293b;
+    --foreground: #f1f5f9;
+    --foreground-muted: #94a3b8;
+    --shadow-neumorphic: 8px 8px 16px rgba(0, 0, 0, 0.4),
+                         -8px -8px 16px rgba(30, 41, 59, 0.4);
+    --shadow-neumorphic-inset: inset 4px 4px 8px rgba(0, 0, 0, 0.3),
+                               inset -4px -4px 8px rgba(30, 41, 59, 0.3);
+    --shadow-neumorphic-sm: 4px 4px 8px rgba(0, 0, 0, 0.3),
+                            -4px -4px 8px rgba(30, 41, 59, 0.3);
+  }
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-primary: var(--primary-500);
+  --color-primary-dark: var(--primary-700);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* Base styles */
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Neumorphic Card */
+.card-neumorphic {
+  background: var(--background-elevated);
+  border-radius: 16px;
+  box-shadow: var(--shadow-neumorphic);
+  transition: box-shadow 0.3s ease, transform 0.2s ease;
+}
+
+.card-neumorphic:hover {
+  box-shadow: var(--shadow-neumorphic-sm);
+  transform: translateY(-2px);
+}
+
+.card-neumorphic-inset {
+  background: var(--background);
+  border-radius: 12px;
+  box-shadow: var(--shadow-neumorphic-inset);
+}
+
+/* Neumorphic Button */
+.btn-neumorphic {
+  background: var(--background-elevated);
+  border: none;
+  border-radius: 12px;
+  box-shadow: var(--shadow-neumorphic-sm);
+  color: var(--foreground);
+  cursor: pointer;
+  font-weight: 600;
+  padding: 12px 24px;
+  transition: all 0.2s ease;
+}
+
+.btn-neumorphic:hover {
+  box-shadow: var(--shadow-neumorphic);
+}
+
+.btn-neumorphic:active {
+  box-shadow: var(--shadow-neumorphic-inset);
+}
+
+.btn-neumorphic-primary {
+  background: linear-gradient(135deg, var(--primary-400), var(--primary-600));
+  color: white;
+}
+
+.btn-neumorphic-primary:hover {
+  background: linear-gradient(135deg, var(--primary-300), var(--primary-500));
+}
+
+/* Neumorphic Input */
+.input-neumorphic {
+  background: var(--background);
+  border: none;
+  border-radius: 12px;
+  box-shadow: var(--shadow-neumorphic-inset);
+  color: var(--foreground);
+  padding: 12px 16px;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.input-neumorphic:focus {
+  outline: none;
+  box-shadow: var(--shadow-neumorphic-inset),
+              0 0 0 3px var(--primary-300);
+}
+
+.input-neumorphic::placeholder {
+  color: var(--foreground-muted);
+}
+
+/* Star Rating Styles */
+.star-rating-5 { color: var(--star-5); }
+.star-rating-4 { color: var(--star-4); }
+.star-rating-3 { color: var(--star-3); }
+.star-rating-2 { color: var(--star-2); }
+.star-rating-1 { color: var(--star-1); }
+
+.star-bg-5 { background-color: var(--star-5); }
+.star-bg-4 { background-color: var(--star-4); }
+.star-bg-3 { background-color: var(--star-3); }
+.star-bg-2 { background-color: var(--star-2); }
+.star-bg-1 { background-color: var(--star-1); }
+
+/* Priority badges */
+.badge-high {
+  background: linear-gradient(135deg, #fee2e2, #fecaca);
+  color: #991b1b;
+}
+
+.badge-medium {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  color: #92400e;
+}
+
+.badge-low {
+  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+  color: #065f46;
+}
+
+.dark .badge-high {
+  background: linear-gradient(135deg, #7f1d1d, #991b1b);
+  color: #fecaca;
+}
+
+.dark .badge-medium {
+  background: linear-gradient(135deg, #78350f, #92400e);
+  color: #fde68a;
+}
+
+.dark .badge-low {
+  background: linear-gradient(135deg, #064e3b, #065f46);
+  color: #a7f3d0;
+}
+
+/* Gradient text */
+.text-gradient-primary {
+  background: linear-gradient(135deg, var(--primary-400), var(--primary-600));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Animations */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px var(--primary-400);
+  }
+  50% {
+    box-shadow: 0 0 40px var(--primary-400);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.5s ease-out forwards;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary-400);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-500);
+}
+
+/* Selection styling */
+::selection {
+  background: var(--primary-300);
+  color: var(--foreground);
+}
+
+/* Focus ring */
+*:focus-visible {
+  outline: 2px solid var(--primary-400);
+  outline-offset: 2px;
+}
+
+/* Responsive utilities */
+@media (max-width: 768px) {
+  .card-neumorphic {
+    border-radius: 12px;
+  }
+
+  .btn-neumorphic {
+    padding: 10px 20px;
+  }
+}
+
+/* Tailwind utilities extension */
+@layer utilities {
+  .bg-neumorphic {
+    background: var(--background-elevated);
+    box-shadow: var(--shadow-neumorphic);
+  }
+
+  .bg-neumorphic-inset {
+    background: var(--background);
+    box-shadow: var(--shadow-neumorphic-inset);
+  }
 }
