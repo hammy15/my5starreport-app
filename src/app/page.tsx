@@ -25,6 +25,8 @@ import {
 } from 'lucide-react';
 import { FacilitySearch } from '@/components/dashboard/facility-search';
 import { FacilityOverview } from '@/components/dashboard/facility-overview';
+import { PlanBuilder } from '@/components/plans/plan-builder';
+import type { Facility, ImprovementRecommendation, ActionPlan } from '@/types/facility';
 
 // View types for navigation
 type ViewType = 'search' | 'overview' | 'health' | 'staffing' | 'quality' | 'plan' | 'training';
@@ -273,11 +275,9 @@ export default function HomePage() {
         )}
 
         {currentView === 'plan' && selectedFacility && (
-          <DetailView
-            title="Build Improvement Plan"
+          <PlanView
             providerNumber={selectedFacility}
             onBack={() => setCurrentView('overview')}
-            icon={<FileText className="w-6 h-6 text-green-500" />}
           />
         )}
       </main>
@@ -479,6 +479,161 @@ function DetailView({
           </p>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Plan View - fetches data and renders PlanBuilder
+function PlanView({
+  providerNumber,
+  onBack,
+}: {
+  providerNumber: string;
+  onBack: () => void;
+}) {
+  const [facility, setFacility] = useState<Facility | null>(null);
+  const [recommendations, setRecommendations] = useState<ImprovementRecommendation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [savedPlan, setSavedPlan] = useState<Partial<ActionPlan> | null>(null);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        setLoading(true);
+        const response = await fetch(`/api/facilities/${providerNumber}`);
+        if (!response.ok) throw new Error('Failed to fetch facility data');
+        const data = await response.json();
+        setFacility(data.facility);
+        setRecommendations(data.recommendations || []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load data');
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, [providerNumber]);
+
+  const handleSavePlan = (plan: Partial<ActionPlan>) => {
+    setSavedPlan(plan);
+    // In a full implementation, this would save to the database
+    console.log('Plan saved:', plan);
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-slide-up">
+        <button onClick={onBack} className="btn-neumorphic px-4 py-2 flex items-center gap-2">
+          <ArrowLeft className="w-4 h-4" />
+          Back to Overview
+        </button>
+        <div className="card-neumorphic p-8 text-center">
+          <div className="animate-spin w-8 h-8 border-4 border-cyan-500 border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-[var(--foreground-muted)]">Loading improvement plan builder...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !facility) {
+    return (
+      <div className="space-y-6 animate-slide-up">
+        <button onClick={onBack} className="btn-neumorphic px-4 py-2 flex items-center gap-2">
+          <ArrowLeft className="w-4 h-4" />
+          Back to Overview
+        </button>
+        <div className="card-neumorphic p-8 text-center">
+          <p className="text-red-500">{error || 'Failed to load facility data'}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (savedPlan) {
+    return (
+      <div className="space-y-6 animate-slide-up">
+        <button onClick={onBack} className="btn-neumorphic px-4 py-2 flex items-center gap-2">
+          <ArrowLeft className="w-4 h-4" />
+          Back to Overview
+        </button>
+        <div className="card-neumorphic p-8">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-3 rounded-xl bg-gradient-to-br from-green-400 to-green-600">
+              <FileText className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-[var(--foreground)]">Plan Saved!</h2>
+              <p className="text-[var(--foreground-muted)]">{savedPlan.name}</p>
+            </div>
+          </div>
+
+          <div className="card-neumorphic-inset p-6 mb-6">
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-[var(--foreground-muted)]">Current Rating:</span>
+                <span className="ml-2 font-bold">{savedPlan.currentRating} ★</span>
+              </div>
+              <div>
+                <span className="text-[var(--foreground-muted)]">Target Rating:</span>
+                <span className="ml-2 font-bold text-cyan-600">{savedPlan.targetRating} ★</span>
+              </div>
+              <div>
+                <span className="text-[var(--foreground-muted)]">Action Items:</span>
+                <span className="ml-2 font-bold">{savedPlan.items?.length || 0}</span>
+              </div>
+              <div>
+                <span className="text-[var(--foreground-muted)]">Status:</span>
+                <span className="ml-2 px-2 py-0.5 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 text-xs">
+                  {savedPlan.status}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <h3 className="font-semibold mb-3">Action Items ({savedPlan.items?.length || 0})</h3>
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {savedPlan.items?.map((item, index) => (
+              <div key={item.id} className="card-neumorphic-inset p-3 flex items-start gap-3">
+                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300 text-xs flex items-center justify-center">
+                  {index + 1}
+                </span>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">{item.title}</p>
+                  <p className="text-xs text-[var(--foreground-muted)]">Due: {item.dueDate}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex gap-3 mt-6">
+            <button
+              onClick={() => setSavedPlan(null)}
+              className="btn-neumorphic px-4 py-2"
+            >
+              Edit Plan
+            </button>
+            <button className="btn-neumorphic-primary px-4 py-2">
+              Export PDF
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 animate-slide-up">
+      <button onClick={onBack} className="btn-neumorphic px-4 py-2 flex items-center gap-2">
+        <ArrowLeft className="w-4 h-4" />
+        Back to Overview
+      </button>
+
+      <PlanBuilder
+        facility={facility}
+        recommendations={recommendations}
+        onSavePlan={handleSavePlan}
+      />
     </div>
   );
 }
