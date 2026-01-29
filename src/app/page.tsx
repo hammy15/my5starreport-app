@@ -23,6 +23,21 @@ import {
   RefreshCw,
   Database,
   Clock,
+  Calculator,
+  GitCompare,
+  MapPin,
+  Calendar,
+  Download,
+  FileCheck,
+  BarChart3,
+  Target,
+  AlertTriangle,
+  CheckCircle2,
+  XCircle,
+  ChevronRight,
+  ChevronDown,
+  Users,
+  Award,
 } from 'lucide-react';
 import { FacilitySearch } from '@/components/dashboard/facility-search';
 import { FacilityOverview } from '@/components/dashboard/facility-overview';
@@ -30,7 +45,7 @@ import { PlanBuilder } from '@/components/plans/plan-builder';
 import type { Facility, ImprovementRecommendation, ActionPlan } from '@/types/facility';
 
 // View types for navigation
-type ViewType = 'search' | 'overview' | 'health' | 'staffing' | 'quality' | 'plan' | 'training';
+type ViewType = 'search' | 'overview' | 'health' | 'staffing' | 'quality' | 'plan' | 'training' | 'cascadia' | 'compare' | 'calculator' | 'templates';
 
 export default function HomePage() {
   const [currentView, setCurrentView] = useState<ViewType>('search');
@@ -134,14 +149,38 @@ export default function HomePage() {
             )}
 
             {/* Right side actions */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentView('cascadia')}
+                className={`btn-neumorphic p-2.5 hidden sm:flex items-center gap-2 ${currentView === 'cascadia' ? 'ring-2 ring-cyan-500' : ''}`}
+                title="Cascadia Stars"
+              >
+                <Award className="w-5 h-5 text-amber-500" />
+                <span className="hidden lg:inline text-sm">Cascadia</span>
+              </button>
+
+              <button
+                onClick={() => setCurrentView('calculator')}
+                className={`btn-neumorphic p-2.5 hidden md:flex items-center gap-2 ${currentView === 'calculator' ? 'ring-2 ring-cyan-500' : ''}`}
+                title="HPRD Calculator"
+              >
+                <Calculator className="w-5 h-5 text-green-500" />
+              </button>
+
+              <button
+                onClick={() => setCurrentView('compare')}
+                className={`btn-neumorphic p-2.5 hidden md:flex items-center gap-2 ${currentView === 'compare' ? 'ring-2 ring-cyan-500' : ''}`}
+                title="Compare Facilities"
+              >
+                <GitCompare className="w-5 h-5 text-purple-500" />
+              </button>
+
               <button
                 onClick={() => setCurrentView('training')}
-                className="btn-neumorphic p-2.5 hidden sm:flex items-center gap-2"
+                className={`btn-neumorphic p-2.5 hidden sm:flex items-center gap-2 ${currentView === 'training' ? 'ring-2 ring-cyan-500' : ''}`}
                 title="Training Resources"
               >
                 <GraduationCap className="w-5 h-5 text-cyan-500" />
-                <span className="hidden lg:inline text-sm">Training</span>
               </button>
 
               <button
@@ -279,6 +318,27 @@ export default function HomePage() {
           <PlanView
             providerNumber={selectedFacility}
             onBack={() => setCurrentView('overview')}
+          />
+        )}
+
+        {/* Cascadia Stars View */}
+        {currentView === 'cascadia' && (
+          <CascadiaStarsView
+            onBack={() => setCurrentView('search')}
+            onSelectFacility={handleSelectFacility}
+          />
+        )}
+
+        {/* HPRD Calculator View */}
+        {currentView === 'calculator' && (
+          <HPRDCalculatorView onBack={() => setCurrentView('search')} />
+        )}
+
+        {/* Compare Facilities View */}
+        {currentView === 'compare' && (
+          <CompareFacilitiesView
+            onBack={() => setCurrentView('search')}
+            onSelectFacility={handleSelectFacility}
           />
         )}
       </main>
@@ -1032,6 +1092,719 @@ function PlanView({
         recommendations={recommendations}
         onSavePlan={handleSavePlan}
       />
+    </div>
+  );
+}
+
+// Cascadia Stars View - Shows all Cascadia facilities
+function CascadiaStarsView({
+  onBack,
+  onSelectFacility,
+}: {
+  onBack: () => void;
+  onSelectFacility: (providerNumber: string) => void;
+}) {
+  const [facilities, setFacilities] = useState<Array<{
+    federalProviderNumber: string;
+    providerName: string;
+    cityTown: string;
+    state: string;
+    overallRating: number | null;
+    healthRating: number | null;
+    staffingRating: number | null;
+    qmRating: number | null;
+    numberOfBeds: number;
+  }>>([]);
+  const [loading, setLoading] = useState(true);
+  const [sortBy, setSortBy] = useState<'name' | 'rating' | 'state'>('state');
+  const [filterState, setFilterState] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchCascadiaFacilities() {
+      try {
+        const response = await fetch('/api/facilities/search?query=cascadia&limit=100');
+        const data = await response.json();
+        setFacilities(data.results || []);
+      } catch (error) {
+        console.error('Failed to fetch Cascadia facilities:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchCascadiaFacilities();
+  }, []);
+
+  const states = [...new Set(facilities.map(f => f.state))].sort();
+
+  const filteredFacilities = facilities
+    .filter(f => !filterState || f.state === filterState)
+    .sort((a, b) => {
+      if (sortBy === 'name') return a.providerName.localeCompare(b.providerName);
+      if (sortBy === 'rating') return (b.overallRating || 0) - (a.overallRating || 0);
+      return a.state.localeCompare(b.state) || a.providerName.localeCompare(b.providerName);
+    });
+
+  const avgRating = facilities.length > 0
+    ? (facilities.reduce((sum, f) => sum + (f.overallRating || 0), 0) / facilities.filter(f => f.overallRating).length).toFixed(1)
+    : '0';
+
+  const ratingDistribution = {
+    5: facilities.filter(f => f.overallRating === 5).length,
+    4: facilities.filter(f => f.overallRating === 4).length,
+    3: facilities.filter(f => f.overallRating === 3).length,
+    2: facilities.filter(f => f.overallRating === 2).length,
+    1: facilities.filter(f => f.overallRating === 1).length,
+  };
+
+  const getRatingColor = (rating: number | null) => {
+    if (!rating) return 'bg-gray-100 text-gray-500';
+    if (rating >= 4) return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300';
+    if (rating === 3) return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300';
+    return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300';
+  };
+
+  return (
+    <div className="space-y-6 animate-slide-up">
+      <button onClick={onBack} className="btn-neumorphic px-4 py-2 flex items-center gap-2">
+        <ArrowLeft className="w-4 h-4" />
+        Back to Search
+      </button>
+
+      {/* Header */}
+      <div className="text-center py-8">
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-sm font-medium mb-4">
+          <Award className="w-4 h-4" />
+          Cascadia Healthcare Portfolio
+        </div>
+        <h2 className="text-3xl font-bold text-gradient-primary mb-2">Cascadia Stars</h2>
+        <p className="text-[var(--foreground-muted)]">
+          Monitor all {facilities.length} Cascadia facilities across {states.length} states
+        </p>
+      </div>
+
+      {loading ? (
+        <div className="card-neumorphic p-8 text-center">
+          <div className="animate-spin w-8 h-8 border-4 border-cyan-500 border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-[var(--foreground-muted)]">Loading Cascadia facilities...</p>
+        </div>
+      ) : (
+        <>
+          {/* Summary Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="card-neumorphic p-4 text-center">
+              <p className="text-3xl font-bold text-gradient-primary">{facilities.length}</p>
+              <p className="text-sm text-[var(--foreground-muted)]">Total Facilities</p>
+            </div>
+            <div className="card-neumorphic p-4 text-center">
+              <p className="text-3xl font-bold text-amber-500">{avgRating}</p>
+              <p className="text-sm text-[var(--foreground-muted)]">Avg Rating</p>
+            </div>
+            <div className="card-neumorphic p-4 text-center">
+              <p className="text-3xl font-bold text-green-500">{ratingDistribution[5] + ratingDistribution[4]}</p>
+              <p className="text-sm text-[var(--foreground-muted)]">4-5 Star</p>
+            </div>
+            <div className="card-neumorphic p-4 text-center">
+              <p className="text-3xl font-bold text-red-500">{ratingDistribution[1] + ratingDistribution[2]}</p>
+              <p className="text-sm text-[var(--foreground-muted)]">1-2 Star</p>
+            </div>
+          </div>
+
+          {/* Rating Distribution */}
+          <div className="card-neumorphic p-6">
+            <h3 className="font-semibold mb-4 flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-cyan-500" />
+              Rating Distribution
+            </h3>
+            <div className="space-y-3">
+              {[5, 4, 3, 2, 1].map((rating) => (
+                <div key={rating} className="flex items-center gap-3">
+                  <span className="w-16 text-sm font-medium">{rating} Star</span>
+                  <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-6 overflow-hidden">
+                    <div
+                      className={`h-full ${rating >= 4 ? 'bg-green-500' : rating === 3 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                      style={{ width: `${(ratingDistribution[rating as keyof typeof ratingDistribution] / facilities.length) * 100}%` }}
+                    />
+                  </div>
+                  <span className="w-12 text-sm text-right">{ratingDistribution[rating as keyof typeof ratingDistribution]}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Filters */}
+          <div className="flex flex-wrap gap-4 items-center">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-[var(--foreground-muted)]">Filter by State:</span>
+              <select
+                value={filterState || ''}
+                onChange={(e) => setFilterState(e.target.value || null)}
+                className="btn-neumorphic px-3 py-2 text-sm"
+              >
+                <option value="">All States</option>
+                {states.map((state) => (
+                  <option key={state} value={state}>{state}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-[var(--foreground-muted)]">Sort by:</span>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as 'name' | 'rating' | 'state')}
+                className="btn-neumorphic px-3 py-2 text-sm"
+              >
+                <option value="state">State</option>
+                <option value="name">Name</option>
+                <option value="rating">Rating</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Facilities List */}
+          <div className="space-y-3">
+            {filteredFacilities.map((facility) => (
+              <div
+                key={facility.federalProviderNumber}
+                onClick={() => onSelectFacility(facility.federalProviderNumber)}
+                className="card-neumorphic p-4 cursor-pointer hover:scale-[1.01] transition-transform"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${getRatingColor(facility.overallRating)}`}>
+                        {facility.overallRating || 'N/A'} ★
+                      </span>
+                      <span className="text-xs text-[var(--foreground-muted)]">{facility.state}</span>
+                    </div>
+                    <h4 className="font-medium text-[var(--foreground)]">{facility.providerName}</h4>
+                    <p className="text-sm text-[var(--foreground-muted)]">{facility.cityTown}</p>
+                  </div>
+                  <div className="flex items-center gap-4 text-xs">
+                    <div className="text-center">
+                      <p className={`font-bold ${getRatingColor(facility.healthRating)}`}>{facility.healthRating || '-'}</p>
+                      <p className="text-[var(--foreground-muted)]">Health</p>
+                    </div>
+                    <div className="text-center">
+                      <p className={`font-bold ${getRatingColor(facility.staffingRating)}`}>{facility.staffingRating || '-'}</p>
+                      <p className="text-[var(--foreground-muted)]">Staff</p>
+                    </div>
+                    <div className="text-center">
+                      <p className={`font-bold ${getRatingColor(facility.qmRating)}`}>{facility.qmRating || '-'}</p>
+                      <p className="text-[var(--foreground-muted)]">QM</p>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-[var(--foreground-muted)]" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// HPRD Calculator View
+function HPRDCalculatorView({ onBack }: { onBack: () => void }) {
+  const [beds, setBeds] = useState(100);
+  const [occupancy, setOccupancy] = useState(85);
+  const [targetRating, setTargetRating] = useState(3);
+  const [currentRNs, setCurrentRNs] = useState(5);
+  const [currentLPNs, setCurrentLPNs] = useState(10);
+  const [currentCNAs, setCurrentCNAs] = useState(25);
+
+  // CMS HPRD thresholds
+  const thresholds = {
+    5: { total: 4.08, rn: 0.75 },
+    4: { total: 3.58, rn: 0.55 },
+    3: { total: 3.18, rn: 0.40 },
+    2: { total: 2.82, rn: 0.30 },
+    1: { total: 0, rn: 0 },
+  };
+
+  const residents = Math.round(beds * (occupancy / 100));
+  const currentTotalStaff = currentRNs + currentLPNs + currentCNAs;
+
+  // Assume 8-hour shifts and need 3 shifts per day
+  const staffHoursPerDay = currentTotalStaff * 8;
+  const currentTotalHPRD = residents > 0 ? staffHoursPerDay / residents : 0;
+  const currentRNHPRD = residents > 0 ? (currentRNs * 8) / residents : 0;
+
+  const targetThreshold = thresholds[targetRating as keyof typeof thresholds];
+  const neededTotalHPRD = targetThreshold.total;
+  const neededRNHPRD = targetThreshold.rn;
+
+  const totalHoursNeeded = neededTotalHPRD * residents;
+  const rnHoursNeeded = neededRNHPRD * residents;
+
+  const additionalTotalStaff = Math.max(0, Math.ceil((totalHoursNeeded - staffHoursPerDay) / 8));
+  const additionalRNs = Math.max(0, Math.ceil((rnHoursNeeded - (currentRNs * 8)) / 8));
+
+  const staffingGap = neededTotalHPRD - currentTotalHPRD;
+  const rnGap = neededRNHPRD - currentRNHPRD;
+
+  return (
+    <div className="space-y-6 animate-slide-up">
+      <button onClick={onBack} className="btn-neumorphic px-4 py-2 flex items-center gap-2">
+        <ArrowLeft className="w-4 h-4" />
+        Back to Search
+      </button>
+
+      <div className="text-center py-8">
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-sm font-medium mb-4">
+          <Calculator className="w-4 h-4" />
+          Staffing Calculator
+        </div>
+        <h2 className="text-3xl font-bold text-gradient-primary mb-2">HPRD Calculator</h2>
+        <p className="text-[var(--foreground-muted)]">
+          Calculate staffing requirements to achieve your target star rating
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Input Section */}
+        <div className="card-neumorphic p-6 space-y-6">
+          <h3 className="font-semibold flex items-center gap-2">
+            <Users className="w-5 h-5 text-cyan-500" />
+            Facility Information
+          </h3>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">Certified Beds</label>
+              <input
+                type="number"
+                value={beds}
+                onChange={(e) => setBeds(Number(e.target.value))}
+                className="w-full card-neumorphic-inset px-4 py-3 text-lg"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">Occupancy Rate (%)</label>
+              <input
+                type="number"
+                value={occupancy}
+                onChange={(e) => setOccupancy(Number(e.target.value))}
+                className="w-full card-neumorphic-inset px-4 py-3 text-lg"
+                min="0"
+                max="100"
+              />
+              <p className="text-xs text-[var(--foreground-muted)] mt-1">= {residents} residents</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">Target Star Rating</label>
+              <div className="flex gap-2">
+                {[1, 2, 3, 4, 5].map((rating) => (
+                  <button
+                    key={rating}
+                    onClick={() => setTargetRating(rating)}
+                    className={`flex-1 py-3 rounded-xl font-bold transition-all ${
+                      targetRating === rating
+                        ? 'btn-neumorphic-primary text-white'
+                        : 'btn-neumorphic'
+                    }`}
+                  >
+                    {rating} ★
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+              <h4 className="font-medium mb-3">Current Staffing (per shift)</h4>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs text-[var(--foreground-muted)] mb-1">RNs</label>
+                  <input
+                    type="number"
+                    value={currentRNs}
+                    onChange={(e) => setCurrentRNs(Number(e.target.value))}
+                    className="w-full card-neumorphic-inset px-3 py-2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-[var(--foreground-muted)] mb-1">LPNs</label>
+                  <input
+                    type="number"
+                    value={currentLPNs}
+                    onChange={(e) => setCurrentLPNs(Number(e.target.value))}
+                    className="w-full card-neumorphic-inset px-3 py-2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-[var(--foreground-muted)] mb-1">CNAs</label>
+                  <input
+                    type="number"
+                    value={currentCNAs}
+                    onChange={(e) => setCurrentCNAs(Number(e.target.value))}
+                    className="w-full card-neumorphic-inset px-3 py-2"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Results Section */}
+        <div className="space-y-4">
+          <div className="card-neumorphic p-6">
+            <h3 className="font-semibold mb-4 flex items-center gap-2">
+              <Target className="w-5 h-5 text-purple-500" />
+              Current vs Target
+            </h3>
+
+            <div className="space-y-4">
+              <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm">Total HPRD</span>
+                  <span className={`font-bold ${staffingGap > 0 ? 'text-red-500' : 'text-green-500'}`}>
+                    {currentTotalHPRD.toFixed(2)} / {neededTotalHPRD.toFixed(2)}
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+                  <div
+                    className={`h-full rounded-full ${currentTotalHPRD >= neededTotalHPRD ? 'bg-green-500' : 'bg-red-500'}`}
+                    style={{ width: `${Math.min(100, (currentTotalHPRD / neededTotalHPRD) * 100)}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm">RN HPRD</span>
+                  <span className={`font-bold ${rnGap > 0 ? 'text-red-500' : 'text-green-500'}`}>
+                    {currentRNHPRD.toFixed(2)} / {neededRNHPRD.toFixed(2)}
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+                  <div
+                    className={`h-full rounded-full ${currentRNHPRD >= neededRNHPRD ? 'bg-green-500' : 'bg-red-500'}`}
+                    style={{ width: `${Math.min(100, (currentRNHPRD / neededRNHPRD) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Recommendations */}
+          <div className="card-neumorphic p-6">
+            <h3 className="font-semibold mb-4 flex items-center gap-2">
+              {staffingGap <= 0 && rnGap <= 0 ? (
+                <CheckCircle2 className="w-5 h-5 text-green-500" />
+              ) : (
+                <AlertTriangle className="w-5 h-5 text-amber-500" />
+              )}
+              Staffing Recommendation
+            </h3>
+
+            {staffingGap <= 0 && rnGap <= 0 ? (
+              <div className="p-4 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300">
+                <p className="font-medium">You meet the staffing requirements for {targetRating}-star!</p>
+                <p className="text-sm mt-1">Your current staffing levels exceed the CMS thresholds.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {staffingGap > 0 && (
+                  <div className="p-4 rounded-lg bg-amber-50 dark:bg-amber-900/20">
+                    <p className="font-medium text-amber-700 dark:text-amber-300">
+                      Hire {additionalTotalStaff} additional nursing staff
+                    </p>
+                    <p className="text-sm text-amber-600 dark:text-amber-400">
+                      Gap: {staffingGap.toFixed(2)} HPRD ({(staffingGap * residents).toFixed(0)} hours/day)
+                    </p>
+                  </div>
+                )}
+                {rnGap > 0 && (
+                  <div className="p-4 rounded-lg bg-red-50 dark:bg-red-900/20">
+                    <p className="font-medium text-red-700 dark:text-red-300">
+                      Hire {additionalRNs} additional RNs
+                    </p>
+                    <p className="text-sm text-red-600 dark:text-red-400">
+                      Gap: {rnGap.toFixed(2)} RN HPRD ({(rnGap * residents).toFixed(0)} RN hours/day)
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* CMS Thresholds Reference */}
+          <div className="card-neumorphic p-6">
+            <h3 className="font-semibold mb-4">CMS Staffing Thresholds (2024)</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200 dark:border-gray-700">
+                    <th className="text-left py-2">Rating</th>
+                    <th className="text-right py-2">Total HPRD</th>
+                    <th className="text-right py-2">RN HPRD</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[5, 4, 3, 2].map((r) => (
+                    <tr key={r} className={`border-b border-gray-100 dark:border-gray-800 ${targetRating === r ? 'bg-cyan-50 dark:bg-cyan-900/20' : ''}`}>
+                      <td className="py-2 font-medium">{r} Star</td>
+                      <td className="text-right py-2">{thresholds[r as keyof typeof thresholds].total}</td>
+                      <td className="text-right py-2">{thresholds[r as keyof typeof thresholds].rn}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Compare Facilities View
+function CompareFacilitiesView({
+  onBack,
+  onSelectFacility,
+}: {
+  onBack: () => void;
+  onSelectFacility: (providerNumber: string) => void;
+}) {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Array<{
+    federalProviderNumber: string;
+    providerName: string;
+    cityTown: string;
+    state: string;
+    overallRating: number;
+  }>>([]);
+  const [selectedFacilities, setSelectedFacilities] = useState<string[]>([]);
+  const [facilityData, setFacilityData] = useState<Record<string, Facility & { staffing?: Record<string, unknown>; qualityMeasures?: Record<string, unknown> }>>({});
+  const [loading, setLoading] = useState(false);
+
+  // Search facilities
+  useEffect(() => {
+    if (searchQuery.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        const response = await fetch(`/api/facilities/search?query=${encodeURIComponent(searchQuery)}&limit=10`);
+        const data = await response.json();
+        setSearchResults(data.results || []);
+      } catch (error) {
+        console.error('Search failed:', error);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Fetch facility data when selected
+  const addFacility = async (providerNumber: string) => {
+    if (selectedFacilities.includes(providerNumber) || selectedFacilities.length >= 3) return;
+
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/facilities/${providerNumber}`);
+      const data = await response.json();
+      setFacilityData(prev => ({ ...prev, [providerNumber]: { ...data.facility, staffing: data.staffing, qualityMeasures: data.qualityMeasures } }));
+      setSelectedFacilities(prev => [...prev, providerNumber]);
+    } catch (error) {
+      console.error('Failed to fetch facility:', error);
+    } finally {
+      setLoading(false);
+      setSearchQuery('');
+      setSearchResults([]);
+    }
+  };
+
+  const removeFacility = (providerNumber: string) => {
+    setSelectedFacilities(prev => prev.filter(p => p !== providerNumber));
+    setFacilityData(prev => {
+      const newData = { ...prev };
+      delete newData[providerNumber];
+      return newData;
+    });
+  };
+
+  const getRatingColor = (rating: number | null) => {
+    if (!rating) return 'text-gray-500';
+    if (rating >= 4) return 'text-green-500';
+    if (rating === 3) return 'text-yellow-500';
+    return 'text-red-500';
+  };
+
+  const comparisonMetrics = [
+    { key: 'overallRating', label: 'Overall Rating', suffix: '★' },
+    { key: 'healthInspectionRating', label: 'Health Inspection', suffix: '★' },
+    { key: 'staffingRating', label: 'Staffing', suffix: '★' },
+    { key: 'qualityMeasureRating', label: 'Quality Measures', suffix: '★' },
+    { key: 'numberOfCertifiedBeds', label: 'Beds', suffix: '' },
+    { key: 'totalFines', label: 'Total Fines', prefix: '$', format: (v: number) => v?.toLocaleString() || '0' },
+    { key: 'penaltyCount', label: 'Penalties', suffix: '' },
+  ];
+
+  return (
+    <div className="space-y-6 animate-slide-up">
+      <button onClick={onBack} className="btn-neumorphic px-4 py-2 flex items-center gap-2">
+        <ArrowLeft className="w-4 h-4" />
+        Back to Search
+      </button>
+
+      <div className="text-center py-8">
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-sm font-medium mb-4">
+          <GitCompare className="w-4 h-4" />
+          Facility Comparison
+        </div>
+        <h2 className="text-3xl font-bold text-gradient-primary mb-2">Compare Facilities</h2>
+        <p className="text-[var(--foreground-muted)]">
+          Compare up to 3 facilities side by side
+        </p>
+      </div>
+
+      {/* Search */}
+      <div className="card-neumorphic p-6">
+        <div className="relative">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search for a facility to compare..."
+            className="w-full card-neumorphic-inset px-4 py-3"
+            disabled={selectedFacilities.length >= 3}
+          />
+          {loading && (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+              <div className="animate-spin w-5 h-5 border-2 border-cyan-500 border-t-transparent rounded-full" />
+            </div>
+          )}
+        </div>
+
+        {searchResults.length > 0 && (
+          <div className="mt-2 space-y-2">
+            {searchResults.map((result) => (
+              <button
+                key={result.federalProviderNumber}
+                onClick={() => addFacility(result.federalProviderNumber)}
+                disabled={selectedFacilities.includes(result.federalProviderNumber)}
+                className="w-full text-left p-3 card-neumorphic-inset hover:bg-cyan-50 dark:hover:bg-cyan-900/20 disabled:opacity-50"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">{result.providerName}</p>
+                    <p className="text-sm text-[var(--foreground-muted)]">{result.cityTown}, {result.state}</p>
+                  </div>
+                  <span className={`font-bold ${getRatingColor(result.overallRating)}`}>
+                    {result.overallRating}★
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Comparison Table */}
+      {selectedFacilities.length > 0 && (
+        <div className="card-neumorphic p-6 overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr>
+                <th className="text-left py-3 px-4 font-medium text-[var(--foreground-muted)]">Metric</th>
+                {selectedFacilities.map((providerNumber) => {
+                  const facility = facilityData[providerNumber];
+                  return (
+                    <th key={providerNumber} className="text-center py-3 px-4 min-w-[200px]">
+                      <div className="relative">
+                        <button
+                          onClick={() => removeFacility(providerNumber)}
+                          className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-100 text-red-500 hover:bg-red-200 flex items-center justify-center"
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </button>
+                        <p className="font-semibold text-sm">{facility?.providerName || 'Loading...'}</p>
+                        <p className="text-xs text-[var(--foreground-muted)]">{facility?.cityTown}, {facility?.state}</p>
+                      </div>
+                    </th>
+                  );
+                })}
+              </tr>
+            </thead>
+            <tbody>
+              {comparisonMetrics.map((metric) => (
+                <tr key={metric.key} className="border-t border-gray-100 dark:border-gray-800">
+                  <td className="py-3 px-4 font-medium">{metric.label}</td>
+                  {selectedFacilities.map((providerNumber) => {
+                    const facility = facilityData[providerNumber];
+                    const rawValue = facility?.[metric.key as keyof typeof facility];
+                    const numValue = typeof rawValue === 'number' ? rawValue : null;
+                    const displayValue = metric.format && numValue != null
+                      ? metric.format(numValue)
+                      : (numValue ?? rawValue);
+                    const isRating = metric.suffix === '★';
+
+                    // Find best value for highlighting
+                    const allValues = selectedFacilities.map(pn => {
+                      const f = facilityData[pn];
+                      const v = f?.[metric.key as keyof typeof f];
+                      return typeof v === 'number' ? v : null;
+                    }).filter((v): v is number => v != null);
+                    const isBest = isRating && numValue != null && numValue === Math.max(...allValues);
+
+                    return (
+                      <td key={providerNumber} className="text-center py-3 px-4">
+                        <span className={`font-bold text-lg ${isRating ? getRatingColor(numValue) : ''} ${isBest ? 'bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded' : ''}`}>
+                          {metric.prefix || ''}{String(displayValue ?? '-')}{metric.suffix || ''}
+                        </span>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+
+              {/* Staffing Metrics */}
+              <tr className="border-t-2 border-gray-300 dark:border-gray-600">
+                <td className="py-3 px-4 font-semibold text-cyan-600">Total HPRD</td>
+                {selectedFacilities.map((providerNumber) => {
+                  const facility = facilityData[providerNumber];
+                  const value = (facility?.staffing as Record<string, unknown>)?.totalNurseHPRD as number;
+                  return (
+                    <td key={providerNumber} className="text-center py-3 px-4">
+                      <span className="font-bold">{value?.toFixed(2) || '-'}</span>
+                    </td>
+                  );
+                })}
+              </tr>
+              <tr className="border-t border-gray-100 dark:border-gray-800">
+                <td className="py-3 px-4 font-medium">RN HPRD</td>
+                {selectedFacilities.map((providerNumber) => {
+                  const facility = facilityData[providerNumber];
+                  const value = (facility?.staffing as Record<string, unknown>)?.rnHPRD as number;
+                  return (
+                    <td key={providerNumber} className="text-center py-3 px-4">
+                      <span className="font-bold">{value?.toFixed(2) || '-'}</span>
+                    </td>
+                  );
+                })}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {selectedFacilities.length === 0 && (
+        <div className="card-neumorphic-inset p-12 text-center">
+          <GitCompare className="w-12 h-12 mx-auto mb-4 text-[var(--foreground-muted)]" />
+          <p className="text-[var(--foreground-muted)]">Search and select facilities to compare</p>
+        </div>
+      )}
+
+      {selectedFacilities.length > 0 && selectedFacilities.length < 3 && (
+        <p className="text-center text-sm text-[var(--foreground-muted)]">
+          You can add {3 - selectedFacilities.length} more facilit{3 - selectedFacilities.length === 1 ? 'y' : 'ies'} to compare
+        </p>
+      )}
     </div>
   );
 }

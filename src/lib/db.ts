@@ -43,6 +43,9 @@ export async function searchFacilitiesDB(query: string, state?: string, limit = 
       city as "cityTown",
       state,
       "overallRating",
+      "healthRating",
+      "staffingRating",
+      "qmRating",
       beds as "numberOfBeds"
     FROM "Facility"
     ${sql.unsafe(whereClause)}
