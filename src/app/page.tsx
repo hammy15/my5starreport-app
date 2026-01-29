@@ -22,6 +22,7 @@ import {
   GraduationCap,
   RefreshCw,
   Database,
+  Clock,
 } from 'lucide-react';
 import { FacilitySearch } from '@/components/dashboard/facility-search';
 import { FacilityOverview } from '@/components/dashboard/facility-overview';
@@ -353,54 +354,414 @@ function FeatureCard({
   );
 }
 
+// Training resource type
+interface TrainingResource {
+  id: string;
+  category: string;
+  title: string;
+  description: string;
+  content_type: string;
+  duration_minutes: number;
+  difficulty_level: string;
+  content?: string;
+  video_url?: string;
+  checklist?: string[];
+}
+
+// Training content database
+const trainingContent: Record<string, { content: string; checklist?: string[]; keyPoints?: string[] }> = {
+  '1': {
+    content: `Hours Per Resident Day (HPRD) is the primary staffing metric used by CMS to calculate your staffing rating.
+
+**How HPRD is Calculated:**
+HPRD = Total Staff Hours Worked / Total Resident Days
+
+**Example:**
+- If your facility has 100 residents
+- And your nursing staff worked a combined 400 hours in one day
+- Your HPRD = 400 / 100 = 4.0 HPRD
+
+**CMS Staffing Thresholds (2024):**
+- 5-Star: Total ≥4.08 HPRD, RN ≥0.75 HPRD
+- 4-Star: Total ≥3.58 HPRD, RN ≥0.55 HPRD
+- 3-Star: Total ≥3.18 HPRD, RN ≥0.40 HPRD
+- 2-Star: Total ≥2.82 HPRD, RN ≥0.30 HPRD
+- 1-Star: Below 2-star thresholds`,
+    keyPoints: [
+      'HPRD includes RNs, LPNs, and CNAs',
+      'Weekend staffing is weighted heavily',
+      'Staffing adjustments based on case-mix are applied',
+      'PBJ data must be submitted accurately and on time',
+    ],
+  },
+  '2': {
+    content: `Payroll-Based Journal (PBJ) reporting is mandatory for all Medicare/Medicaid certified nursing homes.
+
+**Submission Requirements:**
+- Submit staffing data quarterly
+- Deadline: 45 days after quarter end
+- Include all direct care staff hours
+
+**Best Practices:**
+1. Use electronic time tracking systems
+2. Ensure proper job category coding
+3. Reconcile PBJ data with payroll records
+4. Review before submission for accuracy
+5. Keep documentation for audits`,
+    checklist: [
+      'Verify all staff are properly coded by job category',
+      'Ensure agency/contract staff hours are included',
+      'Check for missing shifts or incomplete entries',
+      'Validate census data matches MDS submissions',
+      'Review weekend staffing entries carefully',
+      'Submit at least 5 days before deadline',
+    ],
+  },
+  '4': {
+    content: `Reducing antipsychotic medication use is a key quality measure that affects your star rating.
+
+**Why It Matters:**
+- Antipsychotics carry serious risks for elderly residents
+- CMS tracks this as a priority quality measure
+- High rates trigger additional scrutiny
+
+**Non-Pharmacological Interventions:**
+1. Person-centered care approaches
+2. Environmental modifications
+3. Structured activities programs
+4. Music and art therapy
+5. Staff training on dementia care
+
+**Gradual Dose Reduction (GDR):**
+- Required for all residents on antipsychotics
+- Must attempt reduction unless clinically contraindicated
+- Document all attempts and outcomes`,
+    keyPoints: [
+      'National average is approximately 14%',
+      'Target should be below 10%',
+      'Exclusions exist for certain diagnoses',
+      'Documentation of medical necessity is critical',
+    ],
+  },
+  '5': {
+    content: `Pressure ulcers are a critical quality measure and a major focus during surveys.
+
+**Prevention Protocol:**
+1. Risk assessment on admission (Braden Scale)
+2. Regular repositioning schedule
+3. Proper nutrition and hydration
+4. Moisture management
+5. Pressure-redistributing surfaces
+
+**Staging:**
+- Stage 1: Non-blanchable erythema
+- Stage 2: Partial thickness skin loss
+- Stage 3: Full thickness skin loss
+- Stage 4: Full thickness tissue loss
+- Unstageable: Obscured by slough/eschar
+- DTPI: Deep tissue pressure injury`,
+    checklist: [
+      'Complete Braden Scale on admission',
+      'Reassess weekly and with condition changes',
+      'Implement turning schedule (Q2H minimum)',
+      'Document skin checks daily',
+      'Ensure adequate protein intake',
+      'Use appropriate support surfaces',
+      'Keep skin clean and dry',
+      'Protect bony prominences',
+    ],
+  },
+  '6': {
+    content: `Falls are the leading cause of injury in nursing homes and heavily impact your quality measures.
+
+**Fall Prevention Program Components:**
+1. Comprehensive fall risk assessment
+2. Individualized interventions
+3. Environmental safety rounds
+4. Staff education
+5. Post-fall analysis
+
+**High-Risk Factors:**
+- History of falls
+- Cognitive impairment
+- Gait/balance problems
+- Medications (sedatives, BP meds)
+- Environmental hazards`,
+    checklist: [
+      'Complete fall risk assessment on admission',
+      'Review medications for fall risk',
+      'Ensure proper footwear',
+      'Install grab bars and handrails',
+      'Adequate lighting in all areas',
+      'Clear pathways of obstacles',
+      'Bed alarms for high-risk residents',
+      'Conduct post-fall huddles',
+      'Update care plan after each fall',
+    ],
+  },
+  '7': {
+    content: `Being survey-ready at all times is essential for maintaining good inspection results.
+
+**Daily Readiness:**
+- Mock surveys quarterly
+- Documentation audits weekly
+- Environment rounds daily
+- Staff competency validation
+
+**Key Focus Areas:**
+- Infection control practices
+- Medication management
+- Resident rights
+- Quality of care
+- Staffing levels`,
+    checklist: [
+      'Emergency preparedness plan current',
+      'Fire drills documented monthly',
+      'Infection control supplies stocked',
+      'Staff licenses verified and current',
+      'Care plans updated within 7 days',
+      'Medication carts secured',
+      'Call lights answered promptly',
+      'Dining room supervision adequate',
+      'Activities calendar posted',
+      'Resident grievance process in place',
+    ],
+  },
+  '8': {
+    content: `Understanding F-Tags is essential for survey preparation and compliance.
+
+**F-Tag Structure:**
+- F-Tags are regulatory requirements
+- Each has a specific scope and severity grid
+- Deficiencies are cited with F-Tag numbers
+
+**Common High-Impact F-Tags:**
+- F686: Treatment/Services to Prevent/Heal Pressure Ulcers
+- F689: Free of Accident Hazards/Supervision/Devices
+- F880: Infection Prevention & Control
+- F812: Food Procurement, Storage & Preparation
+- F684: Quality of Care
+
+**Severity Levels:**
+- A-C: No actual harm, potential for minimal harm
+- D-F: No actual harm, potential for more than minimal harm
+- G-I: Actual harm
+- J-L: Immediate jeopardy`,
+    keyPoints: [
+      'Focus on most frequently cited F-Tags',
+      'Train staff on prevention strategies',
+      'Document thoroughly to show compliance',
+      'Immediate jeopardy requires immediate correction',
+    ],
+  },
+  '10': {
+    content: `The CMS 5-Star Rating System helps consumers compare nursing homes.
+
+**Five Domains:**
+1. Health Inspections (surveys, complaints, revisits)
+2. Staffing (HPRD from PBJ data)
+3. Quality Measures (MDS-derived)
+4. Overall Rating (weighted combination)
+
+**How Overall Rating is Calculated:**
+- Starts with Health Inspection rating
+- Add 1 star if Staffing ≥ 4 AND QM ≥ 4
+- Subtract 1 star if Staffing = 1 OR QM = 1
+- Maximum 5 stars, minimum 1 star
+
+**Update Schedule:**
+- Health Inspections: Monthly
+- Staffing: Quarterly
+- Quality Measures: Quarterly`,
+    keyPoints: [
+      'Health inspection is the foundation',
+      'All three components matter',
+      'Special Focus Facility status impacts rating',
+      'Abuse icon affects public perception',
+    ],
+  },
+  '11': {
+    content: `Quality Assurance and Performance Improvement (QAPI) is required for all nursing homes.
+
+**QAPI Elements:**
+1. Design and Scope
+2. Governance and Leadership
+3. Feedback, Data Systems & Monitoring
+4. Performance Improvement Projects (PIPs)
+5. Systematic Analysis and Action
+
+**Building Your QAPI Program:**
+- Establish QAPI committee
+- Define quality indicators
+- Set measurable goals
+- Track data consistently
+- Implement PIPs with PDSA cycles
+
+**PDSA Cycle:**
+- Plan: Identify problem and solution
+- Do: Implement on small scale
+- Study: Analyze results
+- Act: Standardize or modify`,
+    checklist: [
+      'QAPI plan written and approved',
+      'QAPI committee meets monthly',
+      'Quality indicators defined and tracked',
+      'At least 2 active PIPs at all times',
+      'Staff aware of current PIPs',
+      'Data displayed for staff visibility',
+      'Root cause analysis for adverse events',
+      'Annual QAPI program evaluation',
+    ],
+  },
+};
+
 // Training View
 function TrainingView({ onBack }: { onBack: () => void }) {
-  const trainingCategories = [
-    {
-      title: 'Health Inspection Training',
-      icon: <ClipboardCheck className="w-5 h-5" />,
-      color: 'blue',
-      courses: [
-        'Survey Readiness Checklist',
-        'Understanding F-Tags',
-        'Mock Survey Training',
-        'Plan of Correction Writing',
-      ],
-    },
-    {
-      title: 'Staffing Optimization',
-      icon: <UserCheck className="w-5 h-5" />,
-      color: 'cyan',
-      courses: [
-        'Understanding HPRD Calculations',
-        'PBJ Reporting Best Practices',
-        'Reducing Staff Turnover',
-        'Weekend Staffing Strategies',
-      ],
-    },
-    {
-      title: 'Quality Improvement',
-      icon: <Heart className="w-5 h-5" />,
-      color: 'purple',
-      courses: [
-        'Antipsychotic Reduction Program',
-        'Pressure Ulcer Prevention',
-        'Fall Prevention Best Practices',
-        'Reducing Rehospitalizations',
-      ],
-    },
-    {
-      title: 'General Training',
-      icon: <GraduationCap className="w-5 h-5" />,
-      color: 'green',
-      courses: [
-        '5-Star Rating System Overview',
-        'QAPI Program Implementation',
-        'Leadership in Quality Improvement',
-        'Understanding CMS Data Sources',
-      ],
-    },
+  const [resources, setResources] = useState<TrainingResource[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedResource, setSelectedResource] = useState<TrainingResource | null>(null);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchResources() {
+      try {
+        const response = await fetch('/api/training');
+        const data = await response.json();
+        setResources(data.resources || []);
+      } catch (error) {
+        console.error('Failed to fetch training resources:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchResources();
+  }, []);
+
+  const categories = [
+    { id: 'staffing', title: 'Staffing Optimization', icon: <UserCheck className="w-5 h-5" />, color: 'cyan' },
+    { id: 'quality_measures', title: 'Quality Improvement', icon: <Heart className="w-5 h-5" />, color: 'purple' },
+    { id: 'health_inspection', title: 'Health Inspection', icon: <ClipboardCheck className="w-5 h-5" />, color: 'blue' },
+    { id: 'general', title: 'General Training', icon: <GraduationCap className="w-5 h-5" />, color: 'green' },
   ];
+
+  const getContentTypeIcon = (type: string) => {
+    switch (type) {
+      case 'video': return '🎥';
+      case 'guide': return '📖';
+      case 'course': return '📚';
+      case 'checklist': return '✅';
+      default: return '📄';
+    }
+  };
+
+  const getDifficultyColor = (level: string) => {
+    switch (level) {
+      case 'beginner': return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300';
+      case 'intermediate': return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300';
+      case 'advanced': return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300';
+      default: return 'bg-gray-100 text-gray-700';
+    }
+  };
+
+  // Course detail view
+  if (selectedResource) {
+    const content = trainingContent[selectedResource.id];
+    return (
+      <div className="space-y-6 animate-slide-up">
+        <button
+          onClick={() => setSelectedResource(null)}
+          className="btn-neumorphic px-4 py-2 flex items-center gap-2"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Training
+        </button>
+
+        <div className="card-neumorphic p-8">
+          <div className="flex items-start justify-between mb-6">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-2xl">{getContentTypeIcon(selectedResource.content_type)}</span>
+                <span className={`px-2 py-0.5 rounded-full text-xs ${getDifficultyColor(selectedResource.difficulty_level)}`}>
+                  {selectedResource.difficulty_level}
+                </span>
+                <span className="text-sm text-[var(--foreground-muted)]">
+                  {selectedResource.duration_minutes} min
+                </span>
+              </div>
+              <h2 className="text-2xl font-bold text-[var(--foreground)]">{selectedResource.title}</h2>
+              <p className="text-[var(--foreground-muted)] mt-2">{selectedResource.description}</p>
+            </div>
+          </div>
+
+          {content ? (
+            <div className="space-y-6">
+              <div className="card-neumorphic-inset p-6">
+                <div className="prose dark:prose-invert max-w-none">
+                  {content.content.split('\n\n').map((paragraph, idx) => (
+                    <div key={idx} className="mb-4">
+                      {paragraph.startsWith('**') ? (
+                        <h3 className="font-semibold text-lg text-[var(--foreground)] mb-2">
+                          {paragraph.replace(/\*\*/g, '')}
+                        </h3>
+                      ) : paragraph.startsWith('-') || paragraph.startsWith('1.') ? (
+                        <ul className="list-disc list-inside space-y-1 text-[var(--foreground-muted)]">
+                          {paragraph.split('\n').map((item, i) => (
+                            <li key={i}>{item.replace(/^[-\d.]\s*/, '')}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-[var(--foreground-muted)]">{paragraph}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {content.keyPoints && (
+                <div className="card-neumorphic p-6">
+                  <h3 className="font-semibold mb-4 flex items-center gap-2">
+                    <Star className="w-5 h-5 text-yellow-500" />
+                    Key Points
+                  </h3>
+                  <ul className="space-y-2">
+                    {content.keyPoints.map((point, idx) => (
+                      <li key={idx} className="flex items-start gap-2">
+                        <span className="text-cyan-500 mt-1">•</span>
+                        <span className="text-[var(--foreground-muted)]">{point}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {content.checklist && (
+                <div className="card-neumorphic p-6">
+                  <h3 className="font-semibold mb-4 flex items-center gap-2">
+                    <ClipboardCheck className="w-5 h-5 text-green-500" />
+                    Checklist
+                  </h3>
+                  <ul className="space-y-2">
+                    {content.checklist.map((item, idx) => (
+                      <li key={idx} className="flex items-center gap-3 p-2 rounded-lg hover:bg-cyan-50 dark:hover:bg-cyan-900/20">
+                        <input type="checkbox" className="w-5 h-5 rounded border-gray-300" />
+                        <span className="text-[var(--foreground-muted)]">{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="card-neumorphic-inset p-8 text-center">
+              <p className="text-[var(--foreground-muted)]">
+                Course content is being developed. Check back soon!
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-slide-up">
@@ -416,27 +777,64 @@ function TrainingView({ onBack }: { onBack: () => void }) {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {trainingCategories.map((category) => (
-          <div key={category.title} className="card-neumorphic p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className={`p-2 rounded-lg bg-gradient-to-br from-${category.color}-400 to-${category.color}-600 text-white`}>
-                {category.icon}
-              </div>
-              <h3 className="font-semibold">{category.title}</h3>
-            </div>
-            <ul className="space-y-3">
-              {category.courses.map((course) => (
-                <li key={course}>
-                  <button className="w-full text-left p-3 rounded-lg card-neumorphic-inset hover:bg-cyan-50 dark:hover:bg-cyan-900/20 transition-colors">
-                    <span className="text-sm">{course}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
+      {/* Category Filter */}
+      <div className="flex flex-wrap gap-2 justify-center">
+        <button
+          onClick={() => setActiveCategory(null)}
+          className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+            activeCategory === null ? 'btn-neumorphic-primary text-white' : 'btn-neumorphic'
+          }`}
+        >
+          All
+        </button>
+        {categories.map((cat) => (
+          <button
+            key={cat.id}
+            onClick={() => setActiveCategory(cat.id)}
+            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all flex items-center gap-2 ${
+              activeCategory === cat.id ? 'btn-neumorphic-primary text-white' : 'btn-neumorphic'
+            }`}
+          >
+            {cat.icon}
+            <span className="hidden sm:inline">{cat.title}</span>
+          </button>
         ))}
       </div>
+
+      {loading ? (
+        <div className="card-neumorphic p-8 text-center">
+          <div className="animate-spin w-8 h-8 border-4 border-cyan-500 border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-[var(--foreground-muted)]">Loading training resources...</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {resources
+            .filter(r => !activeCategory || r.category === activeCategory)
+            .map((resource) => (
+            <div
+              key={resource.id}
+              onClick={() => setSelectedResource(resource)}
+              className="card-neumorphic p-6 cursor-pointer hover:scale-[1.02] transition-transform"
+            >
+              <div className="flex items-start justify-between mb-3">
+                <span className="text-2xl">{getContentTypeIcon(resource.content_type)}</span>
+                <span className={`px-2 py-0.5 rounded-full text-xs ${getDifficultyColor(resource.difficulty_level)}`}>
+                  {resource.difficulty_level}
+                </span>
+              </div>
+              <h3 className="font-semibold text-[var(--foreground)] mb-2">{resource.title}</h3>
+              <p className="text-sm text-[var(--foreground-muted)] mb-4 line-clamp-2">{resource.description}</p>
+              <div className="flex items-center justify-between text-xs text-[var(--foreground-muted)]">
+                <span className="flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  {resource.duration_minutes} min
+                </span>
+                <span className="text-cyan-600 dark:text-cyan-400 font-medium">Start →</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
