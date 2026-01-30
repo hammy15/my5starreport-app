@@ -7766,6 +7766,7 @@ function AlertsView({ onBack }: { onBack: () => void }) {
 }
 
 // Trends View - Historical rating trends for a facility
+// Enhanced Trends View with 5 Tabs
 function TrendsView({
   providerNumber,
   onBack,
@@ -7784,6 +7785,7 @@ function TrendsView({
     }>;
   } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'overview' | 'history' | 'components' | 'forecast' | 'alerts'>('overview');
 
   useEffect(() => {
     async function fetchData() {
@@ -7816,6 +7818,7 @@ function TrendsView({
   }
 
   const history = data?.ratingHistory || [];
+  const facility = data?.facility;
 
   // Calculate trends
   const getTrend = (ratings: number[]) => {
@@ -7830,6 +7833,77 @@ function TrendsView({
   };
 
   const overallTrend = getTrend(history.map(h => h.overallRating));
+  const healthTrend = getTrend(history.map(h => h.healthRating));
+  const staffingTrend = getTrend(history.map(h => h.staffingRating));
+  const qmTrend = getTrend(history.map(h => h.qmRating));
+
+  // Calculate averages
+  const getAverage = (ratings: number[]) => {
+    if (ratings.length === 0) return 0;
+    return ratings.reduce((a, b) => a + b, 0) / ratings.length;
+  };
+
+  const avgOverall = getAverage(history.map(h => h.overallRating));
+  const avgHealth = getAverage(history.map(h => h.healthRating));
+  const avgStaffing = getAverage(history.map(h => h.staffingRating));
+  const avgQM = getAverage(history.map(h => h.qmRating));
+
+  // Calculate volatility (standard deviation)
+  const getVolatility = (ratings: number[]) => {
+    if (ratings.length < 2) return 0;
+    const avg = getAverage(ratings);
+    const squaredDiffs = ratings.map(r => Math.pow(r - avg, 2));
+    return Math.sqrt(squaredDiffs.reduce((a, b) => a + b, 0) / ratings.length);
+  };
+
+  const volatility = getVolatility(history.map(h => h.overallRating));
+
+  // Predict next rating (simple linear projection)
+  const predictNext = (ratings: number[]) => {
+    if (ratings.length < 2) return ratings[0] || 3;
+    const slope = (ratings[0] - ratings[Math.min(ratings.length - 1, 5)]) / Math.min(ratings.length - 1, 5);
+    const predicted = Math.max(1, Math.min(5, ratings[0] + slope));
+    return Math.round(predicted * 10) / 10;
+  };
+
+  const predictedOverall = predictNext(history.map(h => h.overallRating));
+
+  // Generate alerts
+  const alerts: Array<{ type: 'warning' | 'danger' | 'success' | 'info'; message: string }> = [];
+
+  if (overallTrend === 'declining') {
+    alerts.push({ type: 'danger', message: 'Overall rating is trending downward. Immediate attention recommended.' });
+  }
+  if (healthTrend === 'declining') {
+    alerts.push({ type: 'warning', message: 'Health inspection rating declining. Review survey readiness.' });
+  }
+  if (staffingTrend === 'declining') {
+    alerts.push({ type: 'warning', message: 'Staffing rating trending down. Review HPRD levels and retention.' });
+  }
+  if (qmTrend === 'declining') {
+    alerts.push({ type: 'warning', message: 'Quality measures declining. Review clinical protocols.' });
+  }
+  if (overallTrend === 'improving') {
+    alerts.push({ type: 'success', message: 'Overall rating is improving. Continue current strategies.' });
+  }
+  if (volatility > 0.8) {
+    alerts.push({ type: 'info', message: 'High rating volatility detected. Consider stabilization strategies.' });
+  }
+  if (history.length > 0 && history[0].overallRating < 3) {
+    alerts.push({ type: 'danger', message: 'Current rating below 3 stars. Priority improvement needed.' });
+  }
+
+  const getTrendIcon = (trend: string) => {
+    if (trend === 'improving') return <TrendingUp className="w-5 h-5 text-green-500" />;
+    if (trend === 'declining') return <TrendingDown className="w-5 h-5 text-red-500" />;
+    return <Activity className="w-5 h-5 text-yellow-500" />;
+  };
+
+  const getTrendColor = (trend: string) => {
+    if (trend === 'improving') return 'text-green-600 dark:text-green-400';
+    if (trend === 'declining') return 'text-red-600 dark:text-red-400';
+    return 'text-yellow-600 dark:text-yellow-400';
+  };
 
   return (
     <div className="space-y-6 animate-slide-up">
@@ -7838,91 +7912,539 @@ function TrendsView({
         Back to Overview
       </button>
 
-      <div className="flex items-center gap-3">
-        <Activity className="w-8 h-8 text-purple-500" />
-        <div>
-          <h2 className="text-2xl font-bold text-[var(--foreground)]">Rating Trends</h2>
-          <p className="text-[var(--foreground-muted)]">{data?.facility?.providerName}</p>
-        </div>
-      </div>
-
-      {/* Trend Summary */}
+      {/* Header */}
       <div className="card-neumorphic p-6">
-        <div className="flex items-center gap-4 mb-4">
-          <span className="text-4xl font-bold">{data?.facility?.overallRating}★</span>
-          <div className="flex items-center gap-2">
-            {overallTrend === 'improving' && <TrendingUp className="w-6 h-6 text-green-500" />}
-            {overallTrend === 'declining' && <TrendingDown className="w-6 h-6 text-red-500" />}
-            {overallTrend === 'stable' && <Activity className="w-6 h-6 text-yellow-500" />}
-            <span className={`font-medium ${
-              overallTrend === 'improving' ? 'text-green-600' :
-              overallTrend === 'declining' ? 'text-red-600' : 'text-yellow-600'
-            }`}>
-              {overallTrend.charAt(0).toUpperCase() + overallTrend.slice(1)} Trend
-            </span>
+        <div className="flex items-start justify-between flex-wrap gap-4 mb-4">
+          <div>
+            <h2 className="text-2xl font-bold text-[var(--foreground)] flex items-center gap-2">
+              <LineChart className="w-7 h-7 text-purple-500" />
+              Trends Deep Dive
+            </h2>
+            <p className="text-[var(--foreground-muted)]">{facility?.providerName}</p>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="text-center">
+              <div className="text-3xl font-bold">{facility?.overallRating}<span className="text-yellow-500">★</span></div>
+              <div className="text-xs text-[var(--foreground-muted)]">Current</div>
+            </div>
+            <div className="flex items-center gap-2">
+              {getTrendIcon(overallTrend)}
+              <span className={`font-medium ${getTrendColor(overallTrend)}`}>
+                {overallTrend.charAt(0).toUpperCase() + overallTrend.slice(1)}
+              </span>
+            </div>
           </div>
         </div>
-        <p className="text-[var(--foreground-muted)]">
-          Based on {history.length} rating periods over the past 2 years.
-        </p>
+
+        {/* Quick Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="bg-purple-50 dark:bg-purple-900/20 rounded-xl p-3 text-center">
+            <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{history.length}</div>
+            <div className="text-xs text-purple-600/70 dark:text-purple-400/70">Data Points</div>
+          </div>
+          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-3 text-center">
+            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{avgOverall.toFixed(1)}★</div>
+            <div className="text-xs text-blue-600/70 dark:text-blue-400/70">Avg Rating</div>
+          </div>
+          <div className="bg-cyan-50 dark:bg-cyan-900/20 rounded-xl p-3 text-center">
+            <div className="text-2xl font-bold text-cyan-600 dark:text-cyan-400">{volatility.toFixed(2)}</div>
+            <div className="text-xs text-cyan-600/70 dark:text-cyan-400/70">Volatility</div>
+          </div>
+          <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-3 text-center">
+            <div className="text-2xl font-bold text-green-600 dark:text-green-400">{predictedOverall}★</div>
+            <div className="text-xs text-green-600/70 dark:text-green-400/70">Projected</div>
+          </div>
+        </div>
       </div>
 
-      {/* Rating History Chart */}
-      <div className="card-neumorphic p-6">
-        <h3 className="font-semibold mb-4">Rating History</h3>
-        {history.length > 0 ? (
-          <div className="space-y-4">
-            {/* Simple visual chart */}
-            <div className="flex items-end justify-between h-48 gap-2">
-              {history.slice(0, 12).reverse().map((h, i) => (
-                <div key={i} className="flex-1 flex flex-col items-center">
-                  <div className="flex flex-col gap-1 w-full">
-                    <div
-                      className="w-full bg-gradient-to-t from-cyan-500 to-cyan-300 rounded-t"
-                      style={{ height: `${(h.overallRating / 5) * 120}px` }}
-                      title={`Overall: ${h.overallRating}★`}
-                    />
+      {/* 5-Tab Navigation */}
+      <div className="flex gap-2 overflow-x-auto pb-2">
+        {[
+          { id: 'overview', label: 'Overview', icon: BarChart3 },
+          { id: 'history', label: 'Rating History', icon: Calendar },
+          { id: 'components', label: 'Component Trends', icon: PieChart },
+          { id: 'forecast', label: 'Forecasting', icon: TrendingUp },
+          { id: 'alerts', label: 'Alerts & Insights', icon: Bell },
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as typeof activeTab)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium whitespace-nowrap transition-all ${
+              activeTab === tab.id
+                ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-lg'
+                : 'btn-neumorphic'
+            }`}
+          >
+            <tab.icon className="w-4 h-4" />
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Overview Tab */}
+      {activeTab === 'overview' && (
+        <div className="space-y-6">
+          {/* Trend Summary */}
+          <div className="card-neumorphic p-6">
+            <h3 className="font-semibold mb-4 flex items-center gap-2">
+              <Activity className="w-5 h-5 text-purple-500" />
+              Trend Summary
+            </h3>
+            <div className="prose dark:prose-invert max-w-none text-[var(--foreground-muted)]">
+              <p>
+                <strong>{facility?.providerName}</strong> has a <strong>{overallTrend}</strong> overall trend
+                based on {history.length} rating periods. The current rating of <strong>{facility?.overallRating} stars</strong>
+                {overallTrend === 'improving' ? ' represents positive momentum that should be maintained.' :
+                 overallTrend === 'declining' ? ' indicates challenges that require immediate attention.' :
+                 ' has been relatively stable over the analysis period.'}
+              </p>
+              <p>
+                The average rating over this period is <strong>{avgOverall.toFixed(1)} stars</strong>.
+                {volatility > 0.5
+                  ? ` Rating volatility of ${volatility.toFixed(2)} suggests inconsistent performance that may benefit from process standardization.`
+                  : ` Low volatility of ${volatility.toFixed(2)} indicates consistent performance.`}
+              </p>
+            </div>
+          </div>
+
+          {/* Current vs Historical */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="card-neumorphic p-6">
+              <h4 className="font-semibold mb-3">Current Ratings</h4>
+              <div className="space-y-3">
+                {[
+                  { label: 'Overall', value: facility?.overallRating, color: 'cyan' },
+                  { label: 'Health Inspections', value: facility?.healthInspectionRating, color: 'red' },
+                  { label: 'Staffing', value: facility?.staffingRating, color: 'blue' },
+                  { label: 'Quality Measures', value: facility?.qualityMeasureRating, color: 'green' },
+                ].map(item => (
+                  <div key={item.label} className="flex items-center justify-between">
+                    <span className="text-sm">{item.label}</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-24 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full bg-${item.color}-500 rounded-full`}
+                          style={{ width: `${((item.value || 0) / 5) * 100}%` }}
+                        />
+                      </div>
+                      <span className="font-bold w-8">{item.value}★</span>
+                    </div>
                   </div>
-                  <span className="text-xs text-[var(--foreground-muted)] mt-1 rotate-45 origin-left">
-                    {new Date(h.ratingDate).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}
+                ))}
+              </div>
+            </div>
+
+            <div className="card-neumorphic p-6">
+              <h4 className="font-semibold mb-3">Historical Averages</h4>
+              <div className="space-y-3">
+                {[
+                  { label: 'Overall', value: avgOverall, color: 'cyan' },
+                  { label: 'Health Inspections', value: avgHealth, color: 'red' },
+                  { label: 'Staffing', value: avgStaffing, color: 'blue' },
+                  { label: 'Quality Measures', value: avgQM, color: 'green' },
+                ].map(item => (
+                  <div key={item.label} className="flex items-center justify-between">
+                    <span className="text-sm">{item.label}</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-24 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full bg-${item.color}-500 rounded-full`}
+                          style={{ width: `${(item.value / 5) * 100}%` }}
+                        />
+                      </div>
+                      <span className="font-bold w-8">{item.value.toFixed(1)}★</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Key Observations */}
+          <div className="card-neumorphic p-6">
+            <h4 className="font-semibold mb-3 flex items-center gap-2">
+              <Lightbulb className="w-5 h-5 text-yellow-500" />
+              Key Observations
+            </h4>
+            <ul className="space-y-2 text-sm text-[var(--foreground-muted)]">
+              {history.length > 0 && history[0].overallRating > avgOverall && (
+                <li className="flex items-start gap-2">
+                  <TrendingUp className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
+                  Current rating ({facility?.overallRating}★) is above historical average ({avgOverall.toFixed(1)}★)
+                </li>
+              )}
+              {history.length > 0 && history[0].overallRating < avgOverall && (
+                <li className="flex items-start gap-2">
+                  <TrendingDown className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+                  Current rating ({facility?.overallRating}★) is below historical average ({avgOverall.toFixed(1)}★)
+                </li>
+              )}
+              {healthTrend !== overallTrend && (
+                <li className="flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-yellow-500 mt-0.5 flex-shrink-0" />
+                  Health inspection trend ({healthTrend}) differs from overall trend ({overallTrend})
+                </li>
+              )}
+              {volatility > 0.5 && (
+                <li className="flex items-start gap-2">
+                  <Activity className="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0" />
+                  Higher than normal rating volatility may indicate inconsistent operations
+                </li>
+              )}
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {/* Rating History Tab */}
+      {activeTab === 'history' && (
+        <div className="space-y-6">
+          {history.length > 0 ? (
+            <>
+              {/* Visual Chart */}
+              <div className="card-neumorphic p-6">
+                <h3 className="font-semibold mb-4">Overall Rating Over Time</h3>
+                <div className="flex items-end justify-between h-48 gap-2">
+                  {history.slice(0, 12).reverse().map((h, i) => (
+                    <div key={i} className="flex-1 flex flex-col items-center group">
+                      <div className="relative w-full">
+                        <div
+                          className="w-full bg-gradient-to-t from-cyan-500 to-cyan-300 rounded-t transition-all group-hover:from-cyan-600 group-hover:to-cyan-400"
+                          style={{ height: `${(h.overallRating / 5) * 140}px` }}
+                        />
+                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+                          {h.overallRating}★
+                        </div>
+                      </div>
+                      <span className="text-xs text-[var(--foreground-muted)] mt-2">
+                        {new Date(h.ratingDate).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Detailed Table */}
+              <div className="card-neumorphic p-6">
+                <h3 className="font-semibold mb-4">Detailed Rating History</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-[var(--border-color)]">
+                        <th className="text-left py-3 px-2">Date</th>
+                        <th className="text-center py-3 px-2">Overall</th>
+                        <th className="text-center py-3 px-2">Health</th>
+                        <th className="text-center py-3 px-2">Staffing</th>
+                        <th className="text-center py-3 px-2">QM</th>
+                        <th className="text-center py-3 px-2">Change</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {history.slice(0, 12).map((h, i) => {
+                        const prevRating = history[i + 1]?.overallRating;
+                        const change = prevRating ? h.overallRating - prevRating : 0;
+                        return (
+                          <tr key={i} className="border-b border-[var(--border-color)] hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                            <td className="py-3 px-2">{new Date(h.ratingDate).toLocaleDateString()}</td>
+                            <td className="text-center py-3 px-2 font-bold">{h.overallRating}★</td>
+                            <td className="text-center py-3 px-2">{h.healthRating}★</td>
+                            <td className="text-center py-3 px-2">{h.staffingRating}★</td>
+                            <td className="text-center py-3 px-2">{h.qmRating}★</td>
+                            <td className="text-center py-3 px-2">
+                              {change !== 0 && (
+                                <span className={`flex items-center justify-center gap-1 ${change > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                  {change > 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                                  {change > 0 ? '+' : ''}{change}
+                                </span>
+                              )}
+                              {change === 0 && <span className="text-[var(--foreground-muted)]">—</span>}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="card-neumorphic p-8 text-center">
+              <Activity className="w-12 h-12 mx-auto mb-4 text-[var(--foreground-muted)]" />
+              <p className="text-[var(--foreground-muted)]">No historical rating data available</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Component Trends Tab */}
+      {activeTab === 'components' && (
+        <div className="space-y-6">
+          {[
+            { name: 'Health Inspections', trend: healthTrend, avg: avgHealth, current: facility?.healthInspectionRating, color: 'red', icon: ClipboardCheck, weight: '53%' },
+            { name: 'Staffing', trend: staffingTrend, avg: avgStaffing, current: facility?.staffingRating, color: 'blue', icon: Users, weight: '27%' },
+            { name: 'Quality Measures', trend: qmTrend, avg: avgQM, current: facility?.qualityMeasureRating, color: 'green', icon: Heart, weight: '20%' },
+          ].map(component => (
+            <div key={component.name} className="card-neumorphic p-6">
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-xl bg-${component.color}-100 dark:bg-${component.color}-900/30`}>
+                    <component.icon className={`w-5 h-5 text-${component.color}-500`} />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">{component.name}</h3>
+                    <p className="text-xs text-[var(--foreground-muted)]">Weight: {component.weight} of overall rating</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {getTrendIcon(component.trend)}
+                  <span className={`font-medium ${getTrendColor(component.trend)}`}>
+                    {component.trend.charAt(0).toUpperCase() + component.trend.slice(1)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4 mb-4">
+                <div className="text-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50">
+                  <div className="text-2xl font-bold">{component.current}★</div>
+                  <div className="text-xs text-[var(--foreground-muted)]">Current</div>
+                </div>
+                <div className="text-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50">
+                  <div className="text-2xl font-bold">{component.avg.toFixed(1)}★</div>
+                  <div className="text-xs text-[var(--foreground-muted)]">Average</div>
+                </div>
+                <div className="text-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50">
+                  <div className={`text-2xl font-bold ${(component.current || 0) >= component.avg ? 'text-green-500' : 'text-red-500'}`}>
+                    {(component.current || 0) >= component.avg ? '+' : ''}{((component.current || 0) - component.avg).toFixed(1)}
+                  </div>
+                  <div className="text-xs text-[var(--foreground-muted)]">vs Average</div>
+                </div>
+              </div>
+
+              {/* Mini chart for this component */}
+              {history.length > 0 && (
+                <div className="flex items-end gap-1 h-16">
+                  {history.slice(0, 12).reverse().map((h, i) => {
+                    const value = component.name === 'Health Inspections' ? h.healthRating :
+                                  component.name === 'Staffing' ? h.staffingRating : h.qmRating;
+                    return (
+                      <div
+                        key={i}
+                        className={`flex-1 bg-${component.color}-500 rounded-t opacity-70 hover:opacity-100 transition-opacity`}
+                        style={{ height: `${(value / 5) * 100}%` }}
+                        title={`${value}★`}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Forecasting Tab */}
+      {activeTab === 'forecast' && (
+        <div className="space-y-6">
+          {/* Projection Summary */}
+          <div className="card-neumorphic p-6">
+            <h3 className="font-semibold mb-4 flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-green-500" />
+              Rating Projection
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="text-center p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50">
+                <div className="text-sm text-[var(--foreground-muted)] mb-1">Current</div>
+                <div className="text-3xl font-bold">{facility?.overallRating}<span className="text-yellow-500">★</span></div>
+              </div>
+              <div className="text-center p-4 rounded-xl bg-purple-50 dark:bg-purple-900/20">
+                <div className="text-sm text-purple-600 dark:text-purple-400 mb-1">Projected (3 months)</div>
+                <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">{predictedOverall}<span className="text-yellow-500">★</span></div>
+              </div>
+              <div className="text-center p-4 rounded-xl bg-cyan-50 dark:bg-cyan-900/20">
+                <div className="text-sm text-cyan-600 dark:text-cyan-400 mb-1">Best Case (6 months)</div>
+                <div className="text-3xl font-bold text-cyan-600 dark:text-cyan-400">
+                  {Math.min(5, Math.round((predictedOverall + 0.5) * 10) / 10)}<span className="text-yellow-500">★</span>
+                </div>
+              </div>
+            </div>
+            <p className="text-sm text-[var(--foreground-muted)] mt-4">
+              * Projections are based on historical trends and assume continuation of current performance patterns.
+              Actual results may vary based on survey outcomes, staffing changes, and quality improvement initiatives.
+            </p>
+          </div>
+
+          {/* Scenario Analysis */}
+          <div className="card-neumorphic p-6">
+            <h3 className="font-semibold mb-4 flex items-center gap-2">
+              <Scale className="w-5 h-5 text-blue-500" />
+              Scenario Analysis
+            </h3>
+            <div className="space-y-4">
+              {[
+                { scenario: 'Maintain Current Course', description: 'Continue existing operations', projected: predictedOverall, probability: '60%' },
+                { scenario: 'Implement Improvements', description: 'Execute recommended action items', projected: Math.min(5, predictedOverall + 0.5), probability: '25%' },
+                { scenario: 'Challenging Survey', description: 'Major deficiencies identified', projected: Math.max(1, predictedOverall - 1), probability: '15%' },
+              ].map((item, i) => (
+                <div key={i} className="flex items-center justify-between p-4 rounded-xl border border-[var(--border-color)]">
+                  <div>
+                    <div className="font-medium">{item.scenario}</div>
+                    <div className="text-sm text-[var(--foreground-muted)]">{item.description}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xl font-bold">{item.projected}★</div>
+                    <div className="text-xs text-[var(--foreground-muted)]">{item.probability} likelihood</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* What-If Calculator */}
+          <div className="card-neumorphic p-6">
+            <h3 className="font-semibold mb-4 flex items-center gap-2">
+              <Calculator className="w-5 h-5 text-cyan-500" />
+              Impact Factors
+            </h3>
+            <p className="text-sm text-[var(--foreground-muted)] mb-4">
+              Key factors that could influence your projected rating:
+            </p>
+            <div className="space-y-3">
+              {[
+                { factor: 'Next Survey Outcome', impact: 'High', description: 'Health inspection rating has 53% weight' },
+                { factor: 'Staffing Levels', impact: 'Medium', description: 'HPRD changes directly affect staffing star' },
+                { factor: 'Quality Measure Trends', impact: 'Medium', description: 'QM improvements take 1-2 quarters to reflect' },
+                { factor: 'Weekend Staffing', impact: 'Low', description: 'Weekend HPRD can impact staffing rating' },
+              ].map((item, i) => (
+                <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50">
+                  <div>
+                    <div className="font-medium text-sm">{item.factor}</div>
+                    <div className="text-xs text-[var(--foreground-muted)]">{item.description}</div>
+                  </div>
+                  <span className={`text-xs px-2 py-1 rounded-full ${
+                    item.impact === 'High' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' :
+                    item.impact === 'Medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300' :
+                    'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                  }`}>
+                    {item.impact} Impact
                   </span>
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
 
-            {/* Detailed history table */}
-            <div className="overflow-x-auto mt-8">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-200 dark:border-gray-700">
-                    <th className="text-left py-2">Date</th>
-                    <th className="text-center py-2">Overall</th>
-                    <th className="text-center py-2">Health</th>
-                    <th className="text-center py-2">Staffing</th>
-                    <th className="text-center py-2">QM</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {history.slice(0, 12).map((h, i) => (
-                    <tr key={i} className="border-b border-gray-100 dark:border-gray-800">
-                      <td className="py-2">{new Date(h.ratingDate).toLocaleDateString()}</td>
-                      <td className="text-center py-2 font-bold">{h.overallRating}★</td>
-                      <td className="text-center py-2">{h.healthRating}★</td>
-                      <td className="text-center py-2">{h.staffingRating}★</td>
-                      <td className="text-center py-2">{h.qmRating}★</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+      {/* Alerts & Insights Tab */}
+      {activeTab === 'alerts' && (
+        <div className="space-y-6">
+          {/* Active Alerts */}
+          <div className="card-neumorphic p-6">
+            <h3 className="font-semibold mb-4 flex items-center gap-2">
+              <Bell className="w-5 h-5 text-red-500" />
+              Active Alerts ({alerts.length})
+            </h3>
+            {alerts.length > 0 ? (
+              <div className="space-y-3">
+                {alerts.map((alert, i) => (
+                  <div
+                    key={i}
+                    className={`flex items-start gap-3 p-4 rounded-xl ${
+                      alert.type === 'danger' ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800' :
+                      alert.type === 'warning' ? 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800' :
+                      alert.type === 'success' ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800' :
+                      'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800'
+                    }`}
+                  >
+                    {alert.type === 'danger' && <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />}
+                    {alert.type === 'warning' && <AlertTriangle className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />}
+                    {alert.type === 'success' && <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />}
+                    {alert.type === 'info' && <Info className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />}
+                    <span className="text-sm">{alert.message}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-[var(--foreground-muted)]">
+                <CheckCircle2 className="w-12 h-12 mx-auto mb-4 text-green-500" />
+                <p>No active alerts. Rating trends are stable.</p>
+              </div>
+            )}
+          </div>
+
+          {/* Strategic Insights */}
+          <div className="card-neumorphic p-6">
+            <h3 className="font-semibold mb-4 flex items-center gap-2">
+              <Lightbulb className="w-5 h-5 text-yellow-500" />
+              Strategic Insights
+            </h3>
+            <div className="space-y-4">
+              {overallTrend === 'improving' && (
+                <div className="p-4 rounded-xl bg-green-50 dark:bg-green-900/20">
+                  <h4 className="font-medium text-green-700 dark:text-green-300 mb-2">Momentum Building</h4>
+                  <p className="text-sm text-[var(--foreground-muted)]">
+                    Your improving trend is valuable. Document what&apos;s working and ensure these practices are standardized.
+                    Consider sharing success stories with staff to maintain engagement.
+                  </p>
+                </div>
+              )}
+              {overallTrend === 'declining' && (
+                <div className="p-4 rounded-xl bg-red-50 dark:bg-red-900/20">
+                  <h4 className="font-medium text-red-700 dark:text-red-300 mb-2">Turnaround Required</h4>
+                  <p className="text-sm text-[var(--foreground-muted)]">
+                    Declining trends require immediate attention. Conduct a root cause analysis to identify systemic issues.
+                    Consider engaging leadership and staff in a focused improvement initiative.
+                  </p>
+                </div>
+              )}
+              <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20">
+                <h4 className="font-medium text-blue-700 dark:text-blue-300 mb-2">Focus on Stability</h4>
+                <p className="text-sm text-[var(--foreground-muted)]">
+                  {volatility > 0.5
+                    ? 'High rating volatility suggests process inconsistencies. Implement standardized protocols and regular audits to stabilize performance.'
+                    : 'Your stable rating history demonstrates consistent operations. Continue monitoring key metrics to maintain this stability.'}
+                </p>
+              </div>
+              <div className="p-4 rounded-xl bg-purple-50 dark:bg-purple-900/20">
+                <h4 className="font-medium text-purple-700 dark:text-purple-300 mb-2">Survey Preparation</h4>
+                <p className="text-sm text-[var(--foreground-muted)]">
+                  Health inspections have the highest weight (53%) on overall rating.
+                  {healthTrend === 'declining'
+                    ? ' Your declining health inspection trend makes survey readiness a top priority.'
+                    : ' Maintain survey readiness even with stable trends to protect your rating.'}
+                </p>
+              </div>
             </div>
           </div>
-        ) : (
-          <div className="card-neumorphic-inset p-8 text-center">
-            <Activity className="w-12 h-12 mx-auto mb-4 text-[var(--foreground-muted)]" />
-            <p className="text-[var(--foreground-muted)]">No historical data available</p>
+
+          {/* Recommended Actions */}
+          <div className="card-neumorphic p-6">
+            <h3 className="font-semibold mb-4 flex items-center gap-2">
+              <Target className="w-5 h-5 text-cyan-500" />
+              Recommended Actions
+            </h3>
+            <div className="space-y-2">
+              {[
+                { action: 'Review monthly rating reports for early warning signs', priority: 'high' },
+                { action: 'Compare performance against state and national benchmarks', priority: 'medium' },
+                { action: 'Track leading indicators (falls, infections, complaints)', priority: 'high' },
+                { action: 'Conduct quarterly trend analysis with leadership team', priority: 'medium' },
+                { action: 'Document improvement initiatives and their outcomes', priority: 'low' },
+              ].map((item, i) => (
+                <div key={i} className="flex items-center justify-between p-3 rounded-xl border border-[var(--border-color)]">
+                  <span className="text-sm">{item.action}</span>
+                  <span className={`text-xs px-2 py-1 rounded-full ${
+                    item.priority === 'high' ? 'bg-red-100 text-red-700' :
+                    item.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                    'bg-green-100 text-green-700'
+                  }`}>
+                    {item.priority}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
