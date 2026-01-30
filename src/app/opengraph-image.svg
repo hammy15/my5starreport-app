@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#1e293b" />
+    </linearGradient>
+    <linearGradient id="starGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24" />
+      <stop offset="50%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#d97706" />
+    </linearGradient>
+    <linearGradient id="cyanGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#22d3ee" />
+      <stop offset="100%" stop-color="#06b6d4" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)" />
+
+  <!-- Subtle grid pattern -->
+  <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+    <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#334155" stroke-width="0.5" opacity="0.3"/>
+  </pattern>
+  <rect width="1200" height="630" fill="url(#grid)" />
+
+  <!-- Phil Star (left side) -->
+  <g transform="translate(200, 315) scale(4) translate(-25, -25)">
+    <path d="M25 2 L31 18 L48 18 L34 28 L40 45 L25 35 L10 45 L16 28 L2 18 L19 18 Z" fill="url(#starGradient)" />
+    <ellipse cx="18" cy="22" rx="2.5" ry="3" fill="#1e293b" />
+    <ellipse cx="17.5" cy="21" rx="1" ry="1.2" fill="white" />
+    <ellipse cx="32" cy="22" rx="2.5" ry="3" fill="#1e293b" />
+    <ellipse cx="31.5" cy="21" rx="1" ry="1.2" fill="white" />
+    <path d="M18 28 Q25 34 32 28" stroke="#1e293b" stroke-width="2" fill="none" stroke-linecap="round" />
+    <circle cx="14" cy="27" r="2.5" fill="#fca5a5" opacity="0.6" />
+    <circle cx="36" cy="27" r="2.5" fill="#fca5a5" opacity="0.6" />
+  </g>
+
+  <!-- Text content (right side) -->
+  <text x="480" y="260" font-family="system-ui, -apple-system, sans-serif" font-size="32" fill="#94a3b8">
+    my
+  </text>
+  <text x="520" y="260" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="url(#starGradient)">
+    5
+  </text>
+  <text x="545" y="260" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="url(#cyanGradient)">
+    STAR
+  </text>
+  <text x="655" y="260" font-family="system-ui, -apple-system, sans-serif" font-size="32" fill="#94a3b8">
+    report
+  </text>
+
+  <text x="480" y="340" font-family="system-ui, -apple-system, sans-serif" font-size="64" font-weight="bold" fill="#f1f5f9">
+    CMS 5-Star Rating
+  </text>
+  <text x="480" y="420" font-family="system-ui, -apple-system, sans-serif" font-size="64" font-weight="bold" fill="url(#cyanGradient)">
+    Analysis Tool
+  </text>
+
+  <text x="480" y="500" font-family="system-ui, -apple-system, sans-serif" font-size="28" fill="#64748b">
+    Improve your nursing home ratings with data-driven insights
+  </text>
+
+  <!-- Small stars decoration -->
+  <g opacity="0.3">
+    <path d="M1050 100 L1055 115 L1070 115 L1058 123 L1063 138 L1050 130 L1037 138 L1042 123 L1030 115 L1045 115 Z" fill="#fbbf24" />
+    <path d="M1120 180 L1123 190 L1133 190 L1125 196 L1128 206 L1120 200 L1112 206 L1115 196 L1107 190 L1117 190 Z" fill="#22d3ee" />
+    <path d="M100 520 L103 530 L113 530 L105 536 L108 546 L100 540 L92 546 L95 536 L87 530 L97 530 Z" fill="#fbbf24" />
+  </g>
+</svg>

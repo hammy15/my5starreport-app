@@ -23,6 +23,9 @@
   --background-elevated: #ffffff;
   --foreground: #1e293b;
   --foreground-muted: #64748b;
+  --card-background: #ffffff;
+  --card-background-alt: #f0f4f8;
+  --border-color: #e2e8f0;
 
   /* Neumorphism shadows */
   --shadow-neumorphic: 8px 8px 16px rgba(163, 177, 198, 0.6),
@@ -52,6 +55,9 @@
   --background-elevated: #1e293b;
   --foreground: #f1f5f9;
   --foreground-muted: #94a3b8;
+  --card-background: #1e293b;
+  --card-background-alt: #0f172a;
+  --border-color: #334155;
 
   /* Neumorphism shadows for dark mode */
   --shadow-neumorphic: 8px 8px 16px rgba(0, 0, 0, 0.4),
@@ -68,6 +74,9 @@
     --background-elevated: #1e293b;
     --foreground: #f1f5f9;
     --foreground-muted: #94a3b8;
+    --card-background: #1e293b;
+    --card-background-alt: #0f172a;
+    --border-color: #334155;
     --shadow-neumorphic: 8px 8px 16px rgba(0, 0, 0, 0.4),
                          -8px -8px 16px rgba(30, 41, 59, 0.4);
     --shadow-neumorphic-inset: inset 4px 4px 8px rgba(0, 0, 0, 0.3),
@@ -244,6 +253,36 @@ body {
 
 .animate-slide-up {
   animation: slide-up 0.5s ease-out forwards;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out forwards;
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(251, 191, 36, 0.5),
+                0 0 10px rgba(251, 191, 36, 0.3),
+                0 0 15px rgba(251, 191, 36, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 10px rgba(251, 191, 36, 0.8),
+                0 0 20px rgba(251, 191, 36, 0.5),
+                0 0 30px rgba(251, 191, 36, 0.3);
+  }
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 2s ease-in-out infinite;
 }
 
 /* Scrollbar styling */

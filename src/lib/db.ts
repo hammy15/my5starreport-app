@@ -277,6 +277,34 @@ export async function getTrainingResources(category?: string) {
 }
 
 /**
+ * Search facilities by CCN list
+ */
+export async function searchFacilitiesByCCN(ccnList: string[]) {
+  if (ccnList.length === 0) return [];
+
+  // Build IN clause with proper escaping
+  const ccnValues = ccnList.map(ccn => `'${ccn.replace(/'/g, "''")}'`).join(',');
+
+  const results = await sql`
+    SELECT
+      ccn as "federalProviderNumber",
+      name as "providerName",
+      city as "cityTown",
+      state,
+      "overallRating",
+      "healthRating",
+      "staffingRating",
+      "qmRating",
+      beds as "numberOfBeds"
+    FROM "Facility"
+    WHERE ccn IN (${sql.unsafe(ccnValues)})
+    ORDER BY state, name
+  `;
+
+  return results;
+}
+
+/**
  * Get facility count by state
  */
 export async function getFacilityCountByState() {

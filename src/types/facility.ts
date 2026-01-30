@@ -44,6 +44,11 @@ export interface Facility {
 
   // Last updated
   lastUpdated: string;
+
+  // Penalty data
+  totalFines?: number;
+  penaltyCount?: number;
+  lastSurveyDate?: string;
 }
 
 // Health Inspection Details

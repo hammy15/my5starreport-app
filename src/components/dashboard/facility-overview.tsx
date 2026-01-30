@@ -20,6 +20,8 @@ import {
   Heart,
   ArrowLeft,
   Loader2,
+  Printer,
+  Download,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -92,13 +94,109 @@ export function FacilityOverview({ providerNumber, onBack, onViewDetails }: Faci
   const highPriority = recommendations.filter(r => r.priority === 'high').length;
   const mediumPriority = recommendations.filter(r => r.priority === 'medium').length;
 
+  // Export/Print function
+  const handleExport = () => {
+    const printContent = `
+      FACILITY REPORT
+      ================
+
+      ${facility.providerName}
+      ${facility.providerAddress}, ${facility.cityTown}, ${facility.state} ${facility.zipCode}
+      Phone: ${facility.phoneNumber}
+      Beds: ${facility.numberOfCertifiedBeds} | Residents: ${facility.numberOfResidents}
+
+      STAR RATINGS
+      ------------
+      Overall Rating: ${facility.overallRating} stars
+      Health Inspection: ${facility.healthInspectionRating} stars
+      Staffing: ${facility.staffingRating} stars
+      Quality Measures: ${facility.qualityMeasureRating} stars
+
+      STAFFING DATA
+      -------------
+      Total HPRD: ${staffing?.totalNurseHPRD?.toFixed(2) || 'N/A'}
+      RN HPRD: ${staffing?.rnHPRD?.toFixed(2) || 'N/A'}
+      CNA HPRD: ${staffing?.cnaHPRD?.toFixed(2) || 'N/A'}
+
+      RECOMMENDATIONS (${recommendations.length} total)
+      -----------------
+      ${recommendations.map((r, i) => `${i + 1}. [${r.priority.toUpperCase()}] ${r.title}`).join('\n      ')}
+
+      Generated: ${new Date().toLocaleDateString()}
+      Source: my5starreport.com
+    `;
+
+    // Create a new window for printing
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>${facility.providerName} - Facility Report</title>
+            <style>
+              body { font-family: Arial, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; }
+              h1 { color: #0891b2; border-bottom: 2px solid #0891b2; padding-bottom: 10px; }
+              h2 { color: #374151; margin-top: 30px; }
+              .rating { display: inline-block; padding: 4px 12px; border-radius: 9999px; font-weight: bold; margin: 4px; }
+              .rating-5, .rating-4 { background: #dcfce7; color: #166534; }
+              .rating-3 { background: #fef9c3; color: #854d0e; }
+              .rating-1, .rating-2 { background: #fee2e2; color: #991b1b; }
+              .rec { padding: 8px; margin: 4px 0; border-left: 4px solid #0891b2; background: #f0fdfa; }
+              .high { border-left-color: #dc2626; }
+              .medium { border-left-color: #f59e0b; }
+              .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center; color: #6b7280; font-size: 12px; }
+            </style>
+          </head>
+          <body>
+            <h1>${facility.providerName}</h1>
+            <p>${facility.providerAddress}, ${facility.cityTown}, ${facility.state} ${facility.zipCode}</p>
+            <p>Phone: ${facility.phoneNumber} | Beds: ${facility.numberOfCertifiedBeds} | Residents: ${facility.numberOfResidents}</p>
+
+            <h2>Star Ratings</h2>
+            <p>
+              <span class="rating rating-${facility.overallRating}">Overall: ${facility.overallRating}★</span>
+              <span class="rating rating-${facility.healthInspectionRating}">Health: ${facility.healthInspectionRating}★</span>
+              <span class="rating rating-${facility.staffingRating}">Staffing: ${facility.staffingRating}★</span>
+              <span class="rating rating-${facility.qualityMeasureRating}">Quality: ${facility.qualityMeasureRating}★</span>
+            </p>
+
+            <h2>Staffing Data</h2>
+            <table>
+              <tr><td>Total HPRD:</td><td><strong>${staffing?.totalNurseHPRD?.toFixed(2) || 'N/A'}</strong></td></tr>
+              <tr><td>RN HPRD:</td><td><strong>${staffing?.rnHPRD?.toFixed(2) || 'N/A'}</strong></td></tr>
+              <tr><td>CNA HPRD:</td><td><strong>${staffing?.cnaHPRD?.toFixed(2) || 'N/A'}</strong></td></tr>
+            </table>
+
+            <h2>Improvement Recommendations (${recommendations.length})</h2>
+            ${recommendations.map(r => `<div class="rec ${r.priority}">[${r.priority.toUpperCase()}] ${r.title}</div>`).join('')}
+
+            <div class="footer">
+              Generated on ${new Date().toLocaleDateString()} | my5starreport.com<br>
+              Data sourced from CMS (Centers for Medicare & Medicaid Services)
+            </div>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.print();
+    }
+  };
+
   return (
     <div className="space-y-6">
-      {/* Back Button */}
-      <Button onClick={onBack} variant="ghost" size="sm">
-        <ArrowLeft className="w-4 h-4 mr-2" />
-        Back to Search
-      </Button>
+      {/* Header with Back and Export */}
+      <div className="flex items-center justify-between">
+        <Button onClick={onBack} variant="ghost" size="sm">
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to Search
+        </Button>
+        <div className="flex gap-2">
+          <Button onClick={handleExport} variant="outline" size="sm">
+            <Printer className="w-4 h-4 mr-2" />
+            Print Report
+          </Button>
+        </div>
+      </div>
 
       {/* Facility Header */}
       <Card>
