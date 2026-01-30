@@ -3342,6 +3342,7 @@ function PortfolioView({
     staffingRating: number | null;
     qmRating: number | null;
     company?: string;
+    isVincero?: boolean;
     lastSurveyDate?: string;
     beds?: number;
   }>>([]);
@@ -3358,6 +3359,7 @@ function PortfolioView({
         const enriched = (data.results || []).map((f: { federalProviderNumber: string; numberOfBeds: number }) => ({
           ...f,
           company: CASCADIA_FACILITIES[f.federalProviderNumber]?.company || 'Other',
+          isVincero: CASCADIA_FACILITIES[f.federalProviderNumber]?.isVincero || false,
           lastSurveyDate: '2024-' + String(Math.floor(Math.random() * 12) + 1).padStart(2, '0') + '-15',
           beds: f.numberOfBeds,
         }));
@@ -3506,10 +3508,15 @@ function PortfolioView({
                 </div>
               </div>
               {f.company && (
-                <div className="mt-3 pt-3 border-t border-[var(--border-color)]">
+                <div className="mt-3 pt-3 border-t border-[var(--border-color)] flex items-center gap-2">
                   <span className={`text-xs px-2 py-1 rounded-full ${COMPANY_COLORS[f.company] || 'bg-gray-100 text-gray-700'}`}>
                     {f.company}
                   </span>
+                  {f.isVincero && (
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300 font-bold">
+                      V
+                    </span>
+                  )}
                 </div>
               )}
             </div>
@@ -3546,9 +3553,16 @@ function PortfolioView({
                   <td className="text-center py-3 px-2">{f.qmRating}★</td>
                   <td className="text-center py-3 px-2">{f.beds}</td>
                   <td className="text-center py-3 px-2">
-                    <span className={`text-xs px-2 py-1 rounded-full ${COMPANY_COLORS[f.company || ''] || 'bg-gray-100'}`}>
-                      {f.company}
-                    </span>
+                    <div className="flex items-center justify-center gap-1">
+                      <span className={`text-xs px-2 py-1 rounded-full ${COMPANY_COLORS[f.company || ''] || 'bg-gray-100'}`}>
+                        {f.company}
+                      </span>
+                      {f.isVincero && (
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300 font-bold">
+                          V
+                        </span>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -4531,7 +4545,7 @@ function CommunityView({ onBack }: { onBack: () => void }) {
 }
 
 // Cascadia facility CCN list with company groupings
-const CASCADIA_FACILITIES: Record<string, { ccn: string; shortName: string; company: string }> = {
+const CASCADIA_FACILITIES: Record<string, { ccn: string; shortName: string; company: string; isVincero?: boolean }> = {
   // Northern Healthcare - Northern ID, MT
   '135048': { ccn: '135048', shortName: 'Clearwater', company: 'Northern Healthcare' },
   '135080': { ccn: '135080', shortName: 'Grangeville', company: 'Northern Healthcare' },
@@ -4566,16 +4580,16 @@ const CASCADIA_FACILITIES: Record<string, { ccn: string; shortName: string; comp
   '135094': { ccn: '135094', shortName: 'Wellspring', company: 'Envision' },
   '135010': { ccn: '135010', shortName: 'Weiser', company: 'Envision' },
 
-  // Vincero - Eastern WA & Arizona
-  '505092': { ccn: '505092', shortName: 'Alderwood', company: 'Vincero' },
-  '505251': { ccn: '505251', shortName: 'Colfax', company: 'Vincero' },
-  '505275': { ccn: '505275', shortName: 'Colville', company: 'Vincero' },
-  '505140': { ccn: '505140', shortName: 'Highland', company: 'Vincero' },
-  '505338': { ccn: '505338', shortName: 'Snohomish', company: 'Vincero' },
-  '505099': { ccn: '505099', shortName: 'Spokane Valley', company: 'Vincero' },
-  '505395': { ccn: '505395', shortName: 'Stafholt', company: 'Vincero' },
-  '035121': { ccn: '035121', shortName: 'Boswell', company: 'Vincero' },
-  '035299': { ccn: '035299', shortName: 'North Park', company: 'Vincero' },
+  // Vincero (under Columbia) - Eastern WA & Arizona
+  '505092': { ccn: '505092', shortName: 'Alderwood', company: 'Columbia', isVincero: true },
+  '505251': { ccn: '505251', shortName: 'Colfax', company: 'Columbia', isVincero: true },
+  '505275': { ccn: '505275', shortName: 'Colville', company: 'Columbia', isVincero: true },
+  '505140': { ccn: '505140', shortName: 'Highland', company: 'Columbia', isVincero: true },
+  '505338': { ccn: '505338', shortName: 'Snohomish', company: 'Columbia', isVincero: true },
+  '505099': { ccn: '505099', shortName: 'Spokane Valley', company: 'Columbia', isVincero: true },
+  '505395': { ccn: '505395', shortName: 'Stafholt', company: 'Columbia', isVincero: true },
+  '035121': { ccn: '035121', shortName: 'Boswell', company: 'Columbia', isVincero: true },
+  '035299': { ccn: '035299', shortName: 'North Park', company: 'Columbia', isVincero: true },
 
   // Three Rivers - Lewiston/Clarkston area
   '135145': { ccn: '135145', shortName: 'Cascadia of Lewiston', company: 'Three Rivers' },
@@ -4593,7 +4607,6 @@ const COMPANY_COLORS: Record<string, string> = {
   'Northern Healthcare': 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
   'Columbia': 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
   'Envision': 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
-  'Vincero': 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',
   'Three Rivers': 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300',
 };
 
@@ -4617,6 +4630,7 @@ function CascadiaStarsView({
     numberOfBeds: number;
     shortName?: string;
     company?: string;
+    isVincero?: boolean;
   }>>([]);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState<'name' | 'rating' | 'state' | 'company'>('company');
@@ -4638,6 +4652,7 @@ function CascadiaStarsView({
             ...f,
             shortName: cascadiaInfo?.shortName || '',
             company: cascadiaInfo?.company || 'Other',
+            isVincero: cascadiaInfo?.isVincero || false,
           };
         });
 
@@ -4872,6 +4887,11 @@ function CascadiaStarsView({
                       <span className={`px-2 py-0.5 rounded-full text-xs ${COMPANY_COLORS[facility.company || ''] || 'bg-gray-100'}`}>
                         {facility.company}
                       </span>
+                      {facility.isVincero && (
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300 font-bold">
+                          V
+                        </span>
+                      )}
                       <span className="text-xs text-[var(--foreground-muted)]">{facility.state}</span>
                     </div>
                     <h4 className="font-medium text-[var(--foreground)]">
@@ -5445,6 +5465,7 @@ function ExecutiveDashboard({
         const enriched = (data.results || []).map((f: { federalProviderNumber: string }) => ({
           ...f,
           company: CASCADIA_FACILITIES[f.federalProviderNumber]?.company || 'Other',
+          isVincero: CASCADIA_FACILITIES[f.federalProviderNumber]?.isVincero || false,
         }));
         setFacilities(enriched);
       } catch (error) {
