@@ -1122,7 +1122,7 @@ function CascadiaStarsView({
   useEffect(() => {
     async function fetchCascadiaFacilities() {
       try {
-        const response = await fetch('/api/facilities/search?query=cascadia&limit=100');
+        const response = await fetch('/api/facilities/search?q=cascadia&limit=100');
         const data = await response.json();
         setFacilities(data.results || []);
       } catch (error) {
@@ -1589,7 +1589,7 @@ function CompareFacilitiesView({
 
     const timer = setTimeout(async () => {
       try {
-        const response = await fetch(`/api/facilities/search?query=${encodeURIComponent(searchQuery)}&limit=10`);
+        const response = await fetch(`/api/facilities/search?q=${encodeURIComponent(searchQuery)}&limit=10`);
         const data = await response.json();
         setSearchResults(data.results || []);
       } catch (error) {
