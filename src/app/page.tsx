@@ -98,6 +98,10 @@ import {
   Share,
   Maximize2,
   Search,
+  Flag,
+  Check,
+  BookOpen,
+  ArrowRight,
 } from 'lucide-react';
 import { FacilitySearch } from '@/components/dashboard/facility-search';
 import { FacilityOverview } from '@/components/dashboard/facility-overview';
@@ -3523,6 +3527,8 @@ function PlanPreviewView({
   const [targetRating, setTargetRating] = useState(4);
   const [showAISuggestions, setShowAISuggestions] = useState(false);
   const [aiPrioritizedItems, setAiPrioritizedItems] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<'overview' | 'recommendations' | 'actions' | 'resources' | 'timeline'>('overview');
+  const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     async function fetchData() {
@@ -3629,6 +3635,40 @@ function PlanPreviewView({
     );
   }
 
+  // Toggle checklist item
+  const toggleChecked = (id: string) => {
+    setCheckedItems(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  // Calculate gap analysis
+  const gapToTarget = targetRating - currentRating;
+  const totalPotentialImpact = recommendations.reduce((sum, r) => sum + (r.estimatedImpact || 0), 0);
+  const highPriorityCount = recommendations.filter(r => r.priority === 'high').length;
+  const lowCostCount = recommendations.filter(r => r.estimatedCost === 'low').length;
+
+  // Group recommendations by category
+  const byCategory = recommendations.reduce((acc, rec) => {
+    const cat = rec.category || 'other';
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(rec);
+    return acc;
+  }, {} as Record<string, ImprovementRecommendation[]>);
+
+  // Implementation phases
+  const phases = [
+    { name: 'Quick Wins', timeframe: '0-30 days', items: recommendations.filter(r => r.timeframe === 'immediate' || r.estimatedCost === 'low').slice(0, 3) },
+    { name: 'Short-Term', timeframe: '1-3 months', items: recommendations.filter(r => r.timeframe === 'short_term').slice(0, 3) },
+    { name: 'Long-Term', timeframe: '3-6 months', items: recommendations.filter(r => r.timeframe === 'long_term').slice(0, 3) },
+  ];
+
   return (
     <div className="space-y-6 animate-slide-up">
       <button onClick={onBack} className="btn-neumorphic px-4 py-2 flex items-center gap-2">
@@ -3636,294 +3676,611 @@ function PlanPreviewView({
         Back to Overview
       </button>
 
-      {/* Header */}
+      {/* Header with Stats */}
       <div className="card-neumorphic p-6">
-        <div className="flex items-start justify-between flex-wrap gap-4">
-          <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-purple-400 to-purple-600">
-              <FileText className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold text-[var(--foreground)]">Improvement Plan Preview</h2>
-              <p className="text-[var(--foreground-muted)]">{facility.providerName}</p>
-            </div>
-          </div>
-
-          {/* AI Suggestion Button */}
-          <button
-            onClick={generateAISuggestions}
-            className="btn-neumorphic-primary px-4 py-2 flex items-center gap-2 animate-pulse hover:animate-none"
-          >
-            <Brain className="w-5 h-5" />
-            <span>AI Cost-Effective Suggestions</span>
-            <Sparkles className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* Rating Projections */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="card-neumorphic p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
-            <span className="font-medium">Current Rating</span>
-          </div>
-          <div className="text-3xl font-bold">{currentRating} <span className="text-lg text-[var(--foreground-muted)]">★</span></div>
-          <div className="text-xs text-[var(--foreground-muted)] mt-1">
-            Health: {healthRating}★ | Staffing: {staffingRating}★ | QM: {qmRating}★
-          </div>
-        </div>
-
-        <div className="card-neumorphic p-4 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20">
-          <div className="flex items-center gap-2 mb-2">
-            <TrendingUp className="w-5 h-5 text-green-500" />
-            <span className="font-medium text-green-700 dark:text-green-300">Best Possible</span>
-          </div>
-          <div className="text-3xl font-bold text-green-600 dark:text-green-400">{bestPossibleRating} <span className="text-lg">★</span></div>
-          <div className="text-xs text-green-600/70 dark:text-green-400/70 mt-1">
-            Achievable with full plan implementation
-          </div>
-        </div>
-
-        <div className="card-neumorphic p-4 bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20">
-          <div className="flex items-center gap-2 mb-2">
-            <TrendingDown className="w-5 h-5 text-red-500" />
-            <span className="font-medium text-red-700 dark:text-red-300">Risk If Bad Survey</span>
-          </div>
-          <div className="text-3xl font-bold text-red-600 dark:text-red-400">{worstPossibleRating} <span className="text-lg">★</span></div>
-          <div className="text-xs text-red-600/70 dark:text-red-400/70 mt-1">
-            Potential drop with major deficiencies
-          </div>
-        </div>
-      </div>
-
-      {/* Target Rating Selector */}
-      <div className="card-neumorphic p-4">
-        <div className="flex items-center justify-between flex-wrap gap-4">
+        <div className="flex items-start justify-between flex-wrap gap-4 mb-4">
           <div>
-            <h3 className="font-medium">Target Rating</h3>
-            <p className="text-sm text-[var(--foreground-muted)]">What star rating are you working toward?</p>
+            <h2 className="text-2xl font-bold text-[var(--foreground)] flex items-center gap-2">
+              <Target className="w-7 h-7 text-purple-500" />
+              Improvement Plan Deep Dive
+            </h2>
+            <p className="text-[var(--foreground-muted)]">{facility.providerName}</p>
           </div>
-          <div className="flex gap-2">
-            {[3, 4, 5].map((rating) => (
-              <button
-                key={rating}
-                onClick={() => setTargetRating(rating)}
-                className={`px-4 py-2 rounded-xl font-bold transition-all ${
-                  targetRating === rating
-                    ? 'bg-gradient-to-r from-yellow-400 to-amber-500 text-white shadow-lg'
-                    : 'btn-neumorphic'
-                }`}
-              >
-                {rating}★
-              </button>
-            ))}
+          <div className="flex items-center gap-4">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-[var(--foreground)]">{currentRating}<span className="text-yellow-500">★</span></div>
+              <div className="text-xs text-[var(--foreground-muted)]">Current</div>
+            </div>
+            <ArrowRight className="w-5 h-5 text-[var(--foreground-muted)]" />
+            <div className="text-center">
+              <div className="text-3xl font-bold text-green-500">{targetRating}<span className="text-yellow-500">★</span></div>
+              <div className="text-xs text-[var(--foreground-muted)]">Target</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="bg-purple-50 dark:bg-purple-900/20 rounded-xl p-3 text-center">
+            <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{recommendations.length}</div>
+            <div className="text-xs text-purple-600/70 dark:text-purple-400/70">Opportunities</div>
+          </div>
+          <div className="bg-red-50 dark:bg-red-900/20 rounded-xl p-3 text-center">
+            <div className="text-2xl font-bold text-red-600 dark:text-red-400">{highPriorityCount}</div>
+            <div className="text-xs text-red-600/70 dark:text-red-400/70">High Priority</div>
+          </div>
+          <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-3 text-center">
+            <div className="text-2xl font-bold text-green-600 dark:text-green-400">{lowCostCount}</div>
+            <div className="text-xs text-green-600/70 dark:text-green-400/70">Low Cost</div>
+          </div>
+          <div className="bg-cyan-50 dark:bg-cyan-900/20 rounded-xl p-3 text-center">
+            <div className="text-2xl font-bold text-cyan-600 dark:text-cyan-400">+{totalPotentialImpact.toFixed(1)}</div>
+            <div className="text-xs text-cyan-600/70 dark:text-cyan-400/70">Potential ★</div>
           </div>
         </div>
       </div>
 
-      {/* AI Suggestions Panel */}
-      {showAISuggestions && (
-        <div className="card-neumorphic p-6 border-2 border-purple-400 dark:border-purple-600 bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20">
-          <div className="flex items-center gap-2 mb-4">
-            <Brain className="w-6 h-6 text-purple-500" />
-            <h3 className="font-bold text-lg text-purple-700 dark:text-purple-300">AI Cost-Effective Recommendations</h3>
+      {/* 5-Tab Navigation */}
+      <div className="flex gap-2 overflow-x-auto pb-2">
+        {[
+          { id: 'overview', label: 'Overview', icon: FileText },
+          { id: 'recommendations', label: 'Recommendations', icon: Lightbulb },
+          { id: 'actions', label: 'Action Items', icon: CheckCircle2 },
+          { id: 'resources', label: 'Resources', icon: BookOpen },
+          { id: 'timeline', label: 'Timeline', icon: Calendar },
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as typeof activeTab)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium whitespace-nowrap transition-all ${
+              activeTab === tab.id
+                ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-lg'
+                : 'btn-neumorphic'
+            }`}
+          >
+            <tab.icon className="w-4 h-4" />
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'overview' && (
+        <div className="space-y-6">
+          {/* Executive Summary */}
+          <div className="card-neumorphic p-6">
+            <h3 className="font-semibold mb-3 flex items-center gap-2">
+              <FileText className="w-5 h-5 text-purple-500" />
+              Executive Summary
+            </h3>
+            <div className="prose dark:prose-invert max-w-none text-[var(--foreground-muted)]">
+              <p>
+                <strong>{facility.providerName}</strong> currently holds a <strong>{currentRating}-star</strong> overall rating
+                with a target of <strong>{targetRating} stars</strong>.
+                {gapToTarget > 0
+                  ? ` To close the ${gapToTarget}-star gap, focus on the ${highPriorityCount} high-priority recommendations identified.`
+                  : ' The facility is at or above target. Focus on maintaining current performance.'}
+              </p>
+              <p>
+                Analysis identified <strong>{recommendations.length} improvement opportunities</strong> with a combined potential
+                impact of <strong>+{totalPotentialImpact.toFixed(1)} stars</strong>. Of these, <strong>{lowCostCount} are low-cost</strong> initiatives
+                that can be implemented quickly for immediate impact.
+              </p>
+            </div>
           </div>
-          <p className="text-sm text-purple-600/80 dark:text-purple-400/80 mb-4">
-            Based on your current ratings and industry data, here are the most cost-effective improvements to reach {targetRating}★:
-          </p>
-          <div className="space-y-3">
-            {recommendations
-              .filter(r => aiPrioritizedItems.includes(r.id))
-              .map((rec, i) => {
-                const narrative = getNarrative(rec);
-                return (
-                  <div key={rec.id} className="flex items-start gap-3 p-3 rounded-xl bg-white/50 dark:bg-slate-800/50">
-                    <div className="w-8 h-8 rounded-full bg-purple-500 text-white flex items-center justify-center font-bold flex-shrink-0">
+
+          {/* Rating Projections */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="card-neumorphic p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
+                <span className="font-medium">Current Rating</span>
+              </div>
+              <div className="text-3xl font-bold">{currentRating} <span className="text-lg text-[var(--foreground-muted)]">★</span></div>
+              <div className="text-xs text-[var(--foreground-muted)] mt-1">
+                Health: {healthRating}★ | Staffing: {staffingRating}★ | QM: {qmRating}★
+              </div>
+            </div>
+
+            <div className="card-neumorphic p-4 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className="w-5 h-5 text-green-500" />
+                <span className="font-medium text-green-700 dark:text-green-300">Best Possible</span>
+              </div>
+              <div className="text-3xl font-bold text-green-600 dark:text-green-400">{bestPossibleRating} <span className="text-lg">★</span></div>
+              <div className="text-xs text-green-600/70 dark:text-green-400/70 mt-1">
+                Achievable with full plan implementation
+              </div>
+            </div>
+
+            <div className="card-neumorphic p-4 bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingDown className="w-5 h-5 text-red-500" />
+                <span className="font-medium text-red-700 dark:text-red-300">Risk If Bad Survey</span>
+              </div>
+              <div className="text-3xl font-bold text-red-600 dark:text-red-400">{worstPossibleRating} <span className="text-lg">★</span></div>
+              <div className="text-xs text-red-600/70 dark:text-red-400/70 mt-1">
+                Potential drop with major deficiencies
+              </div>
+            </div>
+          </div>
+
+          {/* Gap Analysis */}
+          <div className="card-neumorphic p-6">
+            <h3 className="font-semibold mb-4 flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-cyan-500" />
+              Rating Component Gap Analysis
+            </h3>
+            <div className="space-y-4">
+              {[
+                { name: 'Health Inspections', current: healthRating, weight: '53%', color: 'red' },
+                { name: 'Staffing', current: staffingRating, weight: '27%', color: 'blue' },
+                { name: 'Quality Measures', current: qmRating, weight: '20%', color: 'green' },
+              ].map((component) => (
+                <div key={component.name}>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="font-medium">{component.name}</span>
+                    <span className="text-[var(--foreground-muted)]">{component.current}★ (Weight: {component.weight})</span>
+                  </div>
+                  <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full bg-${component.color}-500 rounded-full transition-all`}
+                      style={{ width: `${(component.current / 5) * 100}%` }}
+                    />
+                  </div>
+                  {component.current < targetRating && (
+                    <p className="text-xs text-[var(--foreground-muted)] mt-1">
+                      Gap: {targetRating - component.current} star{targetRating - component.current > 1 ? 's' : ''} to reach target
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Top 3 Quick Wins */}
+          <div className="card-neumorphic p-6">
+            <h3 className="font-semibold mb-4 flex items-center gap-2">
+              <Zap className="w-5 h-5 text-yellow-500" />
+              Top 3 Quick Wins
+            </h3>
+            <div className="space-y-3">
+              {recommendations
+                .filter(r => r.estimatedCost === 'low')
+                .slice(0, 3)
+                .map((rec, i) => (
+                  <div key={rec.id} className="flex items-start gap-3 p-3 rounded-xl bg-yellow-50 dark:bg-yellow-900/20">
+                    <div className="w-8 h-8 rounded-full bg-yellow-500 text-white flex items-center justify-center font-bold flex-shrink-0">
                       {i + 1}
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium">{rec.title}</span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${
-                          narrative.costLevel === 'low' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
-                          narrative.costLevel === 'medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300' :
-                          'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
-                        }`}>
-                          {narrative.costLevel} cost
-                        </span>
-                        <span className="text-xs text-purple-600 dark:text-purple-400">+{rec.estimatedImpact} star impact</span>
-                      </div>
-                      <p className="text-sm text-[var(--foreground-muted)] mt-1">{narrative.suggestion.substring(0, 150)}...</p>
+                    <div>
+                      <div className="font-medium">{rec.title}</div>
+                      <div className="text-sm text-[var(--foreground-muted)]">+{rec.estimatedImpact} star potential • Low cost</div>
                     </div>
                   </div>
-                );
-              })}
+                ))}
+            </div>
           </div>
-          <button
-            onClick={() => setShowAISuggestions(false)}
-            className="mt-4 text-sm text-purple-600 dark:text-purple-400 hover:underline"
-          >
-            Hide AI suggestions
-          </button>
         </div>
       )}
 
-      {/* Improvement Items with Detailed Narratives */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-bold flex items-center gap-2">
-          <Target className="w-5 h-5 text-cyan-500" />
-          Improvement Opportunities ({recommendations.length})
-        </h3>
-
-        {recommendations.map((rec) => {
-          const isExpanded = expandedItems.has(rec.id);
-          const narrative = getNarrative(rec);
-          const isAIPrioritized = aiPrioritizedItems.includes(rec.id);
-
-          return (
-            <div
-              key={rec.id}
-              className={`card-neumorphic overflow-hidden transition-all ${
-                isAIPrioritized ? 'ring-2 ring-purple-400 dark:ring-purple-600' : ''
-              }`}
+      {/* Recommendations Tab */}
+      {activeTab === 'recommendations' && (
+        <div className="space-y-6">
+          {/* AI Suggestions Button */}
+          <div className="flex justify-end">
+            <button
+              onClick={generateAISuggestions}
+              className="btn-neumorphic-primary px-4 py-2 flex items-center gap-2"
             >
-              {/* Header - always visible */}
-              <div
-                className="p-4 cursor-pointer flex items-start justify-between gap-4"
-                onClick={() => toggleExpand(rec.id)}
-              >
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 flex-wrap mb-2">
-                    {isAIPrioritized && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 flex items-center gap-1">
-                        <Sparkles className="w-3 h-3" /> AI Recommended
-                      </span>
-                    )}
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      rec.priority === 'high' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' :
-                      rec.priority === 'medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300' :
-                      'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-                    }`}>
-                      {rec.priority.toUpperCase()}
-                    </span>
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                      {rec.category.replace('_', ' ')}
-                    </span>
-                  </div>
-                  <h4 className="font-semibold text-[var(--foreground)]">{rec.title}</h4>
-                  <p className="text-sm text-[var(--foreground-muted)] mt-1 line-clamp-2">{rec.description}</p>
-                </div>
-                <div className="flex flex-col items-end gap-2">
-                  <span className="text-sm font-bold text-cyan-600 dark:text-cyan-400">+{rec.estimatedImpact} ★</span>
-                  {isExpanded ? (
-                    <ChevronUp className="w-5 h-5 text-[var(--foreground-muted)]" />
-                  ) : (
-                    <ChevronDown className="w-5 h-5 text-[var(--foreground-muted)]" />
-                  )}
-                </div>
-              </div>
-
-              {/* Expanded Content */}
-              {isExpanded && (
-                <div className="border-t border-[var(--border-color)] p-4 space-y-4 bg-[var(--card-background-alt)]">
-                  {/* Detailed Narrative */}
-                  <div>
-                    <h5 className="font-medium text-sm mb-2 flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-blue-500" />
-                      Understanding This Issue
-                    </h5>
-                    <p className="text-sm text-[var(--foreground-muted)] whitespace-pre-line leading-relaxed">
-                      {narrative.narrative}
-                    </p>
-                  </div>
-
-                  {/* Suggestion */}
-                  <div className="card-neumorphic-inset p-4">
-                    <h5 className="font-medium text-sm mb-2 flex items-center gap-2">
-                      <Lightbulb className="w-4 h-4 text-yellow-500" />
-                      Recommended Actions
-                    </h5>
-                    <p className="text-sm text-[var(--foreground-muted)]">
-                      {narrative.suggestion}
-                    </p>
-                  </div>
-
-                  {/* Metrics Grid */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <div className="text-center p-3 rounded-xl bg-white/50 dark:bg-slate-800/50">
-                      <DollarSign className={`w-5 h-5 mx-auto mb-1 ${
-                        narrative.costLevel === 'low' ? 'text-green-500' :
-                        narrative.costLevel === 'medium' ? 'text-yellow-500' :
-                        'text-red-500'
-                      }`} />
-                      <div className="text-xs text-[var(--foreground-muted)]">Cost Level</div>
-                      <div className="font-medium capitalize">{narrative.costLevel}</div>
-                    </div>
-                    <div className="text-center p-3 rounded-xl bg-white/50 dark:bg-slate-800/50">
-                      <Clock className="w-5 h-5 mx-auto mb-1 text-blue-500" />
-                      <div className="text-xs text-[var(--foreground-muted)]">Timeframe</div>
-                      <div className="font-medium text-sm">{narrative.timeframe}</div>
-                    </div>
-                    <div className="text-center p-3 rounded-xl bg-white/50 dark:bg-slate-800/50">
-                      <TrendingUp className="w-5 h-5 mx-auto mb-1 text-purple-500" />
-                      <div className="text-xs text-[var(--foreground-muted)]">Impact</div>
-                      <div className="font-medium">+{rec.estimatedImpact} star</div>
-                    </div>
-                    <div className="text-center p-3 rounded-xl bg-white/50 dark:bg-slate-800/50">
-                      <Target className="w-5 h-5 mx-auto mb-1 text-cyan-500" />
-                      <div className="text-xs text-[var(--foreground-muted)]">ROI</div>
-                      <div className="font-medium text-sm">{narrative.roi.split(' - ')[0]}</div>
-                    </div>
-                  </div>
-
-                  {/* Action Steps */}
-                  {rec.actionSteps && rec.actionSteps.length > 0 && (
-                    <div>
-                      <h5 className="font-medium text-sm mb-2 flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-green-500" />
-                        Quick Start Checklist
-                      </h5>
-                      <div className="space-y-2">
-                        {rec.actionSteps.map((step, i) => (
-                          <div key={i} className="flex items-start gap-2 text-sm">
-                            <span className="w-5 h-5 rounded-full bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
-                              {i + 1}
-                            </span>
-                            <span className="text-[var(--foreground-muted)]">{step}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Summary Card */}
-      <div className="card-neumorphic p-6">
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div>
-            <h3 className="font-bold text-lg">Ready to Build Your Plan?</h3>
-            <p className="text-sm text-[var(--foreground-muted)]">
-              Select items above and create an actionable improvement roadmap
-            </p>
+              <Brain className="w-5 h-5" />
+              <span>AI Cost-Effective Analysis</span>
+              <Sparkles className="w-4 h-4" />
+            </button>
           </div>
-          <div className="flex gap-3">
-            <button className="btn-neumorphic px-4 py-2 flex items-center gap-2">
-              <Download className="w-4 h-4" />
-              Export PDF
-            </button>
-            <button className="btn-neumorphic-primary px-4 py-2 flex items-center gap-2">
-              <FileText className="w-4 h-4" />
-              Create Action Plan
-            </button>
+
+          {/* AI Suggestions Panel */}
+          {showAISuggestions && (
+            <div className="card-neumorphic p-6 border-2 border-purple-400 dark:border-purple-600 bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20">
+              <div className="flex items-center gap-2 mb-4">
+                <Brain className="w-6 h-6 text-purple-500" />
+                <h3 className="font-bold text-lg text-purple-700 dark:text-purple-300">AI Cost-Effective Recommendations</h3>
+              </div>
+              <p className="text-sm text-purple-600/80 dark:text-purple-400/80 mb-4">
+                Based on your current ratings and industry data, here are the most cost-effective improvements to reach {targetRating}★:
+              </p>
+              <div className="space-y-3">
+                {recommendations
+                  .filter(r => aiPrioritizedItems.includes(r.id))
+                  .map((rec, i) => {
+                    const narrative = getNarrative(rec);
+                    return (
+                      <div key={rec.id} className="flex items-start gap-3 p-3 rounded-xl bg-white/50 dark:bg-slate-800/50">
+                        <div className="w-8 h-8 rounded-full bg-purple-500 text-white flex items-center justify-center font-bold flex-shrink-0">
+                          {i + 1}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-medium">{rec.title}</span>
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${
+                              narrative.costLevel === 'low' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
+                              narrative.costLevel === 'medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300' :
+                              'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                            }`}>
+                              {narrative.costLevel} cost
+                            </span>
+                            <span className="text-xs text-purple-600 dark:text-purple-400">+{rec.estimatedImpact} star impact</span>
+                          </div>
+                          <p className="text-sm text-[var(--foreground-muted)] mt-1">{narrative.suggestion.substring(0, 150)}...</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+              <button
+                onClick={() => setShowAISuggestions(false)}
+                className="mt-4 text-sm text-purple-600 dark:text-purple-400 hover:underline"
+              >
+                Hide AI suggestions
+              </button>
+            </div>
+          )}
+
+          {/* Recommendations by Category */}
+          {Object.entries(byCategory).map(([category, items]) => (
+            <div key={category} className="card-neumorphic p-6">
+              <h3 className="font-semibold mb-4 flex items-center gap-2 capitalize">
+                <Target className="w-5 h-5 text-cyan-500" />
+                {category.replace('_', ' ')} ({items.length})
+              </h3>
+              <div className="space-y-3">
+                {items.map((rec) => {
+                  const narrative = getNarrative(rec);
+                  const isExpanded = expandedItems.has(rec.id);
+                  return (
+                    <div key={rec.id} className="border border-[var(--border-color)] rounded-xl overflow-hidden">
+                      <div
+                        className="p-4 cursor-pointer flex items-start justify-between gap-4"
+                        onClick={() => toggleExpand(rec.id)}
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${
+                              rec.priority === 'high' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' :
+                              rec.priority === 'medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300' :
+                              'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                            }`}>
+                              {rec.priority}
+                            </span>
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${
+                              narrative.costLevel === 'low' ? 'bg-green-100 text-green-700' :
+                              narrative.costLevel === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                              'bg-red-100 text-red-700'
+                            }`}>
+                              {narrative.costLevel} cost
+                            </span>
+                          </div>
+                          <h4 className="font-medium">{rec.title}</h4>
+                          <p className="text-sm text-[var(--foreground-muted)] line-clamp-1">{rec.description}</p>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-lg font-bold text-cyan-500">+{rec.estimatedImpact}★</span>
+                          {isExpanded ? <ChevronUp className="w-5 h-5 mx-auto mt-1" /> : <ChevronDown className="w-5 h-5 mx-auto mt-1" />}
+                        </div>
+                      </div>
+                      {isExpanded && (
+                        <div className="border-t border-[var(--border-color)] p-4 bg-slate-50 dark:bg-slate-800/50">
+                          <p className="text-sm text-[var(--foreground-muted)] mb-3">{narrative.narrative}</p>
+                          <div className="p-3 rounded-lg bg-cyan-50 dark:bg-cyan-900/20">
+                            <div className="font-medium text-sm text-cyan-700 dark:text-cyan-300 mb-1">Recommended Action:</div>
+                            <p className="text-sm text-[var(--foreground-muted)]">{narrative.suggestion}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Action Items Tab */}
+      {activeTab === 'actions' && (
+        <div className="space-y-6">
+          {/* Target Rating Selector */}
+          <div className="card-neumorphic p-4">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div>
+                <h3 className="font-medium">Target Rating</h3>
+                <p className="text-sm text-[var(--foreground-muted)]">What star rating are you working toward?</p>
+              </div>
+              <div className="flex gap-2">
+                {[3, 4, 5].map((rating) => (
+                  <button
+                    key={rating}
+                    onClick={() => setTargetRating(rating)}
+                    className={`px-4 py-2 rounded-xl font-bold transition-all ${
+                      targetRating === rating
+                        ? 'bg-gradient-to-r from-yellow-400 to-amber-500 text-white shadow-lg'
+                        : 'btn-neumorphic'
+                    }`}
+                  >
+                    {rating}★
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Action Checklist */}
+          <div className="card-neumorphic p-6">
+            <h3 className="font-semibold mb-4 flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-green-500" />
+              Implementation Checklist
+            </h3>
+            <div className="space-y-3">
+              {recommendations.slice(0, 10).map((rec, i) => (
+                <div
+                  key={rec.id}
+                  className={`flex items-start gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
+                    checkedItems.has(rec.id)
+                      ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700'
+                      : 'border-[var(--border-color)] hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                  }`}
+                  onClick={() => toggleChecked(rec.id)}
+                >
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
+                    checkedItems.has(rec.id)
+                      ? 'bg-green-500 text-white'
+                      : 'border-2 border-slate-300 dark:border-slate-600'
+                  }`}>
+                    {checkedItems.has(rec.id) && <Check className="w-4 h-4" />}
+                  </div>
+                  <div className="flex-1">
+                    <div className={`font-medium ${checkedItems.has(rec.id) ? 'line-through text-[var(--foreground-muted)]' : ''}`}>
+                      {rec.title}
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        rec.priority === 'high' ? 'bg-red-100 text-red-700' :
+                        rec.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                        'bg-green-100 text-green-700'
+                      }`}>
+                        {rec.priority}
+                      </span>
+                      <span className="text-xs text-[var(--foreground-muted)]">+{rec.estimatedImpact}★ impact</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 pt-4 border-t border-[var(--border-color)] flex items-center justify-between">
+              <span className="text-sm text-[var(--foreground-muted)]">
+                {checkedItems.size} of {Math.min(recommendations.length, 10)} completed
+              </span>
+              <div className="h-2 w-48 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-green-500 rounded-full transition-all"
+                  style={{ width: `${(checkedItems.size / Math.min(recommendations.length, 10)) * 100}%` }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Action Buttons */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="card-neumorphic p-6">
+              <h4 className="font-semibold mb-3 flex items-center gap-2">
+                <Users className="w-5 h-5 text-blue-500" />
+                Staff Assignment
+              </h4>
+              <p className="text-sm text-[var(--foreground-muted)] mb-4">
+                Assign team members to each action item for accountability.
+              </p>
+              <button className="btn-neumorphic px-4 py-2 text-sm w-full">
+                Assign Staff →
+              </button>
+            </div>
+            <div className="card-neumorphic p-6">
+              <h4 className="font-semibold mb-3 flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-purple-500" />
+                Set Deadlines
+              </h4>
+              <p className="text-sm text-[var(--foreground-muted)] mb-4">
+                Add due dates to track progress and ensure timely completion.
+              </p>
+              <button className="btn-neumorphic px-4 py-2 text-sm w-full">
+                Set Dates →
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Resources Tab */}
+      {activeTab === 'resources' && (
+        <div className="space-y-6">
+          {/* Templates */}
+          <div className="card-neumorphic p-6">
+            <h3 className="font-semibold mb-4 flex items-center gap-2">
+              <FileText className="w-5 h-5 text-blue-500" />
+              Plan Templates
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[
+                { name: 'QAPI Project Template', desc: 'Performance improvement project framework', icon: Target },
+                { name: 'Action Plan Template', desc: 'Structured improvement action tracker', icon: CheckCircle2 },
+                { name: 'Root Cause Analysis', desc: 'Five Whys and fishbone diagram templates', icon: Search },
+                { name: 'Staff Training Log', desc: 'Track education and competency', icon: BookOpen },
+              ].map((template) => (
+                <button key={template.name} className="btn-neumorphic p-4 text-left flex items-start gap-3">
+                  <template.icon className="w-5 h-5 text-cyan-500 mt-0.5" />
+                  <div>
+                    <div className="font-medium">{template.name}</div>
+                    <div className="text-sm text-[var(--foreground-muted)]">{template.desc}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Training Resources */}
+          <div className="card-neumorphic p-6">
+            <h3 className="font-semibold mb-4 flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-green-500" />
+              Training Resources
+            </h3>
+            <div className="space-y-3">
+              {[
+                { category: 'Quality Measures', topics: ['Pressure Ulcer Prevention', 'Falls Prevention', 'Antipsychotic Reduction'] },
+                { category: 'Staffing', topics: ['PBJ Reporting', 'Scheduling Best Practices', 'Retention Strategies'] },
+                { category: 'Survey Readiness', topics: ['F-Tag Deep Dives', 'Mock Survey Training', 'POC Development'] },
+              ].map((section) => (
+                <div key={section.category} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50">
+                  <h4 className="font-medium mb-2">{section.category}</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {section.topics.map((topic) => (
+                      <span key={topic} className="text-xs px-3 py-1 rounded-full bg-white dark:bg-slate-700 border border-[var(--border-color)]">
+                        {topic}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* External Resources */}
+          <div className="card-neumorphic p-6">
+            <h3 className="font-semibold mb-4 flex items-center gap-2">
+              <ExternalLink className="w-5 h-5 text-purple-500" />
+              CMS Resources
+            </h3>
+            <div className="space-y-2">
+              {[
+                { name: 'CMS State Operations Manual', url: '#' },
+                { name: 'Quality Measure Specifications', url: '#' },
+                { name: 'PBJ Policy Manual', url: '#' },
+                { name: 'QSO Memos & Guidance', url: '#' },
+              ].map((resource) => (
+                <button key={resource.name} className="w-full text-left p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 flex items-center justify-between">
+                  <span>{resource.name}</span>
+                  <ExternalLink className="w-4 h-4 text-[var(--foreground-muted)]" />
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Timeline Tab */}
+      {activeTab === 'timeline' && (
+        <div className="space-y-6">
+          {/* Timeline Overview */}
+          <div className="card-neumorphic p-6">
+            <h3 className="font-semibold mb-4 flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-purple-500" />
+              Implementation Timeline
+            </h3>
+            <div className="space-y-6">
+              {phases.map((phase, phaseIndex) => (
+                <div key={phase.name} className="relative">
+                  {phaseIndex < phases.length - 1 && (
+                    <div className="absolute left-4 top-10 bottom-0 w-0.5 bg-slate-200 dark:bg-slate-700" />
+                  )}
+                  <div className="flex items-start gap-4">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                      phaseIndex === 0 ? 'bg-green-500 text-white' :
+                      phaseIndex === 1 ? 'bg-yellow-500 text-white' :
+                      'bg-blue-500 text-white'
+                    }`}>
+                      {phaseIndex + 1}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h4 className="font-semibold">{phase.name}</h4>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[var(--foreground-muted)]">
+                          {phase.timeframe}
+                        </span>
+                      </div>
+                      <div className="space-y-2 ml-0">
+                        {phase.items.length > 0 ? phase.items.map((item) => (
+                          <div key={item.id} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between">
+                            <div>
+                              <div className="font-medium text-sm">{item.title}</div>
+                              <div className="text-xs text-[var(--foreground-muted)]">+{item.estimatedImpact}★ impact</div>
+                            </div>
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${
+                              item.priority === 'high' ? 'bg-red-100 text-red-700' :
+                              item.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                              'bg-green-100 text-green-700'
+                            }`}>
+                              {item.priority}
+                            </span>
+                          </div>
+                        )) : (
+                          <div className="text-sm text-[var(--foreground-muted)] italic">No items in this phase</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Milestones */}
+          <div className="card-neumorphic p-6">
+            <h3 className="font-semibold mb-4 flex items-center gap-2">
+              <Flag className="w-5 h-5 text-red-500" />
+              Key Milestones
+            </h3>
+            <div className="space-y-3">
+              {[
+                { milestone: 'Complete baseline assessment', target: 'Week 1', status: 'pending' },
+                { milestone: 'Implement quick wins', target: 'Week 2-4', status: 'pending' },
+                { milestone: 'First progress review', target: 'Month 1', status: 'pending' },
+                { milestone: 'Mid-point assessment', target: 'Month 3', status: 'pending' },
+                { milestone: 'Final evaluation', target: 'Month 6', status: 'pending' },
+              ].map((item, i) => (
+                <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-[var(--border-color)]">
+                  <div className="w-6 h-6 rounded-full border-2 border-slate-300 dark:border-slate-600 flex items-center justify-center">
+                    <div className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-medium text-sm">{item.milestone}</div>
+                  </div>
+                  <span className="text-xs text-[var(--foreground-muted)]">{item.target}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Export Options */}
+          <div className="card-neumorphic p-6">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div>
+                <h3 className="font-bold text-lg">Export Your Plan</h3>
+                <p className="text-sm text-[var(--foreground-muted)]">
+                  Download your improvement plan for presentation or tracking
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <button className="btn-neumorphic px-4 py-2 flex items-center gap-2">
+                  <Download className="w-4 h-4" />
+                  Export PDF
+                </button>
+                <button className="btn-neumorphic-primary px-4 py-2 flex items-center gap-2">
+                  <FileText className="w-4 h-4" />
+                  Create Full Plan
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
