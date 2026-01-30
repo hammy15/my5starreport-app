@@ -97,6 +97,7 @@ import {
   Copy,
   Share,
   Maximize2,
+  Search,
 } from 'lucide-react';
 import { FacilitySearch } from '@/components/dashboard/facility-search';
 import { FacilityOverview } from '@/components/dashboard/facility-overview';
@@ -1578,7 +1579,7 @@ function TrainingView({ onBack }: { onBack: () => void }) {
   );
 }
 
-// Health Inspection Detail View
+// Health Inspection Detail View - Enhanced with 5 Tabs
 function HealthInspectionView({
   providerNumber,
   onBack,
@@ -1613,6 +1614,8 @@ function HealthInspectionView({
     }>;
   } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'overview' | 'history' | 'deficiencies' | 'prep' | 'compliance'>('overview');
+  const [expandedDeficiency, setExpandedDeficiency] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -1637,126 +1640,22 @@ function HealthInspectionView({
     }
   };
 
-  const generateNarrative = () => {
-    if (!data?.facility || !data?.healthInspections?.length) return null;
-
-    const f = data.facility;
-    const latestSurvey = data.healthInspections[0];
-    const severeCount = (latestSurvey?.deficiencySeverityLevelG || 0) +
-      (latestSurvey?.deficiencySeverityLevelH || 0) +
-      (latestSurvey?.deficiencySeverityLevelI || 0) +
-      (latestSurvey?.deficiencySeverityLevelJ || 0) +
-      (latestSurvey?.deficiencySeverityLevelK || 0) +
-      (latestSurvey?.deficiencySeverityLevelL || 0);
-
-    const performanceVsNational = latestSurvey?.totalDeficiencies < latestSurvey?.nationalAvgDeficiencies
-      ? 'better than' : latestSurvey?.totalDeficiencies === latestSurvey?.nationalAvgDeficiencies
-      ? 'equal to' : 'worse than';
-
-    return (
-      <div className="card-neumorphic p-6 mb-6">
-        <h3 className="font-semibold mb-3 flex items-center gap-2">
-          <FileText className="w-5 h-5 text-blue-500" />
-          Health Inspection Summary
-        </h3>
-        <div className="prose dark:prose-invert max-w-none text-[var(--foreground-muted)]">
-          <p>
-            <strong>{f.providerName}</strong> currently holds a <strong>{f.healthInspectionRating}-star</strong> health inspection rating.
-            {f.healthInspectionRating <= 2 && ' This rating indicates significant compliance concerns that require immediate attention.'}
-            {f.healthInspectionRating === 3 && ' This average rating suggests room for improvement in survey readiness.'}
-            {f.healthInspectionRating >= 4 && ' This strong rating reflects good compliance practices.'}
-          </p>
-          <p>
-            The most recent survey on <strong>{latestSurvey?.surveyDate}</strong> resulted in <strong>{latestSurvey?.totalDeficiencies} deficiencies</strong>,
-            which is {performanceVsNational} the national average of {latestSurvey?.nationalAvgDeficiencies?.toFixed(1)}.
-            {severeCount > 0 && ` Notably, ${severeCount} deficiencies were at severity level G or higher, indicating actual harm or immediate jeopardy situations.`}
-          </p>
-          {severeCount > 0 && (
-            <p className="text-red-600 dark:text-red-400">
-              <strong>Critical:</strong> Facilities with severe deficiencies (G-L level) face increased regulatory scrutiny,
-              potential fines, and public reporting of serious care issues. Immediate corrective action is essential.
-            </p>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  const generateImprovementGuidance = () => {
-    if (!data?.facility) return null;
-    const rating = data.facility.healthInspectionRating;
-
-    const guidance = {
-      1: {
-        title: 'Critical: Comprehensive Turnaround Needed',
-        steps: [
-          'Engage external consultant for full compliance audit',
-          'Conduct daily leadership rounds focusing on care delivery',
-          'Implement real-time documentation audits',
-          'Create "survey readiness" task force with daily meetings',
-          'Review and retrain all staff on F-Tag requirements',
-          'Consider temporary management support',
-        ],
-      },
-      2: {
-        title: 'Priority: Systematic Improvement Required',
-        steps: [
-          'Analyze deficiency patterns from last 3 surveys',
-          'Conduct monthly mock surveys with external reviewers',
-          'Implement QAPI projects targeting repeat deficiencies',
-          'Strengthen documentation practices across all departments',
-          'Increase DON involvement in daily operations',
-        ],
-      },
-      3: {
-        title: 'Focus: Targeted Improvements',
-        steps: [
-          'Identify top 3 deficiency categories and address root causes',
-          'Implement quarterly mock surveys',
-          'Enhance staff training on common F-Tags',
-          'Improve interdepartmental communication',
-          'Establish deficiency tracking dashboard',
-        ],
-      },
-      4: {
-        title: 'Maintain: Sustain Excellence',
-        steps: [
-          'Continue regular mock survey program',
-          'Share best practices across departments',
-          'Mentor newer staff on compliance excellence',
-          'Stay current on regulatory changes',
-        ],
-      },
-      5: {
-        title: 'Excel: Industry Leadership',
-        steps: [
-          'Document successful practices for portfolio sharing',
-          'Consider becoming a training site for other facilities',
-          'Maintain vigilance - continue all current practices',
-        ],
-      },
+  const getSeverityLevel = (level: string) => {
+    const levels: Record<string, { label: string; color: string; description: string }> = {
+      'A': { label: 'A', color: 'bg-gray-200 text-gray-700', description: 'No actual harm, potential for minimal harm' },
+      'B': { label: 'B', color: 'bg-gray-300 text-gray-700', description: 'No actual harm, potential for minimal harm (pattern)' },
+      'C': { label: 'C', color: 'bg-gray-400 text-gray-800', description: 'No actual harm, potential for minimal harm (widespread)' },
+      'D': { label: 'D', color: 'bg-yellow-200 text-yellow-800', description: 'No actual harm, potential for more than minimal harm' },
+      'E': { label: 'E', color: 'bg-yellow-300 text-yellow-800', description: 'No actual harm, potential for more than minimal harm (pattern)' },
+      'F': { label: 'F', color: 'bg-yellow-400 text-yellow-900', description: 'No actual harm, potential for more than minimal harm (widespread)' },
+      'G': { label: 'G', color: 'bg-orange-400 text-orange-900', description: 'Actual harm that is not immediate jeopardy' },
+      'H': { label: 'H', color: 'bg-orange-500 text-white', description: 'Actual harm (pattern)' },
+      'I': { label: 'I', color: 'bg-orange-600 text-white', description: 'Actual harm (widespread)' },
+      'J': { label: 'J', color: 'bg-red-500 text-white', description: 'Immediate jeopardy to resident health or safety' },
+      'K': { label: 'K', color: 'bg-red-600 text-white', description: 'Immediate jeopardy (pattern)' },
+      'L': { label: 'L', color: 'bg-red-700 text-white', description: 'Immediate jeopardy (widespread)' },
     };
-
-    const currentGuidance = guidance[rating as keyof typeof guidance] || guidance[3];
-
-    return (
-      <div className="card-neumorphic p-6">
-        <h3 className="font-semibold mb-3 flex items-center gap-2">
-          <Target className="w-5 h-5 text-green-500" />
-          {currentGuidance.title}
-        </h3>
-        <ul className="space-y-2">
-          {currentGuidance.steps.map((step, i) => (
-            <li key={i} className="flex items-start gap-2 text-[var(--foreground-muted)]">
-              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300 text-xs flex items-center justify-center mt-0.5">
-                {i + 1}
-              </span>
-              {step}
-            </li>
-          ))}
-        </ul>
-      </div>
-    );
+    return levels[level] || { label: level, color: 'bg-gray-200 text-gray-700', description: 'Unknown' };
   };
 
   if (loading) {
@@ -1774,6 +1673,53 @@ function HealthInspectionView({
     );
   }
 
+  const f = data?.facility;
+  const latestSurvey = data?.healthInspections?.[0];
+  const rating = f?.healthInspectionRating || 1;
+
+  // Calculate severity breakdown
+  const severityBreakdown = {
+    minor: (latestSurvey?.deficiencySeverityLevelG || 0),
+    moderate: (latestSurvey?.deficiencySeverityLevelH || 0) + (latestSurvey?.deficiencySeverityLevelI || 0),
+    severe: (latestSurvey?.deficiencySeverityLevelJ || 0) + (latestSurvey?.deficiencySeverityLevelK || 0) + (latestSurvey?.deficiencySeverityLevelL || 0),
+  };
+
+  // Category breakdown from deficiencies
+  const categoryBreakdown = data?.deficiencies?.reduce((acc, def) => {
+    acc[def.category] = (acc[def.category] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>) || {};
+
+  // Top F-Tags
+  const fTagBreakdown = data?.deficiencies?.reduce((acc, def) => {
+    acc[def.deficiencyTag] = (acc[def.deficiencyTag] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>) || {};
+
+  const topFTags = Object.entries(fTagBreakdown)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+
+  // Common F-Tag info for survey prep
+  const commonFTags = [
+    { tag: 'F880', name: 'Infection Prevention & Control', category: 'Infection Control', tips: ['Daily audits of hand hygiene', 'PPE compliance checks', 'Isolation protocols review'] },
+    { tag: 'F684', name: 'Quality of Care', category: 'Resident Care', tips: ['Care plan accuracy', 'ADL assistance documentation', 'Change in condition protocols'] },
+    { tag: 'F689', name: 'Free of Accident Hazards/Supervision', category: 'Safety', tips: ['Fall risk assessments current', 'Environmental hazard rounds', 'Supervision documentation'] },
+    { tag: 'F758', name: 'Free from Unnecessary Psychotropic Meds', category: 'Pharmacy', tips: ['GDR documentation', 'Behavior tracking', 'Non-pharmacological interventions'] },
+    { tag: 'F812', name: 'Food Procurement/Storage/Prep/Service', category: 'Dietary', tips: ['Temperature logs', 'Food storage compliance', 'Sanitation practices'] },
+  ];
+
+  // Improvement guidance based on rating
+  const guidance = {
+    1: { title: 'Critical: Comprehensive Turnaround Needed', color: 'red', steps: ['Engage external consultant', 'Daily leadership rounds', 'Real-time documentation audits', 'Survey readiness task force', 'Full staff retraining'] },
+    2: { title: 'Priority: Systematic Improvement Required', color: 'orange', steps: ['Analyze deficiency patterns', 'Monthly mock surveys', 'QAPI projects targeting repeats', 'Documentation strengthening', 'DON daily involvement'] },
+    3: { title: 'Focus: Targeted Improvements', color: 'yellow', steps: ['Address top 3 categories', 'Quarterly mock surveys', 'Staff training on common F-Tags', 'Communication improvement', 'Tracking dashboard'] },
+    4: { title: 'Maintain: Sustain Excellence', color: 'green', steps: ['Continue mock surveys', 'Share best practices', 'Mentor newer staff', 'Stay current on regulations'] },
+    5: { title: 'Excel: Industry Leadership', color: 'emerald', steps: ['Document practices for sharing', 'Consider training site status', 'Maintain all current practices'] },
+  };
+
+  const currentGuidance = guidance[rating as keyof typeof guidance] || guidance[3];
+
   return (
     <div className="space-y-6 animate-slide-up">
       <button onClick={onBack} className="btn-neumorphic px-4 py-2 flex items-center gap-2">
@@ -1781,80 +1727,482 @@ function HealthInspectionView({
         Back to Overview
       </button>
 
-      <div className="flex items-center gap-3 mb-6">
-        <ClipboardCheck className="w-8 h-8 text-blue-500" />
-        <div>
-          <h2 className="text-2xl font-bold text-[var(--foreground)]">Health Inspection Analysis</h2>
-          <p className="text-[var(--foreground-muted)]">{data?.facility?.providerName}</p>
+      {/* Header with Rating */}
+      <div className="card-neumorphic p-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <ClipboardCheck className="w-10 h-10 text-blue-500" />
+            <div>
+              <h2 className="text-2xl font-bold text-[var(--foreground)]">Health Inspection Deep Dive</h2>
+              <p className="text-[var(--foreground-muted)]">{f?.providerName}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="text-center">
+              <div className={`text-3xl font-bold ${rating >= 4 ? 'text-green-600' : rating >= 3 ? 'text-yellow-600' : 'text-red-600'}`}>
+                {rating}<span className="text-xl">★</span>
+              </div>
+              <div className="text-xs text-[var(--foreground-muted)]">Health Rating</div>
+            </div>
+            <div className="text-center border-l border-gray-200 dark:border-gray-700 pl-4">
+              <div className="text-3xl font-bold text-blue-600">{latestSurvey?.totalDeficiencies || 0}</div>
+              <div className="text-xs text-[var(--foreground-muted)]">Deficiencies</div>
+            </div>
+            <div className="text-center border-l border-gray-200 dark:border-gray-700 pl-4">
+              <div className={`text-3xl font-bold ${(latestSurvey?.totalDeficiencies || 0) <= (latestSurvey?.nationalAvgDeficiencies || 7) ? 'text-green-600' : 'text-red-600'}`}>
+                {(latestSurvey?.totalDeficiencies || 0) <= (latestSurvey?.nationalAvgDeficiencies || 7) ? '✓' : '↑'}
+              </div>
+              <div className="text-xs text-[var(--foreground-muted)]">vs National</div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Narrative Summary */}
-      {generateNarrative()}
+      {/* Navigation Tabs */}
+      <div className="flex gap-2 overflow-x-auto pb-2">
+        {[
+          { id: 'overview', label: 'Overview', icon: BarChart3 },
+          { id: 'history', label: 'Survey History', icon: Calendar },
+          { id: 'deficiencies', label: 'Deficiency Analysis', icon: AlertTriangle },
+          { id: 'prep', label: 'Survey Prep', icon: ClipboardCheck },
+          { id: 'compliance', label: 'Compliance Tools', icon: Shield },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as typeof activeTab)}
+            className={`btn-neumorphic px-4 py-2 flex items-center gap-2 whitespace-nowrap ${
+              activeTab === tab.id ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/20' : ''
+            }`}
+          >
+            <tab.icon className="w-4 h-4" />
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
-      {/* Survey History */}
-      <div className="card-neumorphic p-6">
-        <h3 className="font-semibold mb-4">Survey History</h3>
-        <div className="space-y-3">
-          {data?.healthInspections?.slice(0, 5).map((survey, i) => (
-            <div key={i} className="card-neumorphic-inset p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-medium">{survey.surveyDate}</span>
-                <span className="text-sm px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800">
-                  {survey.surveyType}
-                </span>
+      {/* Overview Tab */}
+      {activeTab === 'overview' && (
+        <div className="space-y-6">
+          {/* Quick Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { label: 'Last Survey', value: latestSurvey?.surveyDate || 'N/A', color: 'blue' },
+              { label: 'Total Deficiencies', value: latestSurvey?.totalDeficiencies || 0, color: latestSurvey?.totalDeficiencies && latestSurvey.totalDeficiencies > 10 ? 'red' : 'green' },
+              { label: 'State Average', value: latestSurvey?.stateAvgDeficiencies || 'N/A', color: 'gray' },
+              { label: 'National Average', value: latestSurvey?.nationalAvgDeficiencies?.toFixed(1) || '7.2', color: 'gray' },
+            ].map((stat, i) => (
+              <div key={i} className="card-neumorphic p-4 text-center">
+                <div className={`text-2xl font-bold text-${stat.color}-600`}>{stat.value}</div>
+                <div className="text-xs text-[var(--foreground-muted)]">{stat.label}</div>
               </div>
-              <div className="grid grid-cols-3 gap-4 text-sm">
-                <div>
-                  <p className="text-[var(--foreground-muted)]">Deficiencies</p>
-                  <p className="font-bold text-lg">{survey.totalDeficiencies}</p>
-                </div>
-                <div>
-                  <p className="text-[var(--foreground-muted)]">State Avg</p>
-                  <p className="font-bold">{survey.stateAvgDeficiencies}</p>
-                </div>
-                <div>
-                  <p className="text-[var(--foreground-muted)]">National Avg</p>
-                  <p className="font-bold">{survey.nationalAvgDeficiencies?.toFixed(1)}</p>
-                </div>
+            ))}
+          </div>
+
+          {/* Summary Narrative */}
+          <div className="card-neumorphic p-6">
+            <h3 className="font-semibold mb-3 flex items-center gap-2">
+              <FileText className="w-5 h-5 text-blue-500" />
+              Health Inspection Summary
+            </h3>
+            <div className="prose dark:prose-invert max-w-none text-[var(--foreground-muted)]">
+              <p>
+                <strong>{f?.providerName}</strong> currently holds a <strong className={rating >= 4 ? 'text-green-600' : rating >= 3 ? 'text-yellow-600' : 'text-red-600'}>{rating}-star</strong> health inspection rating.
+                {rating <= 2 && ' This rating indicates significant compliance concerns that require immediate attention.'}
+                {rating === 3 && ' This average rating suggests room for improvement in survey readiness.'}
+                {rating >= 4 && ' This strong rating reflects good compliance practices.'}
+              </p>
+              <p>
+                The most recent survey resulted in <strong>{latestSurvey?.totalDeficiencies || 0} deficiencies</strong>,
+                which is {(latestSurvey?.totalDeficiencies || 0) < (latestSurvey?.nationalAvgDeficiencies || 7) ? 'better than' : (latestSurvey?.totalDeficiencies || 0) === (latestSurvey?.nationalAvgDeficiencies || 7) ? 'equal to' : 'worse than'} the national average of {latestSurvey?.nationalAvgDeficiencies?.toFixed(1) || '7.2'}.
+              </p>
+            </div>
+          </div>
+
+          {/* Severity Breakdown */}
+          <div className="card-neumorphic p-6">
+            <h3 className="font-semibold mb-4">Deficiency Severity Breakdown</h3>
+            <div className="grid grid-cols-3 gap-4">
+              <div className={`p-4 rounded-lg border ${severityBreakdown.severe > 0 ? 'border-red-300 bg-red-50 dark:bg-red-900/20' : 'border-gray-200 bg-gray-50 dark:bg-gray-800'}`}>
+                <div className="text-3xl font-bold text-red-600">{severityBreakdown.severe}</div>
+                <div className="text-sm font-medium">Severe (J-L)</div>
+                <div className="text-xs text-[var(--foreground-muted)]">Immediate jeopardy</div>
+              </div>
+              <div className={`p-4 rounded-lg border ${severityBreakdown.moderate > 0 ? 'border-orange-300 bg-orange-50 dark:bg-orange-900/20' : 'border-gray-200 bg-gray-50 dark:bg-gray-800'}`}>
+                <div className="text-3xl font-bold text-orange-600">{severityBreakdown.moderate}</div>
+                <div className="text-sm font-medium">Moderate (H-I)</div>
+                <div className="text-xs text-[var(--foreground-muted)]">Actual harm pattern</div>
+              </div>
+              <div className={`p-4 rounded-lg border ${severityBreakdown.minor > 0 ? 'border-yellow-300 bg-yellow-50 dark:bg-yellow-900/20' : 'border-gray-200 bg-gray-50 dark:bg-gray-800'}`}>
+                <div className="text-3xl font-bold text-yellow-600">{severityBreakdown.minor}</div>
+                <div className="text-sm font-medium">Minor (G)</div>
+                <div className="text-xs text-[var(--foreground-muted)]">Actual harm isolated</div>
               </div>
             </div>
-          ))}
-        </div>
-      </div>
+            {severityBreakdown.severe > 0 && (
+              <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                <p className="text-sm text-red-700 dark:text-red-300">
+                  <strong>Critical Alert:</strong> Facilities with severe deficiencies (J-L level) face increased regulatory scrutiny, potential fines, and public reporting.
+                </p>
+              </div>
+            )}
+          </div>
 
-      {/* Recent Deficiencies */}
-      <div className="card-neumorphic p-6">
-        <h3 className="font-semibold mb-4">Recent Deficiencies</h3>
-        <div className="space-y-3 max-h-96 overflow-y-auto">
-          {data?.deficiencies?.slice(0, 10).map((def, i) => (
-            <div key={i} className="card-neumorphic-inset p-4">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="font-mono text-sm bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">
-                      {def.deficiencyTag}
-                    </span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${getSeverityColor(def.severity)}`}>
-                      {def.severity}
-                    </span>
-                    {def.isCorrected && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
-                        Corrected
+          {/* Top Cited F-Tags */}
+          {topFTags.length > 0 && (
+            <div className="card-neumorphic p-6">
+              <h3 className="font-semibold mb-4">Most Cited F-Tags</h3>
+              <div className="space-y-2">
+                {topFTags.map(([tag, count]) => (
+                  <div key={tag} className="flex items-center justify-between p-3 bg-[var(--card-background-alt)] rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded">{tag}</span>
+                      <span className="text-sm text-[var(--foreground-muted)]">
+                        {commonFTags.find(f => f.tag === tag)?.name || 'See CMS SOM for details'}
                       </span>
+                    </div>
+                    <span className="font-bold text-red-600">{count}x</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Improvement Guidance */}
+          <div className={`card-neumorphic p-6 border-l-4 border-${currentGuidance.color}-500`}>
+            <h3 className="font-semibold mb-3 flex items-center gap-2">
+              <Target className="w-5 h-5 text-green-500" />
+              {currentGuidance.title}
+            </h3>
+            <ul className="space-y-2">
+              {currentGuidance.steps.map((step, i) => (
+                <li key={i} className="flex items-start gap-2 text-[var(--foreground-muted)]">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300 text-xs flex items-center justify-center mt-0.5">
+                    {i + 1}
+                  </span>
+                  {step}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {/* Survey History Tab */}
+      {activeTab === 'history' && (
+        <div className="space-y-6">
+          {/* Trend Analysis */}
+          <div className="card-neumorphic p-6">
+            <h3 className="font-semibold mb-4">Survey Trend Analysis</h3>
+            <div className="space-y-4">
+              {data?.healthInspections?.slice(0, 5).map((survey, i) => {
+                const prevSurvey = data.healthInspections[i + 1];
+                const trend = prevSurvey ? survey.totalDeficiencies - prevSurvey.totalDeficiencies : 0;
+                return (
+                  <div key={i} className="card-neumorphic-inset p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <span className="font-medium text-lg">{survey.surveyDate}</span>
+                        <span className="text-sm px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800">
+                          {survey.surveyType}
+                        </span>
+                      </div>
+                      {trend !== 0 && (
+                        <span className={`text-sm font-medium ${trend < 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {trend < 0 ? '↓' : '↑'} {Math.abs(trend)} from previous
+                        </span>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+                      <div>
+                        <p className="text-[var(--foreground-muted)]">Total</p>
+                        <p className={`font-bold text-xl ${survey.totalDeficiencies > (survey.nationalAvgDeficiencies || 7) ? 'text-red-600' : 'text-green-600'}`}>{survey.totalDeficiencies}</p>
+                      </div>
+                      <div>
+                        <p className="text-[var(--foreground-muted)]">Health</p>
+                        <p className="font-bold text-lg">{survey.healthDeficiencies}</p>
+                      </div>
+                      <div>
+                        <p className="text-[var(--foreground-muted)]">State Avg</p>
+                        <p className="font-bold">{survey.stateAvgDeficiencies}</p>
+                      </div>
+                      <div>
+                        <p className="text-[var(--foreground-muted)]">National Avg</p>
+                        <p className="font-bold">{survey.nationalAvgDeficiencies?.toFixed(1)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[var(--foreground-muted)]">vs National</p>
+                        <p className={`font-bold ${survey.totalDeficiencies <= (survey.nationalAvgDeficiencies || 7) ? 'text-green-600' : 'text-red-600'}`}>
+                          {survey.totalDeficiencies <= (survey.nationalAvgDeficiencies || 7) ? '✓ Better' : '↑ Above'}
+                        </p>
+                      </div>
+                    </div>
+                    {/* Severity bars */}
+                    <div className="mt-3 flex gap-1 h-4">
+                      {survey.deficiencySeverityLevelG > 0 && <div className="bg-yellow-400 rounded" style={{ width: `${(survey.deficiencySeverityLevelG / survey.totalDeficiencies) * 100}%` }} title={`G: ${survey.deficiencySeverityLevelG}`} />}
+                      {survey.deficiencySeverityLevelH > 0 && <div className="bg-orange-400 rounded" style={{ width: `${(survey.deficiencySeverityLevelH / survey.totalDeficiencies) * 100}%` }} title={`H: ${survey.deficiencySeverityLevelH}`} />}
+                      {survey.deficiencySeverityLevelI > 0 && <div className="bg-orange-500 rounded" style={{ width: `${(survey.deficiencySeverityLevelI / survey.totalDeficiencies) * 100}%` }} title={`I: ${survey.deficiencySeverityLevelI}`} />}
+                      {survey.deficiencySeverityLevelJ > 0 && <div className="bg-red-500 rounded" style={{ width: `${(survey.deficiencySeverityLevelJ / survey.totalDeficiencies) * 100}%` }} title={`J: ${survey.deficiencySeverityLevelJ}`} />}
+                      {survey.deficiencySeverityLevelK > 0 && <div className="bg-red-600 rounded" style={{ width: `${(survey.deficiencySeverityLevelK / survey.totalDeficiencies) * 100}%` }} title={`K: ${survey.deficiencySeverityLevelK}`} />}
+                      {survey.deficiencySeverityLevelL > 0 && <div className="bg-red-700 rounded" style={{ width: `${(survey.deficiencySeverityLevelL / survey.totalDeficiencies) * 100}%` }} title={`L: ${survey.deficiencySeverityLevelL}`} />}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Severity Legend */}
+          <div className="card-neumorphic p-6">
+            <h3 className="font-semibold mb-4">CMS Severity Level Reference</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'].map((level) => {
+                const info = getSeverityLevel(level);
+                return (
+                  <div key={level} className="flex items-center gap-2 p-2 rounded-lg bg-[var(--card-background-alt)]">
+                    <span className={`w-8 h-8 rounded flex items-center justify-center font-bold ${info.color}`}>{level}</span>
+                    <span className="text-xs text-[var(--foreground-muted)] line-clamp-2">{info.description}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Deficiency Analysis Tab */}
+      {activeTab === 'deficiencies' && (
+        <div className="space-y-6">
+          {/* Category Breakdown */}
+          <div className="card-neumorphic p-6">
+            <h3 className="font-semibold mb-4">Deficiencies by Category</h3>
+            <div className="space-y-3">
+              {Object.entries(categoryBreakdown)
+                .sort((a, b) => b[1] - a[1])
+                .map(([category, count]) => (
+                  <div key={category} className="flex items-center gap-4">
+                    <div className="flex-1">
+                      <div className="flex justify-between mb-1">
+                        <span className="text-sm font-medium">{category}</span>
+                        <span className="font-bold">{count}</span>
+                      </div>
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+                        <div
+                          className="h-full bg-blue-500 rounded-full"
+                          style={{ width: `${(count / (data?.deficiencies?.length || 1)) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+
+          {/* Detailed Deficiency List */}
+          <div className="card-neumorphic p-6">
+            <h3 className="font-semibold mb-4">All Deficiencies ({data?.deficiencies?.length || 0})</h3>
+            <div className="space-y-3 max-h-[500px] overflow-y-auto">
+              {data?.deficiencies?.map((def, i) => {
+                const isExpanded = expandedDeficiency === `${def.deficiencyTag}-${i}`;
+                return (
+                  <div key={i} className="card-neumorphic-inset overflow-hidden">
+                    <button
+                      onClick={() => setExpandedDeficiency(isExpanded ? null : `${def.deficiencyTag}-${i}`)}
+                      className="w-full p-4 flex items-start justify-between gap-4 hover:bg-[var(--card-background-alt)] transition-colors"
+                    >
+                      <div className="flex-1 text-left">
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
+                          <span className="font-mono text-sm bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">
+                            {def.deficiencyTag}
+                          </span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${getSeverityColor(def.severity)}`}>
+                            {def.severity}
+                          </span>
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                            {def.scope}
+                          </span>
+                          {def.isCorrected && (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+                              ✓ Corrected
+                            </span>
+                          )}
+                        </div>
+                        <p className={`text-sm text-[var(--foreground-muted)] ${isExpanded ? '' : 'line-clamp-2'}`}>{def.deficiencyDescription}</p>
+                      </div>
+                      <ChevronDown className={`w-5 h-5 transition-transform flex-shrink-0 ${isExpanded ? 'rotate-180' : ''}`} />
+                    </button>
+                    {isExpanded && (
+                      <div className="p-4 border-t border-[var(--border-color)] bg-[var(--card-background-alt)]">
+                        <div className="grid grid-cols-2 gap-4 text-sm mb-3">
+                          <div>
+                            <span className="text-[var(--foreground-muted)]">Survey Date:</span>
+                            <span className="font-medium ml-2">{def.surveyDate}</span>
+                          </div>
+                          <div>
+                            <span className="text-[var(--foreground-muted)]">Category:</span>
+                            <span className="font-medium ml-2">{def.category}</span>
+                          </div>
+                        </div>
+                        <p className="text-sm text-[var(--foreground-muted)]">{def.deficiencyDescription}</p>
+                      </div>
                     )}
                   </div>
-                  <p className="text-sm text-[var(--foreground-muted)] line-clamp-2">{def.deficiencyDescription}</p>
-                  <p className="text-xs text-[var(--foreground-muted)] mt-1">{def.surveyDate} • {def.category}</p>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Survey Prep Tab */}
+      {activeTab === 'prep' && (
+        <div className="space-y-6">
+          {/* Pre-Survey Checklist */}
+          <div className="card-neumorphic p-6">
+            <h3 className="font-semibold mb-4 flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-green-500" />
+              Pre-Survey Readiness Checklist
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[
+                { area: 'Resident Care', items: ['Care plans current (within 7 days)', 'ADL documentation complete', 'Medication administration records accurate', 'Fall prevention protocols active'] },
+                { area: 'Environment', items: ['Call lights functional', 'Handrails secure', 'Floors clean and dry', 'Temperature/humidity logs current'] },
+                { area: 'Infection Control', items: ['Hand hygiene stations stocked', 'PPE readily available', 'Isolation signage accurate', 'Infection logs current'] },
+                { area: 'Documentation', items: ['Physician orders signed', 'Lab results filed', 'Incident reports complete', 'QAPI minutes available'] },
+              ].map((section) => (
+                <div key={section.area} className="p-4 rounded-lg bg-[var(--card-background-alt)]">
+                  <h4 className="font-medium mb-2">{section.area}</h4>
+                  <ul className="space-y-1">
+                    {section.items.map((item, i) => (
+                      <li key={i} className="flex items-center gap-2 text-sm text-[var(--foreground-muted)]">
+                        <span className="w-4 h-4 border-2 border-gray-300 rounded" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Common F-Tags Reference */}
+          <div className="card-neumorphic p-6">
+            <h3 className="font-semibold mb-4 flex items-center gap-2">
+              <FileText className="w-5 h-5 text-blue-500" />
+              Most Commonly Cited F-Tags & Prevention Tips
+            </h3>
+            <div className="space-y-4">
+              {commonFTags.map((ftag) => (
+                <div key={ftag.tag} className="p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="font-mono text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded">{ftag.tag}</span>
+                    <span className="font-medium">{ftag.name}</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800">{ftag.category}</span>
+                  </div>
+                  <ul className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-2">
+                    {ftag.tips.map((tip, i) => (
+                      <li key={i} className="flex items-center gap-2 text-sm text-[var(--foreground-muted)]">
+                        <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
+                        {tip}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Mock Survey Schedule */}
+          <div className="card-neumorphic p-6">
+            <h3 className="font-semibold mb-4">Recommended Mock Survey Schedule</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[
+                { frequency: 'Weekly', focus: 'Environment rounds, hand hygiene audits, call light response', color: 'cyan' },
+                { frequency: 'Monthly', focus: 'Documentation audits, care plan reviews, medication pass observations', color: 'blue' },
+                { frequency: 'Quarterly', focus: 'Full mock survey with external reviewer, comprehensive QAPI review', color: 'purple' },
+              ].map((schedule) => (
+                <div key={schedule.frequency} className={`p-4 rounded-lg border-2 border-${schedule.color}-200 bg-${schedule.color}-50 dark:bg-${schedule.color}-900/20`}>
+                  <h4 className={`font-bold text-${schedule.color}-700 dark:text-${schedule.color}-300 mb-2`}>{schedule.frequency}</h4>
+                  <p className="text-sm text-[var(--foreground-muted)]">{schedule.focus}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Compliance Tools Tab */}
+      {activeTab === 'compliance' && (
+        <div className="space-y-6">
+          {/* POC Template */}
+          <div className="card-neumorphic p-6">
+            <h3 className="font-semibold mb-4 flex items-center gap-2">
+              <FileText className="w-5 h-5 text-orange-500" />
+              Plan of Correction (POC) Template
+            </h3>
+            <div className="space-y-4">
+              <div className="p-4 bg-[var(--card-background-alt)] rounded-lg">
+                <h4 className="font-medium mb-2">1. What corrective action will be accomplished?</h4>
+                <p className="text-sm text-[var(--foreground-muted)]">Describe specific actions to fix the immediate deficiency and address the resident(s) affected.</p>
+              </div>
+              <div className="p-4 bg-[var(--card-background-alt)] rounded-lg">
+                <h4 className="font-medium mb-2">2. How will you identify others who might be affected?</h4>
+                <p className="text-sm text-[var(--foreground-muted)]">Explain the process to audit/review all residents who could potentially have the same issue.</p>
+              </div>
+              <div className="p-4 bg-[var(--card-background-alt)] rounded-lg">
+                <h4 className="font-medium mb-2">3. What systemic changes will prevent recurrence?</h4>
+                <p className="text-sm text-[var(--foreground-muted)]">Detail policy changes, training, or process improvements to prevent future occurrences.</p>
+              </div>
+              <div className="p-4 bg-[var(--card-background-alt)] rounded-lg">
+                <h4 className="font-medium mb-2">4. How will the facility monitor for effectiveness?</h4>
+                <p className="text-sm text-[var(--foreground-muted)]">Describe ongoing monitoring and auditing to ensure the correction remains effective.</p>
               </div>
             </div>
-          ))}
-        </div>
-      </div>
+          </div>
 
-      {/* Improvement Guidance */}
-      {generateImprovementGuidance()}
+          {/* QAPI Integration */}
+          <div className="card-neumorphic p-6">
+            <h3 className="font-semibold mb-4 flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-green-500" />
+              QAPI Project Recommendations
+            </h3>
+            <div className="space-y-3">
+              {topFTags.length > 0 ? topFTags.slice(0, 3).map(([tag, count]) => (
+                <div key={tag} className="p-4 rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="font-mono text-sm bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 px-2 py-1 rounded">{tag}</span>
+                    <span className="text-sm font-medium">Recommended QAPI Focus</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">{count} citations</span>
+                  </div>
+                  <p className="text-sm text-[var(--foreground-muted)]">
+                    Create a Performance Improvement Project targeting {tag} with measurable goals, root cause analysis, and intervention tracking.
+                  </p>
+                </div>
+              )) : (
+                <p className="text-[var(--foreground-muted)]">No deficiency data available for QAPI recommendations.</p>
+              )}
+            </div>
+          </div>
+
+          {/* Resources */}
+          <div className="card-neumorphic p-6">
+            <h3 className="font-semibold mb-4">Compliance Resources</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                { title: 'CMS SOM', desc: 'State Operations Manual', icon: FileText },
+                { title: 'F-Tag Lookup', desc: 'Search all F-Tags', icon: Search },
+                { title: 'Training Library', desc: 'Staff education resources', icon: GraduationCap },
+                { title: 'QSO Memos', desc: 'Latest CMS guidance', icon: Mail },
+              ].map((resource, i) => (
+                <button key={i} className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all flex flex-col items-center gap-2 text-center">
+                  <resource.icon className="w-8 h-8 text-blue-600" />
+                  <span className="font-medium text-sm">{resource.title}</span>
+                  <span className="text-xs text-[var(--foreground-muted)]">{resource.desc}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
