@@ -63,7 +63,7 @@ interface PhilReportModalProps {
 
 export function PhilReportModal({ isOpen, onClose, data }: PhilReportModalProps) {
   const [activeSection, setActiveSection] = useState<string>('overview');
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['overview', 'ratings', 'recommendations']));
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['overview', 'ratings', 'recommendations', 'executive', 'domains', 'benchmarks', 'roadmap', 'investment']));
 
   if (!isOpen) return null;
 
@@ -589,6 +589,258 @@ The following sections detail specific action items with associated costs, expec
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Executive Summary - Phil's Analysis */}
+          <div className="mb-8">
+            <button
+              onClick={() => toggleSection('executive')}
+              className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl mb-4"
+            >
+              <div className="flex items-center gap-3">
+                <Star className="w-5 h-5" />
+                <span className="font-semibold">Phil&apos;s Executive Summary</span>
+              </div>
+              {expandedSections.has('executive') ? <ChevronUp /> : <ChevronDown />}
+            </button>
+
+            {expandedSections.has('executive') && (
+              <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-5 border border-amber-200 dark:border-amber-800">
+                <div className="prose prose-sm dark:prose-invert max-w-none">
+                  <div className="whitespace-pre-wrap text-slate-700 dark:text-slate-300 leading-relaxed">
+                    {data.response ? data.response : facility ? (
+                      <>
+                        <p className="mb-4">Based on comprehensive analysis of CMS Five-Star Quality Rating data, {facility.name} requires a strategic improvement approach focused on the three core domains.</p>
+
+                        <p className="font-bold mb-2">Current Performance Assessment:</p>
+                        <ul className="list-disc ml-4 mb-4">
+                          <li>Overall Rating: {facility.overallRating} stars {facility.overallRating >= 4 ? '(Above Average)' : facility.overallRating >= 3 ? '(Average)' : '(Below Average)'}</li>
+                          <li>Health Inspection: {facility.healthRating} stars</li>
+                          <li>Staffing: {facility.staffingRating} stars</li>
+                          <li>Quality Measures: {facility.qmRating} stars</li>
+                        </ul>
+
+                        <p className="font-bold mb-2">Key Staffing Metrics:</p>
+                        <ul className="list-disc ml-4 mb-4">
+                          <li>Total Nursing HPRD: {facility.nursingHoursPerResidentDay?.toFixed(2) || 'N/A'} (Target: 4.08 for 5-star)</li>
+                          <li>RN HPRD: {facility.rnHoursPerResidentDay?.toFixed(2) || 'N/A'} (Target: 0.55 for 5-star)</li>
+                          <li>Nurse Turnover: {facility.totalNurseTurnover?.toFixed(0) || 'N/A'}%</li>
+                        </ul>
+
+                        <p className="font-bold mb-2">Financial Impact:</p>
+                        <p>A one-star improvement typically generates $100,000-$500,000 in annual value through increased occupancy, improved payer mix, and reduced regulatory costs.</p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="mb-4">This analysis provides guidance for skilled nursing facility quality improvement based on the CMS Five-Star Rating System methodology.</p>
+
+                        <p className="font-bold mb-2">The Three Domains:</p>
+                        <ul className="list-disc ml-4 mb-4">
+                          <li>Health Inspections (53% weight) - Based on survey deficiencies</li>
+                          <li>Staffing (32% weight) - Based on PBJ data submissions</li>
+                          <li>Quality Measures (15% weight) - Based on MDS clinical outcomes</li>
+                        </ul>
+
+                        <p className="font-bold mb-2">Key Improvement Strategies:</p>
+                        <ul className="list-disc ml-4">
+                          <li>Implement robust survey readiness protocols</li>
+                          <li>Optimize staffing through PBJ data auditing</li>
+                          <li>Deploy targeted QM improvement interventions</li>
+                          <li>Establish continuous monitoring dashboards</li>
+                        </ul>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Domain Analysis */}
+          {facility && (
+            <div className="mb-8">
+              <button
+                onClick={() => toggleSection('domains')}
+                className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl mb-4"
+              >
+                <div className="flex items-center gap-3">
+                  <ClipboardCheck className="w-5 h-5" />
+                  <span className="font-semibold">Domain-by-Domain Analysis</span>
+                </div>
+                {expandedSections.has('domains') ? <ChevronUp /> : <ChevronDown />}
+              </button>
+
+              {expandedSections.has('domains') && (
+                <div className="space-y-4">
+                  {/* Health Inspection Domain */}
+                  <div className="bg-white dark:bg-slate-800 rounded-xl p-5 border border-slate-200 dark:border-slate-700">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                        <ClipboardCheck className="w-5 h-5 text-red-600" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold">Health Inspections</h4>
+                        <p className="text-sm text-slate-500">53% of overall rating weight</p>
+                      </div>
+                      <div className="ml-auto text-2xl font-bold text-red-600">{facility.healthRating}★</div>
+                    </div>
+                    <div className="space-y-2 text-sm">
+                      <p><strong>Status:</strong> {facility.healthRating >= 4 ? 'Strong survey performance' : facility.healthRating >= 3 ? 'Average - improvement opportunities exist' : 'Below average - immediate intervention required'}</p>
+                      <p><strong>Key Actions:</strong></p>
+                      <ul className="list-disc list-inside ml-4 space-y-1 text-slate-600 dark:text-slate-400">
+                        <li>Conduct weekly mock surveys focusing on F-tag hot spots</li>
+                        <li>Implement daily compliance rounds by department heads</li>
+                        <li>Review and address root causes of previous deficiencies</li>
+                        <li>Train all staff on survey readiness within 30 days</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* Staffing Domain */}
+                  <div className="bg-white dark:bg-slate-800 rounded-xl p-5 border border-slate-200 dark:border-slate-700">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                        <Users className="w-5 h-5 text-purple-600" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold">Staffing</h4>
+                        <p className="text-sm text-slate-500">32% of overall rating weight</p>
+                      </div>
+                      <div className="ml-auto text-2xl font-bold text-purple-600">{facility.staffingRating}★</div>
+                    </div>
+                    <div className="space-y-3 text-sm">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-slate-50 dark:bg-slate-900 p-3 rounded-lg">
+                          <p className="text-slate-500 text-xs">Total Nursing HPRD</p>
+                          <p className="text-xl font-bold">{facility.nursingHoursPerResidentDay?.toFixed(2) || 'N/A'}</p>
+                          <p className="text-xs text-slate-500">Target: 4.08 for 5★</p>
+                          <div className="w-full h-2 bg-slate-200 rounded mt-2">
+                            <div
+                              className={`h-full rounded ${(facility.nursingHoursPerResidentDay || 0) >= 4.08 ? 'bg-green-500' : (facility.nursingHoursPerResidentDay || 0) >= 3.5 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                              style={{ width: `${Math.min(100, ((facility.nursingHoursPerResidentDay || 0) / 4.08) * 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                        <div className="bg-slate-50 dark:bg-slate-900 p-3 rounded-lg">
+                          <p className="text-slate-500 text-xs">RN HPRD</p>
+                          <p className="text-xl font-bold">{facility.rnHoursPerResidentDay?.toFixed(2) || 'N/A'}</p>
+                          <p className="text-xs text-slate-500">Target: 0.55 for 5★</p>
+                          <div className="w-full h-2 bg-slate-200 rounded mt-2">
+                            <div
+                              className={`h-full rounded ${(facility.rnHoursPerResidentDay || 0) >= 0.55 ? 'bg-green-500' : (facility.rnHoursPerResidentDay || 0) >= 0.45 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                              style={{ width: `${Math.min(100, ((facility.rnHoursPerResidentDay || 0) / 0.55) * 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <p><strong>Key Actions:</strong></p>
+                      <ul className="list-disc list-inside ml-4 space-y-1 text-slate-600 dark:text-slate-400">
+                        <li>Audit PBJ submissions for accuracy and completeness</li>
+                        <li>Optimize scheduling to maximize HPRD during peak hours</li>
+                        <li>Implement nurse retention programs to reduce turnover</li>
+                        <li>Consider PRN pool expansion for census fluctuations</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* Quality Measures Domain */}
+                  <div className="bg-white dark:bg-slate-800 rounded-xl p-5 border border-slate-200 dark:border-slate-700">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                        <TrendingUp className="w-5 h-5 text-green-600" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold">Quality Measures</h4>
+                        <p className="text-sm text-slate-500">15% of overall rating weight</p>
+                      </div>
+                      <div className="ml-auto text-2xl font-bold text-green-600">{facility.qmRating}★</div>
+                    </div>
+                    <div className="space-y-2 text-sm">
+                      <p><strong>Status:</strong> {facility.qmRating >= 4 ? 'Strong clinical outcomes' : facility.qmRating >= 3 ? 'Average QM performance' : 'QM improvement interventions needed'}</p>
+                      <p><strong>Priority QM Focus Areas:</strong></p>
+                      <ul className="list-disc list-inside ml-4 space-y-1 text-slate-600 dark:text-slate-400">
+                        <li>Falls with major injury prevention program</li>
+                        <li>Antipsychotic medication reduction initiative</li>
+                        <li>Pressure ulcer prevention protocols</li>
+                        <li>UTI reduction through catheter management</li>
+                        <li>Rehospitalization reduction program</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Benchmarking Section */}
+          {metrics && (
+            <div className="mb-8">
+              <button
+                onClick={() => toggleSection('benchmarks')}
+                className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-xl mb-4"
+              >
+                <div className="flex items-center gap-3">
+                  <Target className="w-5 h-5" />
+                  <span className="font-semibold">National & State Benchmarks</span>
+                </div>
+                {expandedSections.has('benchmarks') ? <ChevronUp /> : <ChevronDown />}
+              </button>
+
+              {expandedSections.has('benchmarks') && (
+                <div className="bg-white dark:bg-slate-800 rounded-xl p-5 border border-slate-200 dark:border-slate-700">
+                  <div className="grid grid-cols-2 gap-6">
+                    <div>
+                      <h5 className="font-semibold mb-3">National Comparison</h5>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+                        Based on {metrics.nationalFacilityCount?.toLocaleString() || '14,000+'} facilities
+                      </p>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span>Average Overall:</span>
+                          <span className="font-bold">{metrics.nationalAvg?.avg_overall?.toFixed(2) || '2.96'}★</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Average Health:</span>
+                          <span className="font-bold">{metrics.nationalAvg?.avg_health?.toFixed(2) || '2.94'}★</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Average Staffing:</span>
+                          <span className="font-bold">{metrics.nationalAvg?.avg_staffing?.toFixed(2) || '2.98'}★</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Average QM:</span>
+                          <span className="font-bold">{metrics.nationalAvg?.avg_qm?.toFixed(2) || '3.02'}★</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <h5 className="font-semibold mb-3">State Comparison</h5>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+                        Based on {metrics.stateFacilityCount?.toLocaleString() || 'state'} facilities
+                      </p>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span>State Avg Overall:</span>
+                          <span className="font-bold">{metrics.stateAvg?.avg_overall?.toFixed(2) || 'N/A'}★</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>State Avg Health:</span>
+                          <span className="font-bold">{metrics.stateAvg?.avg_health?.toFixed(2) || 'N/A'}★</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>State Avg Staffing:</span>
+                          <span className="font-bold">{metrics.stateAvg?.avg_staffing?.toFixed(2) || 'N/A'}★</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>State Avg QM:</span>
+                          <span className="font-bold">{metrics.stateAvg?.avg_qm?.toFixed(2) || 'N/A'}★</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
