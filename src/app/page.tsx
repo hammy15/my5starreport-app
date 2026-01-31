@@ -6741,21 +6741,52 @@ function TinkerStarView({
       const data = await res.json();
       setFacilityData(data);
 
-      // Initialize scenarios with current data
+      // Initialize ALL scenarios with current facility data
       if (data) {
+        // Staffing - use actual HPRD data from facility
+        const totalHPRD = data.totalNurseHPRD || data.nursingHoursPerResidentDay || 3.5;
+        const rnHPRD = data.rnHPRD || data.rnHoursPerResidentDay || 0.4;
         setStaffingScenario({
-          totalNursingHPRD: data.nursingHoursPerResidentDay || 3.5,
-          rnHPRD: data.rnHoursPerResidentDay || 0.4,
+          totalNursingHPRD: totalHPRD,
+          rnHPRD: rnHPRD,
           totalNurseTurnover: data.totalNurseTurnover || 45,
           rnTurnover: data.rnTurnover || 40,
           adminTurnover: 30,
-          weekendStaffing: 0.95,
+          weekendStaffing: data.weekendStaffingRatio || 0.95,
         });
+
+        // Health - estimate points based on health rating (inverse)
+        const healthRating = data.healthInspectionRating || data.healthRating || 3;
+        const estimatedPoints = healthRating === 5 ? 5 : healthRating === 4 ? 18 : healthRating === 3 ? 35 : healthRating === 2 ? 60 : 90;
+        const defCount = data.deficiencyCount || data.complaintCount || Math.ceil(estimatedPoints / 5);
         setHealthScenario({
-          totalDeficiencies: data.deficiencyCount || 5,
-          substandardQuality: 0,
-          healthPoints: 20,
+          totalDeficiencies: defCount,
+          substandardQuality: data.sffStatus === 'SFF' ? 1 : 0,
+          healthPoints: estimatedPoints,
           fineRisk: data.totalFines || 0,
+        });
+
+        // QM - estimate values based on QM rating
+        const qmRating = data.qualityMeasureRating || data.qmRating || 3;
+        // Estimate QM values based on rating (higher rating = better values)
+        const qmMultiplier = qmRating === 5 ? 0.6 : qmRating === 4 ? 0.8 : qmRating === 3 ? 1.0 : qmRating === 2 ? 1.3 : 1.6;
+        setQmScenarios({
+          // Short stay - lower is better for most
+          fallsWithInjury: Math.round(2.5 * qmMultiplier),
+          newOrWorsenedPressureUlcers: Math.round(2 * qmMultiplier),
+          rehospitalization: Math.round(22 * qmMultiplier),
+          edVisits: Math.round(12 * qmMultiplier),
+          dischargeToCommunity: Math.round(55 / qmMultiplier), // Higher is better
+          improvementInFunction: Math.round(65 / qmMultiplier), // Higher is better
+          // Long stay - lower is better
+          fallsLongStay: Math.round(3 * qmMultiplier),
+          antipsychoticUse: Math.round(15 * qmMultiplier),
+          catheterUse: Math.round(2.5 * qmMultiplier),
+          physicalRestraints: Math.round(1 * qmMultiplier),
+          uti: Math.round(4 * qmMultiplier),
+          pressureUlcersLongStay: Math.round(5 * qmMultiplier),
+          weightLoss: Math.round(6 * qmMultiplier),
+          depressiveSymptoms: Math.round(5 * qmMultiplier),
         });
       }
     } catch (error) {
@@ -6852,6 +6883,210 @@ function TinkerStarView({
   };
 
   const actionPlan = generateActionPlan();
+
+  // CMS Star Thresholds for Gap Analysis
+  const starThresholds = {
+    staffing: {
+      totalHPRD: { 5: 4.08, 4: 3.58, 3: 3.18, 2: 2.82, 1: 0 },
+      rnHPRD: { 5: 0.75, 4: 0.55, 3: 0.40, 2: 0.30, 1: 0 },
+      turnover: { 5: 30, 4: 40, 3: 50, 2: 60, 1: 100 },
+    },
+    health: {
+      points: { 5: 10, 4: 25, 3: 45, 2: 75, 1: 999 },
+    },
+    qm: {
+      antipsychotic: { 5: 10, 4: 15, 3: 20, 2: 25, 1: 100 },
+      fallsWithInjury: { 5: 1.5, 4: 2.5, 3: 3.5, 2: 5, 1: 100 },
+      catheter: { 5: 1.5, 4: 2.5, 3: 3.5, 2: 5, 1: 100 },
+      pressureUlcers: { 5: 3, 4: 5, 3: 7, 2: 10, 1: 100 },
+      rehospitalization: { 5: 18, 4: 22, 3: 26, 2: 30, 1: 100 },
+    },
+  };
+
+  // Calculate gap analysis for each metric
+  const calculateGapAnalysis = () => {
+    const gaps: Array<{
+      category: string;
+      metric: string;
+      currentValue: number;
+      currentStars: number;
+      nextThreshold: number;
+      nextStars: number;
+      gap: number;
+      direction: 'increase' | 'decrease';
+      impact: 'high' | 'medium' | 'low';
+      effort: 'easy' | 'moderate' | 'hard';
+      roi: number;
+      unit: string;
+    }> = [];
+
+    // Staffing - Total HPRD
+    const totalHPRD = staffingScenario.totalNursingHPRD;
+    let currentStarsHPRD = 1;
+    for (let s = 5; s >= 1; s--) {
+      if (totalHPRD >= starThresholds.staffing.totalHPRD[s as keyof typeof starThresholds.staffing.totalHPRD]) {
+        currentStarsHPRD = s;
+        break;
+      }
+    }
+    if (currentStarsHPRD < 5) {
+      const nextTarget = starThresholds.staffing.totalHPRD[(currentStarsHPRD + 1) as keyof typeof starThresholds.staffing.totalHPRD];
+      gaps.push({
+        category: 'Staffing',
+        metric: 'Total Nursing HPRD',
+        currentValue: totalHPRD,
+        currentStars: currentStarsHPRD,
+        nextThreshold: nextTarget,
+        nextStars: currentStarsHPRD + 1,
+        gap: nextTarget - totalHPRD,
+        direction: 'increase',
+        impact: 'high',
+        effort: 'moderate',
+        roi: 85,
+        unit: ' HPRD',
+      });
+    }
+
+    // Staffing - RN HPRD
+    const rnHPRD = staffingScenario.rnHPRD;
+    let currentStarsRN = 1;
+    for (let s = 5; s >= 1; s--) {
+      if (rnHPRD >= starThresholds.staffing.rnHPRD[s as keyof typeof starThresholds.staffing.rnHPRD]) {
+        currentStarsRN = s;
+        break;
+      }
+    }
+    if (currentStarsRN < 5) {
+      const nextTarget = starThresholds.staffing.rnHPRD[(currentStarsRN + 1) as keyof typeof starThresholds.staffing.rnHPRD];
+      gaps.push({
+        category: 'Staffing',
+        metric: 'RN HPRD',
+        currentValue: rnHPRD,
+        currentStars: currentStarsRN,
+        nextThreshold: nextTarget,
+        nextStars: currentStarsRN + 1,
+        gap: nextTarget - rnHPRD,
+        direction: 'increase',
+        impact: 'high',
+        effort: 'hard',
+        roi: 75,
+        unit: ' HPRD',
+      });
+    }
+
+    // Staffing - Turnover
+    const turnover = staffingScenario.totalNurseTurnover;
+    let currentStarsTurnover = 1;
+    for (let s = 5; s >= 1; s--) {
+      if (turnover <= starThresholds.staffing.turnover[s as keyof typeof starThresholds.staffing.turnover]) {
+        currentStarsTurnover = s;
+        break;
+      }
+    }
+    if (currentStarsTurnover < 5) {
+      const nextTarget = starThresholds.staffing.turnover[(currentStarsTurnover + 1) as keyof typeof starThresholds.staffing.turnover];
+      gaps.push({
+        category: 'Staffing',
+        metric: 'Nurse Turnover',
+        currentValue: turnover,
+        currentStars: currentStarsTurnover,
+        nextThreshold: nextTarget,
+        nextStars: currentStarsTurnover + 1,
+        gap: turnover - nextTarget,
+        direction: 'decrease',
+        impact: 'medium',
+        effort: 'hard',
+        roi: 60,
+        unit: '%',
+      });
+    }
+
+    // Health - Points
+    const healthPts = healthScenario.healthPoints;
+    let currentStarsHealth = 1;
+    for (let s = 5; s >= 1; s--) {
+      if (healthPts <= starThresholds.health.points[s as keyof typeof starThresholds.health.points]) {
+        currentStarsHealth = s;
+        break;
+      }
+    }
+    if (currentStarsHealth < 5 && healthScenario.substandardQuality === 0) {
+      const nextTarget = starThresholds.health.points[(currentStarsHealth + 1) as keyof typeof starThresholds.health.points];
+      gaps.push({
+        category: 'Health Inspection',
+        metric: 'Health Points',
+        currentValue: healthPts,
+        currentStars: currentStarsHealth,
+        nextThreshold: nextTarget,
+        nextStars: currentStarsHealth + 1,
+        gap: healthPts - nextTarget,
+        direction: 'decrease',
+        impact: 'high',
+        effort: 'moderate',
+        roi: 90,
+        unit: ' pts',
+      });
+    }
+
+    // QM - Antipsychotic
+    const antipsych = qmScenarios.antipsychoticUse;
+    let currentStarsAP = 1;
+    for (let s = 5; s >= 1; s--) {
+      if (antipsych <= starThresholds.qm.antipsychotic[s as keyof typeof starThresholds.qm.antipsychotic]) {
+        currentStarsAP = s;
+        break;
+      }
+    }
+    if (currentStarsAP < 5) {
+      const nextTarget = starThresholds.qm.antipsychotic[(currentStarsAP + 1) as keyof typeof starThresholds.qm.antipsychotic];
+      gaps.push({
+        category: 'Quality Measures',
+        metric: 'Antipsychotic Use',
+        currentValue: antipsych,
+        currentStars: currentStarsAP,
+        nextThreshold: nextTarget,
+        nextStars: currentStarsAP + 1,
+        gap: antipsych - nextTarget,
+        direction: 'decrease',
+        impact: 'high',
+        effort: 'moderate',
+        roi: 80,
+        unit: '%',
+      });
+    }
+
+    // QM - Falls
+    const falls = qmScenarios.fallsWithInjury;
+    let currentStarsFalls = 1;
+    for (let s = 5; s >= 1; s--) {
+      if (falls <= starThresholds.qm.fallsWithInjury[s as keyof typeof starThresholds.qm.fallsWithInjury]) {
+        currentStarsFalls = s;
+        break;
+      }
+    }
+    if (currentStarsFalls < 5) {
+      const nextTarget = starThresholds.qm.fallsWithInjury[(currentStarsFalls + 1) as keyof typeof starThresholds.qm.fallsWithInjury];
+      gaps.push({
+        category: 'Quality Measures',
+        metric: 'Falls with Injury',
+        currentValue: falls,
+        currentStars: currentStarsFalls,
+        nextThreshold: nextTarget,
+        nextStars: currentStarsFalls + 1,
+        gap: falls - nextTarget,
+        direction: 'decrease',
+        impact: 'high',
+        effort: 'moderate',
+        roi: 85,
+        unit: '%',
+      });
+    }
+
+    // Sort by ROI (highest first)
+    return gaps.sort((a, b) => b.roi - a.roi);
+  };
+
+  const gapAnalysis = calculateGapAnalysis();
 
   return (
     <div className="space-y-6 animate-slide-up">
@@ -7000,6 +7235,122 @@ function TinkerStarView({
           </div>
         </div>
       </div>
+
+      {/* Gap Analysis - Impact Ranking */}
+      {gapAnalysis.length > 0 && (
+        <div className="card-neumorphic p-6 border-2 border-amber-200 dark:border-amber-800 bg-gradient-to-r from-amber-50/50 to-orange-50/50 dark:from-amber-900/20 dark:to-orange-900/20">
+          <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-amber-600" />
+            Gap Analysis & Impact Ranking
+            <span className="text-xs bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-full ml-2">
+              {gapAnalysis.length} opportunities
+            </span>
+          </h3>
+          <p className="text-sm text-[var(--foreground-muted)] mb-4">
+            Improvements ranked by ROI - highest impact changes listed first
+          </p>
+
+          <div className="space-y-3">
+            {gapAnalysis.slice(0, 5).map((gap, idx) => (
+              <div
+                key={idx}
+                className={`p-4 rounded-xl bg-white dark:bg-slate-800 border ${
+                  idx === 0 ? 'border-amber-400 ring-2 ring-amber-200 dark:ring-amber-800' : 'border-slate-200 dark:border-slate-700'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      {idx === 0 && (
+                        <span className="text-xs font-bold bg-amber-500 text-white px-2 py-0.5 rounded-full">
+                          #1 BEST ROI
+                        </span>
+                      )}
+                      {idx > 0 && (
+                        <span className="text-xs font-medium bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-full">
+                          #{idx + 1}
+                        </span>
+                      )}
+                      <span className="text-xs text-[var(--foreground-muted)]">{gap.category}</span>
+                    </div>
+                    <div className="font-semibold text-base mb-1">{gap.metric}</div>
+                    <div className="flex items-center gap-3 text-sm">
+                      <span className="text-red-600 dark:text-red-400">
+                        Current: {gap.currentValue.toFixed(2)}{gap.unit} ({gap.currentStars}★)
+                      </span>
+                      <ArrowRight className="w-4 h-4 text-slate-400" />
+                      <span className="text-green-600 dark:text-green-400 font-medium">
+                        Target: {gap.nextThreshold.toFixed(2)}{gap.unit} ({gap.nextStars}★)
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-center gap-4 text-xs">
+                      <span className={`px-2 py-0.5 rounded ${
+                        gap.impact === 'high' ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300' :
+                        gap.impact === 'medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300' :
+                        'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
+                      }`}>
+                        {gap.impact.toUpperCase()} IMPACT
+                      </span>
+                      <span className={`px-2 py-0.5 rounded ${
+                        gap.effort === 'easy' ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300' :
+                        gap.effort === 'moderate' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300' :
+                        'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300'
+                      }`}>
+                        {gap.effort.toUpperCase()} EFFORT
+                      </span>
+                      <span className="text-[var(--foreground-muted)]">
+                        ROI Score: <strong className="text-amber-600">{gap.roi}</strong>
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className={`text-2xl font-bold ${
+                      gap.direction === 'increase' ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {gap.direction === 'increase' ? '+' : '-'}{Math.abs(gap.gap).toFixed(2)}{gap.unit}
+                    </div>
+                    <div className="text-xs text-[var(--foreground-muted)]">
+                      to reach {gap.nextStars}★
+                    </div>
+                  </div>
+                </div>
+
+                {/* Progress bar showing how close to next threshold */}
+                <div className="mt-3">
+                  <div className="flex justify-between text-xs text-[var(--foreground-muted)] mb-1">
+                    <span>Progress to {gap.nextStars}★</span>
+                    <span>
+                      {gap.direction === 'increase'
+                        ? Math.min(100, Math.round((gap.currentValue / gap.nextThreshold) * 100))
+                        : Math.min(100, Math.round((gap.nextThreshold / gap.currentValue) * 100))
+                      }%
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full transition-all ${
+                        idx === 0 ? 'bg-gradient-to-r from-amber-400 to-orange-500' : 'bg-cyan-500'
+                      }`}
+                      style={{
+                        width: `${gap.direction === 'increase'
+                          ? Math.min(100, Math.round((gap.currentValue / gap.nextThreshold) * 100))
+                          : Math.min(100, Math.round((gap.nextThreshold / gap.currentValue) * 100))
+                        }%`
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {gapAnalysis.length > 5 && (
+            <div className="mt-3 text-center text-sm text-[var(--foreground-muted)]">
+              + {gapAnalysis.length - 5} more improvement opportunities
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Scenario Tabs */}
       <div className="card-neumorphic">
