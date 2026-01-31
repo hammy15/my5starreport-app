@@ -8411,11 +8411,57 @@ function ExecutiveDashboard({
     };
   }).sort((a, b) => b.count - a.count);
 
+  // Additional KPIs - Domain averages
+  const avgHealthRating = ratedFacilities.length > 0
+    ? ratedFacilities.reduce((sum, f) => sum + (f.healthRating || 0), 0) / ratedFacilities.length
+    : 0;
+  const avgStaffingRating = ratedFacilities.length > 0
+    ? ratedFacilities.reduce((sum, f) => sum + (f.staffingRating || 0), 0) / ratedFacilities.length
+    : 0;
+  const avgQMRating = ratedFacilities.length > 0
+    ? ratedFacilities.reduce((sum, f) => sum + (f.qmRating || 0), 0) / ratedFacilities.length
+    : 0;
+
+  // Rating distribution counts
+  const ratingDistribution = {
+    fiveStar: facilities.filter(f => f.overallRating === 5).length,
+    fourStar: facilities.filter(f => f.overallRating === 4).length,
+    threeStar: facilities.filter(f => f.overallRating === 3).length,
+    twoStar: facilities.filter(f => f.overallRating === 2).length,
+    oneStar: facilities.filter(f => f.overallRating === 1).length,
+  };
+
+  // Portfolio health score (weighted)
+  const portfolioHealthScore = Math.round(
+    (ratingDistribution.fiveStar * 100 +
+     ratingDistribution.fourStar * 80 +
+     ratingDistribution.threeStar * 60 +
+     ratingDistribution.twoStar * 40 +
+     ratingDistribution.oneStar * 20) /
+    (totalFacilities || 1)
+  );
+
+  // National benchmarks (approximate CMS data)
+  const nationalBenchmarks = {
+    avgOverall: 3.2,
+    avgHealth: 2.9,
+    avgStaffing: 3.1,
+    avgQM: 3.4,
+    fiveStarPercent: 22,
+    atRiskPercent: 18,
+  };
+
   const getRatingColor = (rating: number | null) => {
     if (!rating) return 'text-gray-500';
     if (rating >= 4) return 'text-green-600';
     if (rating === 3) return 'text-yellow-600';
     return 'text-red-600';
+  };
+
+  const getTrendIcon = (value: number, benchmark: number) => {
+    if (value > benchmark + 0.2) return { icon: '↑', color: 'text-green-600', label: 'Above benchmark' };
+    if (value < benchmark - 0.2) return { icon: '↓', color: 'text-red-600', label: 'Below benchmark' };
+    return { icon: '→', color: 'text-yellow-600', label: 'At benchmark' };
   };
 
   if (loading) {
@@ -8452,23 +8498,167 @@ function ExecutiveDashboard({
         </p>
       </div>
 
-      {/* Key Metrics */}
+      {/* Portfolio Health Score */}
+      <div className="card-neumorphic p-6 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="text-center md:text-left">
+            <h3 className="text-lg font-semibold text-[var(--foreground-muted)]">Portfolio Health Score</h3>
+            <div className="text-6xl font-bold text-gradient-primary">{portfolioHealthScore}</div>
+            <p className="text-sm text-[var(--foreground-muted)]">out of 100</p>
+          </div>
+          <div className="flex-1 max-w-md w-full">
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${
+                  portfolioHealthScore >= 80 ? 'bg-gradient-to-r from-green-400 to-emerald-500' :
+                  portfolioHealthScore >= 60 ? 'bg-gradient-to-r from-yellow-400 to-amber-500' :
+                  'bg-gradient-to-r from-red-400 to-rose-500'
+                }`}
+                style={{ width: `${portfolioHealthScore}%` }}
+              />
+            </div>
+            <div className="flex justify-between text-xs mt-1 text-[var(--foreground-muted)]">
+              <span>Needs Attention</span>
+              <span>Excellent</span>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3 text-center">
+            <div className="px-4 py-2 rounded-lg bg-white/50 dark:bg-slate-800/50">
+              <div className="text-2xl font-bold text-green-600">{fiveStarCount}</div>
+              <div className="text-xs text-[var(--foreground-muted)]">5-Star</div>
+            </div>
+            <div className="px-4 py-2 rounded-lg bg-white/50 dark:bg-slate-800/50">
+              <div className="text-2xl font-bold text-red-600">{lowRatedCount}</div>
+              <div className="text-xs text-[var(--foreground-muted)]">At Risk</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Key Metrics with Benchmarks */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="card-neumorphic p-6 text-center">
-          <p className="text-4xl font-bold text-gradient-primary">{totalFacilities}</p>
+        <div className="card-neumorphic p-4 text-center">
+          <div className="flex items-center justify-center gap-1">
+            <p className="text-3xl font-bold text-gradient-primary">{totalFacilities}</p>
+          </div>
           <p className="text-sm text-[var(--foreground-muted)]">Total Facilities</p>
+          <div className="text-xs text-[var(--foreground-muted)] mt-1">
+            {states.length} states
+          </div>
         </div>
-        <div className="card-neumorphic p-6 text-center">
-          <p className="text-4xl font-bold text-amber-500">{avgRating.toFixed(1)}</p>
+        <div className="card-neumorphic p-4 text-center">
+          <div className="flex items-center justify-center gap-1">
+            <p className="text-3xl font-bold text-amber-500">{avgRating.toFixed(1)}★</p>
+            <span className={`text-lg ${getTrendIcon(avgRating, nationalBenchmarks.avgOverall).color}`}>
+              {getTrendIcon(avgRating, nationalBenchmarks.avgOverall).icon}
+            </span>
+          </div>
           <p className="text-sm text-[var(--foreground-muted)]">Portfolio Avg</p>
+          <div className="text-xs text-[var(--foreground-muted)] mt-1">
+            National: {nationalBenchmarks.avgOverall}★
+          </div>
         </div>
-        <div className="card-neumorphic p-6 text-center">
-          <p className="text-4xl font-bold text-green-500">{fiveStarCount}</p>
-          <p className="text-sm text-[var(--foreground-muted)]">5-Star Facilities</p>
+        <div className="card-neumorphic p-4 text-center">
+          <div className="flex items-center justify-center gap-1">
+            <p className="text-3xl font-bold text-green-500">{Math.round((fiveStarCount / totalFacilities) * 100)}%</p>
+            <span className={`text-lg ${(fiveStarCount / totalFacilities) * 100 > nationalBenchmarks.fiveStarPercent ? 'text-green-600' : 'text-red-600'}`}>
+              {(fiveStarCount / totalFacilities) * 100 > nationalBenchmarks.fiveStarPercent ? '↑' : '↓'}
+            </span>
+          </div>
+          <p className="text-sm text-[var(--foreground-muted)]">5-Star Rate</p>
+          <div className="text-xs text-[var(--foreground-muted)] mt-1">
+            National: {nationalBenchmarks.fiveStarPercent}%
+          </div>
         </div>
-        <div className="card-neumorphic p-6 text-center">
-          <p className="text-4xl font-bold text-red-500">{lowRatedCount}</p>
-          <p className="text-sm text-[var(--foreground-muted)]">At Risk (1-2★)</p>
+        <div className="card-neumorphic p-4 text-center">
+          <div className="flex items-center justify-center gap-1">
+            <p className="text-3xl font-bold text-red-500">{Math.round((lowRatedCount / totalFacilities) * 100)}%</p>
+            <span className={`text-lg ${(lowRatedCount / totalFacilities) * 100 < nationalBenchmarks.atRiskPercent ? 'text-green-600' : 'text-red-600'}`}>
+              {(lowRatedCount / totalFacilities) * 100 < nationalBenchmarks.atRiskPercent ? '↑' : '↓'}
+            </span>
+          </div>
+          <p className="text-sm text-[var(--foreground-muted)]">At Risk Rate</p>
+          <div className="text-xs text-[var(--foreground-muted)] mt-1">
+            National: {nationalBenchmarks.atRiskPercent}%
+          </div>
+        </div>
+      </div>
+
+      {/* Domain Ratings */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="card-neumorphic p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                <ClipboardCheck className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <div className="font-semibold">Health Inspection</div>
+                <div className="text-xs text-[var(--foreground-muted)]">53% of overall</div>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className={`text-2xl font-bold ${getRatingColor(avgHealthRating)}`}>
+                {avgHealthRating.toFixed(1)}★
+              </div>
+              <div className={`text-xs flex items-center justify-end gap-1 ${getTrendIcon(avgHealthRating, nationalBenchmarks.avgHealth).color}`}>
+                {getTrendIcon(avgHealthRating, nationalBenchmarks.avgHealth).icon} vs {nationalBenchmarks.avgHealth}★
+              </div>
+            </div>
+          </div>
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+            <div className="h-full bg-red-500 rounded-full" style={{ width: `${(avgHealthRating / 5) * 100}%` }} />
+          </div>
+        </div>
+
+        <div className="card-neumorphic p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                <Users className="w-5 h-5 text-purple-600" />
+              </div>
+              <div>
+                <div className="font-semibold">Staffing</div>
+                <div className="text-xs text-[var(--foreground-muted)]">32% of overall</div>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className={`text-2xl font-bold ${getRatingColor(avgStaffingRating)}`}>
+                {avgStaffingRating.toFixed(1)}★
+              </div>
+              <div className={`text-xs flex items-center justify-end gap-1 ${getTrendIcon(avgStaffingRating, nationalBenchmarks.avgStaffing).color}`}>
+                {getTrendIcon(avgStaffingRating, nationalBenchmarks.avgStaffing).icon} vs {nationalBenchmarks.avgStaffing}★
+              </div>
+            </div>
+          </div>
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+            <div className="h-full bg-purple-500 rounded-full" style={{ width: `${(avgStaffingRating / 5) * 100}%` }} />
+          </div>
+        </div>
+
+        <div className="card-neumorphic p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                <Heart className="w-5 h-5 text-green-600" />
+              </div>
+              <div>
+                <div className="font-semibold">Quality Measures</div>
+                <div className="text-xs text-[var(--foreground-muted)]">15% of overall</div>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className={`text-2xl font-bold ${getRatingColor(avgQMRating)}`}>
+                {avgQMRating.toFixed(1)}★
+              </div>
+              <div className={`text-xs flex items-center justify-end gap-1 ${getTrendIcon(avgQMRating, nationalBenchmarks.avgQM).color}`}>
+                {getTrendIcon(avgQMRating, nationalBenchmarks.avgQM).icon} vs {nationalBenchmarks.avgQM}★
+              </div>
+            </div>
+          </div>
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+            <div className="h-full bg-green-500 rounded-full" style={{ width: `${(avgQMRating / 5) * 100}%` }} />
+          </div>
         </div>
       </div>
 
