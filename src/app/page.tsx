@@ -741,6 +741,54 @@ export default function HomePage() {
               />
             </div>
 
+            {/* Cascadia Quick Select */}
+            <div className="card-neumorphic p-4 mb-4">
+              <div className="flex items-center gap-3 mb-3">
+                <Building2 className="w-5 h-5 text-cyan-500" />
+                <span className="font-medium">Cascadia Buildings</span>
+                <span className="text-xs bg-cyan-100 dark:bg-cyan-900/50 text-cyan-700 dark:text-cyan-300 px-2 py-0.5 rounded-full">Quick Select</span>
+              </div>
+              <select
+                onChange={(e) => {
+                  if (e.target.value) {
+                    handleSelectFacility(e.target.value);
+                  }
+                }}
+                className="w-full input-neumorphic"
+                defaultValue=""
+              >
+                <option value="">Select a Cascadia facility...</option>
+                <optgroup label="Northern Healthcare">
+                  {Object.entries(CASCADIA_FACILITIES).filter(([, info]) => info.company === 'Northern Healthcare').map(([ccn, info]) => (
+                    <option key={ccn} value={ccn}>{info.shortName}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="Columbia">
+                  {Object.entries(CASCADIA_FACILITIES).filter(([, info]) => info.company === 'Columbia' && !info.isVincero).map(([ccn, info]) => (
+                    <option key={ccn} value={ccn}>{info.shortName}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="Envision">
+                  {Object.entries(CASCADIA_FACILITIES).filter(([, info]) => info.company === 'Envision').map(([ccn, info]) => (
+                    <option key={ccn} value={ccn}>{info.shortName}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="Vincero">
+                  {Object.entries(CASCADIA_FACILITIES).filter(([, info]) => info.company === 'Vincero').map(([ccn, info]) => (
+                    <option key={ccn} value={ccn}>{info.shortName}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="Three Rivers">
+                  {Object.entries(CASCADIA_FACILITIES).filter(([, info]) => info.company === 'Three Rivers').map(([ccn, info]) => (
+                    <option key={ccn} value={ccn}>{info.shortName}</option>
+                  ))}
+                </optgroup>
+              </select>
+              <p className="text-xs text-[var(--foreground-muted)] mt-2">
+                Or search any facility below
+              </p>
+            </div>
+
             {/* Search Component */}
             <FacilitySearch onSelectFacility={handleSelectFacility} />
 
@@ -1065,8 +1113,10 @@ function SplashScreen() {
         <div className="mb-4 overflow-hidden">
           <h1 className="text-5xl font-black tracking-tight animate-slide-up">
             <span className="text-white">my</span>
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-cyan-300 to-cyan-400 animate-pulse">5STAR</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-400 animate-pulse">5</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-cyan-300 to-cyan-400">STAR</span>
             <span className="text-white">report</span>
+            <span className="text-cyan-400">.com</span>
           </h1>
         </div>
 
