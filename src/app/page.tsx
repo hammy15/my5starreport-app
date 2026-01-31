@@ -468,10 +468,10 @@ export default function HomePage() {
                   onClick={() => setCurrentView('trends')}
                 />
                 <NavButton
-                  icon={<DollarSign className="w-4 h-4" />}
-                  label="Rates & Costs"
-                  isActive={currentView === 'rates-costs'}
-                  onClick={() => setCurrentView('rates-costs')}
+                  icon={<Gauge className="w-4 h-4" />}
+                  label="Tinker Star"
+                  isActive={currentView === 'simulator'}
+                  onClick={() => setCurrentView('simulator')}
                 />
               </nav>
             )}
