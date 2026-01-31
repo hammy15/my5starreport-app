@@ -174,7 +174,7 @@ const COMPANY_COLORS: Record<string, string> = {
 };
 
 // View types for navigation
-type ViewType = 'search' | 'overview' | 'health' | 'staffing' | 'quality' | 'plan' | 'plan-preview' | 'training' | 'cascadia' | 'compare' | 'calculator' | 'templates' | 'executive' | 'tasks' | 'trends' | 'checklists' | 'alerts' | 'benchmarking' | 'board-reports' | 'portfolio' | 'survey-countdown' | 'scheduling' | 'financial-impact' | 'pbj-integration' | 'regulatory' | 'community' | 'rates-costs';
+type ViewType = 'search' | 'overview' | 'health' | 'staffing' | 'quality' | 'plan' | 'plan-preview' | 'training' | 'cascadia' | 'compare' | 'calculator' | 'templates' | 'executive' | 'tasks' | 'trends' | 'checklists' | 'alerts' | 'benchmarking' | 'board-reports' | 'portfolio' | 'survey-countdown' | 'scheduling' | 'financial-impact' | 'pbj-integration' | 'regulatory' | 'community' | 'rates-costs' | 'simulator';
 
 // 5 Star Phil Chat Message Type
 interface PhilMessage {
@@ -196,7 +196,7 @@ export default function HomePage() {
     {
       id: '1',
       role: 'phil',
-      content: `Hi! I'm 5 Star Phil. Ask me about improving your CMS star ratings, staffing, or quality measures.`,
+      content: `Hey! I'm Phil. How can I help with your star rating?`,
       timestamp: new Date(),
     },
   ]);
@@ -546,6 +546,17 @@ export default function HomePage() {
                         Analysis Tools
                       </div>
                       <button
+                        onClick={() => { setCurrentView('simulator'); setShowProMenu(false); }}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[var(--background)] transition-colors text-left bg-gradient-to-r from-cyan-50 to-blue-50 dark:from-cyan-900/20 dark:to-blue-900/20"
+                      >
+                        <Gauge className="w-5 h-5 text-cyan-500" />
+                        <div>
+                          <div className="font-medium text-sm">Tinker Star</div>
+                          <div className="text-xs text-[var(--foreground-muted)]">What-If scenarios & rating predictions</div>
+                        </div>
+                        <span className="ml-auto text-[10px] font-bold text-white bg-gradient-to-r from-cyan-500 to-blue-500 px-2 py-0.5 rounded-full">NEW</span>
+                      </button>
+                      <button
                         onClick={() => { setCurrentView('benchmarking'); setShowProMenu(false); }}
                         className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[var(--background)] transition-colors text-left"
                       >
@@ -805,6 +816,18 @@ export default function HomePage() {
         {/* HPRD Calculator View */}
         {currentView === 'calculator' && (
           <HPRDCalculatorView onBack={() => setCurrentView('search')} />
+        )}
+
+        {/* Tinker Star View - What-If Scenarios */}
+        {currentView === 'simulator' && (
+          <TinkerStarView
+            onBack={() => setCurrentView('search')}
+            onSelectFacility={handleSelectFacility}
+            onAskPhil={(question) => {
+              setPhilInput(question);
+              setShowPhilChat(true);
+            }}
+          />
         )}
 
         {/* Compare Facilities View */}
@@ -6518,6 +6541,878 @@ function CascadiaStarsView({
           )}
         </>
       )}
+    </div>
+  );
+}
+
+// ============================================================================
+// TINKER STAR VIEW - "What-If" Scenarios & QM Drill-Down
+// Interactive star rating simulator with AI feedback
+// ============================================================================
+function TinkerStarView({
+  onBack,
+  onSelectFacility,
+  onAskPhil,
+}: {
+  onBack: () => void;
+  onSelectFacility: (providerNumber: string) => void;
+  onAskPhil?: (question: string) => void;
+}) {
+  const [selectedFacilityId, setSelectedFacilityId] = useState<string>('');
+  const [facilityData, setFacilityData] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'qm' | 'staffing' | 'health'>('qm');
+  const [showActionPlan, setShowActionPlan] = useState(true);
+  const [tinkerFeedback, setTinkerFeedback] = useState<string>('');
+
+  // What-If Scenario State - QM adjustments
+  const [qmScenarios, setQmScenarios] = useState({
+    // Short-stay QMs
+    fallsWithInjury: 0, // % - lower is better
+    newOrWorsenedPressureUlcers: 0,
+    dischargeToCommunity: 100, // % - higher is better
+    rehospitalization: 0, // % - lower is better
+    edVisits: 0, // % - lower is better
+    improvementInFunction: 100, // % - higher is better
+    // Long-stay QMs
+    fallsLongStay: 0,
+    antipsychoticUse: 0, // % - lower is better
+    catheterUse: 0, // % - lower is better
+    physicalRestraints: 0, // % - lower is better
+    uti: 0, // % - lower is better
+    pressureUlcersLongStay: 0,
+    weightLoss: 0, // % - lower is better
+    depressiveSymptoms: 0, // % - lower is better
+  });
+
+  // Staffing scenario state
+  const [staffingScenario, setStaffingScenario] = useState({
+    totalNursingHPRD: 3.5,
+    rnHPRD: 0.4,
+    totalNurseTurnover: 45,
+    rnTurnover: 40,
+    adminTurnover: 30,
+    weekendStaffing: 0.95, // ratio to weekday
+  });
+
+  // Health inspection scenario
+  const [healthScenario, setHealthScenario] = useState({
+    totalDeficiencies: 5,
+    substandardQuality: 0,
+    healthPoints: 20,
+    fineRisk: 0,
+  });
+
+  // Predicted ratings based on scenarios
+  const predictedRatings = {
+    qm: calculateQMRating(qmScenarios),
+    staffing: calculateStaffingRating(staffingScenario),
+    health: calculateHealthRating(healthScenario),
+    overall: 0,
+  };
+  predictedRatings.overall = Math.round(
+    (predictedRatings.health * 0.53 + predictedRatings.staffing * 0.32 + predictedRatings.qm * 0.15) / (0.53 + 0.32 + 0.15)
+  );
+
+  // Calculate QM star rating based on scenarios
+  function calculateQMRating(qm: typeof qmScenarios): number {
+    // Simplified scoring - in reality this would be more complex
+    let score = 0;
+    // Short stay measures (lower is better for most)
+    score += qm.fallsWithInjury < 2 ? 1 : 0;
+    score += qm.rehospitalization < 20 ? 1 : 0;
+    score += qm.dischargeToCommunity > 60 ? 1 : 0;
+    score += qm.improvementInFunction > 70 ? 1 : 0;
+    // Long stay measures
+    score += qm.antipsychoticUse < 15 ? 1 : 0;
+    score += qm.catheterUse < 2 ? 1 : 0;
+    score += qm.pressureUlcersLongStay < 5 ? 1 : 0;
+    score += qm.physicalRestraints < 1 ? 1 : 0;
+    score += qm.uti < 4 ? 1 : 0;
+    score += qm.fallsLongStay < 3 ? 1 : 0;
+
+    // Convert to star rating
+    if (score >= 9) return 5;
+    if (score >= 7) return 4;
+    if (score >= 5) return 3;
+    if (score >= 3) return 2;
+    return 1;
+  }
+
+  // Calculate staffing star rating
+  function calculateStaffingRating(staffing: typeof staffingScenario): number {
+    const { totalNursingHPRD, rnHPRD, totalNurseTurnover, weekendStaffing } = staffing;
+    let score = 0;
+
+    // Total nursing HPRD thresholds
+    if (totalNursingHPRD >= 4.08) score += 3;
+    else if (totalNursingHPRD >= 3.48) score += 2;
+    else if (totalNursingHPRD >= 3.00) score += 1;
+
+    // RN HPRD thresholds
+    if (rnHPRD >= 0.55) score += 3;
+    else if (rnHPRD >= 0.45) score += 2;
+    else if (rnHPRD >= 0.35) score += 1;
+
+    // Turnover penalty
+    if (totalNurseTurnover < 40) score += 2;
+    else if (totalNurseTurnover < 55) score += 1;
+    else score -= 1;
+
+    // Weekend staffing bonus
+    if (weekendStaffing >= 0.95) score += 1;
+
+    // Convert to star rating
+    if (score >= 8) return 5;
+    if (score >= 6) return 4;
+    if (score >= 4) return 3;
+    if (score >= 2) return 2;
+    return 1;
+  }
+
+  // Calculate health inspection rating
+  function calculateHealthRating(health: typeof healthScenario): number {
+    const { totalDeficiencies, substandardQuality, healthPoints } = health;
+
+    if (substandardQuality > 0) return 1;
+    if (healthPoints < 10) return 5;
+    if (healthPoints < 25) return 4;
+    if (healthPoints < 45) return 3;
+    if (healthPoints < 75) return 2;
+    return 1;
+  }
+
+  // Fetch facility data
+  const fetchFacility = async (ccn: string) => {
+    if (!ccn) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/facilities/${ccn}`);
+      const data = await res.json();
+      setFacilityData(data);
+
+      // Initialize scenarios with current data
+      if (data) {
+        setStaffingScenario({
+          totalNursingHPRD: data.nursingHoursPerResidentDay || 3.5,
+          rnHPRD: data.rnHoursPerResidentDay || 0.4,
+          totalNurseTurnover: data.totalNurseTurnover || 45,
+          rnTurnover: data.rnTurnover || 40,
+          adminTurnover: 30,
+          weekendStaffing: 0.95,
+        });
+        setHealthScenario({
+          totalDeficiencies: data.deficiencyCount || 5,
+          substandardQuality: 0,
+          healthPoints: 20,
+          fineRisk: data.totalFines || 0,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to fetch facility:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Facility search
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    try {
+      const res = await fetch(`/api/facilities/search?q=${encodeURIComponent(searchQuery)}&limit=10`);
+      const data = await res.json();
+      setSearchResults(data.results || []);
+    } catch (error) {
+      console.error('Search failed:', error);
+    }
+  };
+
+  // Generate action plan based on current scenario
+  const generateActionPlan = () => {
+    const actions: Array<{ priority: 'critical' | 'high' | 'medium'; action: string; impact: string; timeline: string }> = [];
+
+    // Staffing actions
+    if (staffingScenario.totalNursingHPRD < 4.08) {
+      const gap = (4.08 - staffingScenario.totalNursingHPRD).toFixed(2);
+      actions.push({
+        priority: staffingScenario.totalNursingHPRD < 3.5 ? 'critical' : 'high',
+        action: `Increase total nursing HPRD by ${gap} hours`,
+        impact: `Could improve staffing rating by 1-2 stars`,
+        timeline: '30-60 days',
+      });
+    }
+    if (staffingScenario.rnHPRD < 0.55) {
+      const gap = (0.55 - staffingScenario.rnHPRD).toFixed(2);
+      actions.push({
+        priority: staffingScenario.rnHPRD < 0.4 ? 'critical' : 'high',
+        action: `Increase RN HPRD by ${gap} hours`,
+        impact: `Critical for 5-star staffing rating`,
+        timeline: '30-90 days',
+      });
+    }
+    if (staffingScenario.totalNurseTurnover > 40) {
+      actions.push({
+        priority: 'high',
+        action: `Reduce nurse turnover from ${staffingScenario.totalNurseTurnover}% to below 40%`,
+        impact: `Stabilizes staffing, improves quality`,
+        timeline: '60-180 days',
+      });
+    }
+
+    // QM actions
+    if (qmScenarios.antipsychoticUse > 15) {
+      actions.push({
+        priority: 'high',
+        action: `Reduce antipsychotic use from ${qmScenarios.antipsychoticUse}% to below 15%`,
+        impact: `Major QM improvement opportunity`,
+        timeline: '60-90 days',
+      });
+    }
+    if (qmScenarios.fallsWithInjury > 2) {
+      actions.push({
+        priority: 'critical',
+        action: `Implement fall prevention program - current rate ${qmScenarios.fallsWithInjury}%`,
+        impact: `Reduces injuries, improves QM rating`,
+        timeline: '14-30 days',
+      });
+    }
+    if (qmScenarios.catheterUse > 2) {
+      actions.push({
+        priority: 'medium',
+        action: `Review catheter necessity - reduce from ${qmScenarios.catheterUse}%`,
+        impact: `UTI reduction, QM improvement`,
+        timeline: '30-45 days',
+      });
+    }
+
+    // Health inspection actions
+    if (healthScenario.totalDeficiencies > 5) {
+      actions.push({
+        priority: 'high',
+        action: `Address ${healthScenario.totalDeficiencies} deficiencies through QAPI`,
+        impact: `Could significantly improve health rating`,
+        timeline: '30-60 days',
+      });
+    }
+
+    return actions;
+  };
+
+  const actionPlan = generateActionPlan();
+
+  return (
+    <div className="space-y-6 animate-slide-up">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <button onClick={onBack} className="btn-neumorphic px-4 py-2 flex items-center gap-2">
+          <ArrowLeft className="w-4 h-4" />
+          Back
+        </button>
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-gradient-primary flex items-center gap-3">
+            <span className="text-4xl">⚙️</span> Tinker Star
+          </h1>
+          <p className="text-[var(--foreground-muted)]">Adjust. Predict. Improve.</p>
+        </div>
+        <div className="w-24" />
+      </div>
+
+      {/* Facility Selector */}
+      <div className="card-neumorphic p-4">
+        <div className="flex gap-3">
+          <div className="flex-1 relative">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+              placeholder="Search facility by name or CCN..."
+              className="input-neumorphic w-full"
+            />
+            {searchResults.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 card-neumorphic max-h-48 overflow-y-auto z-10">
+                {searchResults.map((f) => (
+                  <button
+                    key={f.federalProviderNumber}
+                    onClick={() => {
+                      setSelectedFacilityId(f.federalProviderNumber);
+                      fetchFacility(f.federalProviderNumber);
+                      setSearchResults([]);
+                      setSearchQuery(f.providerName);
+                    }}
+                    className="w-full px-4 py-2 text-left hover:bg-cyan-50 dark:hover:bg-cyan-900/20 flex justify-between items-center"
+                  >
+                    <span className="truncate">{f.providerName}</span>
+                    <span className={`font-bold ${f.overallRating >= 4 ? 'text-green-600' : f.overallRating >= 3 ? 'text-yellow-600' : 'text-red-600'}`}>
+                      {f.overallRating}★
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <button onClick={handleSearch} className="btn-neumorphic-primary px-6">
+            Search
+          </button>
+        </div>
+
+        {/* Quick Select Cascadia Facilities */}
+        <div className="mt-3 flex flex-wrap gap-2">
+          <span className="text-xs text-[var(--foreground-muted)]">Quick:</span>
+          {Object.entries(CASCADIA_FACILITIES).slice(0, 8).map(([ccn, info]) => (
+            <button
+              key={ccn}
+              onClick={() => {
+                setSelectedFacilityId(ccn);
+                fetchFacility(ccn);
+                setSearchQuery(info.shortName);
+              }}
+              className={`text-xs px-2 py-1 rounded-full transition-all ${
+                selectedFacilityId === ccn
+                  ? 'bg-cyan-500 text-white'
+                  : 'bg-slate-100 dark:bg-slate-800 hover:bg-cyan-100'
+              }`}
+            >
+              {info.shortName}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Current vs Projected Ratings */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Current Ratings */}
+        <div className="card-neumorphic p-6">
+          <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+            <Star className="w-5 h-5 text-yellow-500" />
+            Current Ratings
+            {facilityData && <span className="text-sm font-normal text-[var(--foreground-muted)]">({facilityData.providerName})</span>}
+          </h3>
+          {facilityData ? (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-center p-4 rounded-xl bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-cyan-900/30 dark:to-blue-900/30">
+                <div className="text-4xl font-bold text-cyan-600">{facilityData.overallRating}★</div>
+                <div className="text-sm text-[var(--foreground-muted)]">Overall</div>
+              </div>
+              <div className="text-center p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50">
+                <div className="text-3xl font-bold text-red-600">{facilityData.healthRating}★</div>
+                <div className="text-sm text-[var(--foreground-muted)]">Health</div>
+              </div>
+              <div className="text-center p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50">
+                <div className="text-3xl font-bold text-purple-600">{facilityData.staffingRating}★</div>
+                <div className="text-sm text-[var(--foreground-muted)]">Staffing</div>
+              </div>
+              <div className="text-center p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50">
+                <div className="text-3xl font-bold text-green-600">{facilityData.qmRating}★</div>
+                <div className="text-sm text-[var(--foreground-muted)]">Quality</div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-[var(--foreground-muted)]">
+              Select a facility to see current ratings
+            </div>
+          )}
+        </div>
+
+        {/* Projected Ratings */}
+        <div className="card-neumorphic p-6 border-2 border-cyan-200 dark:border-cyan-800">
+          <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+            <Target className="w-5 h-5 text-cyan-500" />
+            Projected Ratings
+            <span className="text-xs bg-cyan-100 dark:bg-cyan-900/50 text-cyan-700 dark:text-cyan-300 px-2 py-0.5 rounded-full">What-If</span>
+          </h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="text-center p-4 rounded-xl bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 border-2 border-green-200 dark:border-green-800">
+              <div className="text-4xl font-bold text-green-600">{predictedRatings.overall}★</div>
+              <div className="text-sm text-green-700 dark:text-green-300 font-medium">Projected Overall</div>
+              {facilityData && (
+                <div className={`text-xs mt-1 ${predictedRatings.overall > facilityData.overallRating ? 'text-green-600' : predictedRatings.overall < facilityData.overallRating ? 'text-red-600' : 'text-slate-500'}`}>
+                  {predictedRatings.overall > facilityData.overallRating ? `+${predictedRatings.overall - facilityData.overallRating} from current` :
+                   predictedRatings.overall < facilityData.overallRating ? `${predictedRatings.overall - facilityData.overallRating} from current` : 'No change'}
+                </div>
+              )}
+            </div>
+            <div className="text-center p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50">
+              <div className="text-3xl font-bold text-red-600">{predictedRatings.health}★</div>
+              <div className="text-sm text-[var(--foreground-muted)]">Health</div>
+            </div>
+            <div className="text-center p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50">
+              <div className="text-3xl font-bold text-purple-600">{predictedRatings.staffing}★</div>
+              <div className="text-sm text-[var(--foreground-muted)]">Staffing</div>
+            </div>
+            <div className="text-center p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50">
+              <div className="text-3xl font-bold text-green-600">{predictedRatings.qm}★</div>
+              <div className="text-sm text-[var(--foreground-muted)]">Quality</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Scenario Tabs */}
+      <div className="card-neumorphic">
+        <div className="flex border-b border-[var(--border-color)]">
+          {[
+            { id: 'qm', label: 'Quality Measures', icon: <Heart className="w-4 h-4" /> },
+            { id: 'staffing', label: 'Staffing', icon: <Users className="w-4 h-4" /> },
+            { id: 'health', label: 'Health Inspection', icon: <ClipboardCheck className="w-4 h-4" /> },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as 'qm' | 'staffing' | 'health')}
+              className={`flex-1 px-4 py-3 flex items-center justify-center gap-2 text-sm font-medium transition-colors ${
+                activeTab === tab.id
+                  ? 'bg-cyan-50 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300 border-b-2 border-cyan-500'
+                  : 'text-[var(--foreground-muted)] hover:bg-slate-50 dark:hover:bg-slate-800/50'
+              }`}
+            >
+              {tab.icon}
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="p-6">
+          {/* QM Scenarios */}
+          {activeTab === 'qm' && (
+            <div className="space-y-6">
+              <div className="text-sm text-[var(--foreground-muted)] mb-4">
+                Adjust Quality Measure values to see how changes affect your QM star rating.
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Short Stay QMs */}
+                <div>
+                  <h4 className="font-semibold mb-4 text-cyan-700 dark:text-cyan-300">Short-Stay Measures</h4>
+                  <div className="space-y-4">
+                    {[
+                      { key: 'fallsWithInjury', label: 'Falls with Injury', max: 10, target: 2, unit: '%', lowerBetter: true },
+                      { key: 'rehospitalization', label: 'Rehospitalization Rate', max: 40, target: 20, unit: '%', lowerBetter: true },
+                      { key: 'dischargeToCommunity', label: 'Discharge to Community', max: 100, target: 60, unit: '%', lowerBetter: false },
+                      { key: 'improvementInFunction', label: 'Functional Improvement', max: 100, target: 70, unit: '%', lowerBetter: false },
+                    ].map((qm) => (
+                      <div key={qm.key} className="space-y-1">
+                        <div className="flex justify-between text-sm">
+                          <span>{qm.label}</span>
+                          <span className={`font-bold ${
+                            qm.lowerBetter
+                              ? (qmScenarios as any)[qm.key] <= qm.target ? 'text-green-600' : 'text-red-600'
+                              : (qmScenarios as any)[qm.key] >= qm.target ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            {(qmScenarios as any)[qm.key]}{qm.unit}
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max={qm.max}
+                          value={(qmScenarios as any)[qm.key]}
+                          onChange={(e) => setQmScenarios({ ...qmScenarios, [qm.key]: parseInt(e.target.value) })}
+                          className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                        />
+                        <div className="flex justify-between text-xs text-[var(--foreground-muted)]">
+                          <span>0{qm.unit}</span>
+                          <span className="text-green-600">Target: {qm.target}{qm.unit}</span>
+                          <span>{qm.max}{qm.unit}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Long Stay QMs */}
+                <div>
+                  <h4 className="font-semibold mb-4 text-purple-700 dark:text-purple-300">Long-Stay Measures</h4>
+                  <div className="space-y-4">
+                    {[
+                      { key: 'antipsychoticUse', label: 'Antipsychotic Use', max: 30, target: 15, unit: '%' },
+                      { key: 'catheterUse', label: 'Catheter Use', max: 10, target: 2, unit: '%' },
+                      { key: 'pressureUlcersLongStay', label: 'Pressure Ulcers', max: 15, target: 5, unit: '%' },
+                      { key: 'physicalRestraints', label: 'Physical Restraints', max: 5, target: 1, unit: '%' },
+                      { key: 'uti', label: 'UTI Rate', max: 10, target: 4, unit: '%' },
+                      { key: 'fallsLongStay', label: 'Falls (Long-Stay)', max: 10, target: 3, unit: '%' },
+                    ].map((qm) => (
+                      <div key={qm.key} className="space-y-1">
+                        <div className="flex justify-between text-sm">
+                          <span>{qm.label}</span>
+                          <span className={`font-bold ${(qmScenarios as any)[qm.key] <= qm.target ? 'text-green-600' : 'text-red-600'}`}>
+                            {(qmScenarios as any)[qm.key]}{qm.unit}
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max={qm.max}
+                          value={(qmScenarios as any)[qm.key]}
+                          onChange={(e) => setQmScenarios({ ...qmScenarios, [qm.key]: parseInt(e.target.value) })}
+                          className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Staffing Scenarios */}
+          {activeTab === 'staffing' && (
+            <div className="space-y-6">
+              <div className="text-sm text-[var(--foreground-muted)] mb-4">
+                Adjust staffing metrics to see impact on your staffing star rating. Thresholds shown are for 5-star.
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Total Nursing HPRD</span>
+                      <span className={`font-bold ${staffingScenario.totalNursingHPRD >= 4.08 ? 'text-green-600' : 'text-red-600'}`}>
+                        {staffingScenario.totalNursingHPRD.toFixed(2)}
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min="2"
+                      max="6"
+                      step="0.1"
+                      value={staffingScenario.totalNursingHPRD}
+                      onChange={(e) => setStaffingScenario({ ...staffingScenario, totalNursingHPRD: parseFloat(e.target.value) })}
+                      className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                    />
+                    <div className="flex justify-between text-xs text-[var(--foreground-muted)]">
+                      <span>2.0</span>
+                      <span className="text-green-600 font-medium">5★ Target: 4.08+</span>
+                      <span>6.0</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>RN HPRD</span>
+                      <span className={`font-bold ${staffingScenario.rnHPRD >= 0.55 ? 'text-green-600' : 'text-red-600'}`}>
+                        {staffingScenario.rnHPRD.toFixed(2)}
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0.1"
+                      max="1.5"
+                      step="0.05"
+                      value={staffingScenario.rnHPRD}
+                      onChange={(e) => setStaffingScenario({ ...staffingScenario, rnHPRD: parseFloat(e.target.value) })}
+                      className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                    />
+                    <div className="flex justify-between text-xs text-[var(--foreground-muted)]">
+                      <span>0.10</span>
+                      <span className="text-green-600 font-medium">5★ Target: 0.55+</span>
+                      <span>1.50</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Total Nurse Turnover</span>
+                      <span className={`font-bold ${staffingScenario.totalNurseTurnover < 40 ? 'text-green-600' : 'text-red-600'}`}>
+                        {staffingScenario.totalNurseTurnover}%
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={staffingScenario.totalNurseTurnover}
+                      onChange={(e) => setStaffingScenario({ ...staffingScenario, totalNurseTurnover: parseInt(e.target.value) })}
+                      className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-red-500"
+                    />
+                    <div className="flex justify-between text-xs text-[var(--foreground-muted)]">
+                      <span>0%</span>
+                      <span className="text-green-600 font-medium">Target: &lt;40%</span>
+                      <span>100%</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Weekend Staffing Ratio</span>
+                      <span className={`font-bold ${staffingScenario.weekendStaffing >= 0.95 ? 'text-green-600' : 'text-yellow-600'}`}>
+                        {(staffingScenario.weekendStaffing * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0.5"
+                      max="1.1"
+                      step="0.05"
+                      value={staffingScenario.weekendStaffing}
+                      onChange={(e) => setStaffingScenario({ ...staffingScenario, weekendStaffing: parseFloat(e.target.value) })}
+                      className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                    />
+                    <div className="flex justify-between text-xs text-[var(--foreground-muted)]">
+                      <span>50%</span>
+                      <span className="text-green-600 font-medium">Target: 95%+</span>
+                      <span>110%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Health Inspection Scenarios */}
+          {activeTab === 'health' && (
+            <div className="space-y-6">
+              <div className="text-sm text-[var(--foreground-muted)] mb-4">
+                Health inspection ratings are based on deficiency history. Lower deficiency counts and points = higher rating.
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Total Deficiencies</span>
+                      <span className={`font-bold ${healthScenario.totalDeficiencies <= 3 ? 'text-green-600' : healthScenario.totalDeficiencies <= 6 ? 'text-yellow-600' : 'text-red-600'}`}>
+                        {healthScenario.totalDeficiencies}
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="20"
+                      value={healthScenario.totalDeficiencies}
+                      onChange={(e) => setHealthScenario({ ...healthScenario, totalDeficiencies: parseInt(e.target.value) })}
+                      className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-red-500"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Health Inspection Points</span>
+                      <span className={`font-bold ${healthScenario.healthPoints < 10 ? 'text-green-600' : healthScenario.healthPoints < 25 ? 'text-yellow-600' : 'text-red-600'}`}>
+                        {healthScenario.healthPoints}
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="150"
+                      value={healthScenario.healthPoints}
+                      onChange={(e) => setHealthScenario({ ...healthScenario, healthPoints: parseInt(e.target.value) })}
+                      className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-red-500"
+                    />
+                    <div className="flex justify-between text-xs text-[var(--foreground-muted)]">
+                      <span>0 (5★)</span>
+                      <span>&lt;25 (4★)</span>
+                      <span>&lt;45 (3★)</span>
+                      <span>150+</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
+                    <div className="flex items-center gap-2 text-red-700 dark:text-red-300 font-medium mb-2">
+                      <AlertTriangle className="w-5 h-5" />
+                      Substandard Quality of Care
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={healthScenario.substandardQuality > 0}
+                          onChange={(e) => setHealthScenario({ ...healthScenario, substandardQuality: e.target.checked ? 1 : 0 })}
+                          className="w-4 h-4 accent-red-500"
+                        />
+                        <span className="text-sm">Has substandard quality citation</span>
+                      </label>
+                    </div>
+                    <p className="text-xs text-red-600 dark:text-red-400 mt-2">
+                      ⚠️ Substandard quality automatically caps health rating at 1 star
+                    </p>
+                  </div>
+
+                  <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl">
+                    <div className="text-sm font-medium mb-2">Rating Thresholds (Points)</div>
+                    <div className="grid grid-cols-5 gap-2 text-center text-xs">
+                      <div className="bg-green-100 dark:bg-green-900/50 p-2 rounded"><div className="font-bold">5★</div>&lt;10</div>
+                      <div className="bg-lime-100 dark:bg-lime-900/50 p-2 rounded"><div className="font-bold">4★</div>10-24</div>
+                      <div className="bg-yellow-100 dark:bg-yellow-900/50 p-2 rounded"><div className="font-bold">3★</div>25-44</div>
+                      <div className="bg-orange-100 dark:bg-orange-900/50 p-2 rounded"><div className="font-bold">2★</div>45-74</div>
+                      <div className="bg-red-100 dark:bg-red-900/50 p-2 rounded"><div className="font-bold">1★</div>75+</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Action Plan */}
+      <div className="card-neumorphic p-6">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+          <h3 className="font-bold text-lg flex items-center gap-2">
+            <FileText className="w-5 h-5 text-cyan-500" />
+            Your Improvement Plan
+          </h3>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                // Generate Phil question based on scenario
+                const question = `Based on my Tinker Star scenario: Total Nursing HPRD ${staffingScenario.totalNursingHPRD.toFixed(2)}, RN HPRD ${staffingScenario.rnHPRD.toFixed(2)}, Turnover ${staffingScenario.totalNurseTurnover}%. Antipsychotic use ${qmScenarios.antipsychoticUse}%. ${healthScenario.totalDeficiencies} deficiencies. What's my best path to improve from ${facilityData?.overallRating || 3} to ${predictedRatings.overall} stars?`;
+                if (onAskPhil) onAskPhil(question);
+              }}
+              className="btn-neumorphic px-4 py-2 text-sm flex items-center gap-2 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/30 dark:to-orange-900/30 border border-amber-200 dark:border-amber-800"
+            >
+              <Star className="w-4 h-4 text-amber-500" />
+              Ask Phil
+            </button>
+            <button
+              onClick={() => {
+                // Print the action plan
+                const printWindow = window.open('', '_blank');
+                if (!printWindow) return;
+                const facilityName = facilityData?.providerName || 'Facility';
+                const date = new Date().toLocaleDateString();
+                printWindow.document.write(`
+                  <!DOCTYPE html>
+                  <html>
+                  <head>
+                    <title>Tinker Star Plan - ${facilityName}</title>
+                    <style>
+                      body { font-family: Arial, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; }
+                      h1 { color: #0891b2; border-bottom: 2px solid #0891b2; padding-bottom: 10px; }
+                      .header { display: flex; justify-content: space-between; margin-bottom: 20px; }
+                      .ratings { display: flex; gap: 20px; margin: 20px 0; }
+                      .rating-box { text-align: center; padding: 15px; background: #f0f9ff; border-radius: 10px; }
+                      .rating-box .value { font-size: 32px; font-weight: bold; color: #0891b2; }
+                      .action { padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 4px solid; }
+                      .critical { background: #fef2f2; border-color: #ef4444; }
+                      .high { background: #fffbeb; border-color: #f59e0b; }
+                      .medium { background: #eff6ff; border-color: #3b82f6; }
+                      .priority { font-size: 10px; font-weight: bold; text-transform: uppercase; padding: 2px 8px; border-radius: 4px; }
+                      .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 12px; }
+                    </style>
+                  </head>
+                  <body>
+                    <h1>⚙️ Tinker Star Improvement Plan</h1>
+                    <div class="header">
+                      <div><strong>Facility:</strong> ${facilityName}</div>
+                      <div><strong>Date:</strong> ${date}</div>
+                    </div>
+                    <div class="ratings">
+                      <div class="rating-box"><div class="value">${facilityData?.overallRating || '?'}★</div><div>Current</div></div>
+                      <div class="rating-box" style="background: #f0fdf4;"><div class="value" style="color: #16a34a;">${predictedRatings.overall}★</div><div>Projected</div></div>
+                    </div>
+                    <h2>Recommended Actions</h2>
+                    ${actionPlan.map(a => `
+                      <div class="action ${a.priority}">
+                        <span class="priority" style="background: ${a.priority === 'critical' ? '#fecaca' : a.priority === 'high' ? '#fde68a' : '#bfdbfe'};">${a.priority}</span>
+                        <strong>${a.action}</strong>
+                        <div style="margin-top: 5px; color: #16a34a;">${a.impact}</div>
+                        <div style="color: #6b7280; font-size: 12px;">Timeline: ${a.timeline}</div>
+                      </div>
+                    `).join('')}
+                    <div class="footer">Generated by Tinker Star on my5starreport.com</div>
+                  </body>
+                  </html>
+                `);
+                printWindow.document.close();
+                printWindow.print();
+              }}
+              className="btn-neumorphic-primary px-4 py-2 text-sm flex items-center gap-2"
+            >
+              <Printer className="w-4 h-4" />
+              Print Plan
+            </button>
+          </div>
+        </div>
+
+        {actionPlan.length === 0 ? (
+          <div className="text-center py-8 text-green-600">
+            <CheckCircle2 className="w-12 h-12 mx-auto mb-2" />
+            <p>Great job! Your scenarios meet all target thresholds.</p>
+          </div>
+        ) : (
+          <>
+            <div className="text-sm text-[var(--foreground-muted)] mb-4">
+              {actionPlan.length} improvement opportunities identified based on your scenario
+            </div>
+
+            {showActionPlan && (
+              <div className="space-y-3">
+                {actionPlan.map((action, idx) => (
+                  <div
+                    key={idx}
+                    className={`p-4 rounded-xl border-l-4 ${
+                      action.priority === 'critical'
+                        ? 'bg-red-50 dark:bg-red-900/20 border-red-500'
+                        : action.priority === 'high'
+                        ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-500'
+                        : 'bg-blue-50 dark:bg-blue-900/20 border-blue-500'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded ${
+                            action.priority === 'critical'
+                              ? 'bg-red-200 text-red-700'
+                              : action.priority === 'high'
+                              ? 'bg-amber-200 text-amber-700'
+                              : 'bg-blue-200 text-blue-700'
+                          }`}>
+                            {action.priority}
+                          </span>
+                          <span className="font-medium">{action.action}</span>
+                        </div>
+                        <div className="text-sm text-[var(--foreground-muted)]">
+                          <span className="text-green-600">{action.impact}</span> • {action.timeline}
+                        </div>
+                      </div>
+                      <button className="btn-neumorphic px-3 py-1 text-xs">
+                        Add to Plan
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Financial Impact Preview */}
+      <div className="card-neumorphic p-6 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20">
+        <h3 className="font-bold text-lg flex items-center gap-2 mb-4">
+          <DollarSign className="w-5 h-5 text-green-600" />
+          Estimated Financial Impact
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-green-600">
+              ${(Math.max(0, predictedRatings.overall - (facilityData?.overallRating || 3)) * 150000).toLocaleString()}
+            </div>
+            <div className="text-sm text-[var(--foreground-muted)]">Annual Revenue Increase</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-cyan-600">
+              +{Math.max(0, (predictedRatings.overall - (facilityData?.overallRating || 3)) * 5)}%
+            </div>
+            <div className="text-sm text-[var(--foreground-muted)]">Potential Occupancy Gain</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-purple-600">
+              ${(Math.max(0, predictedRatings.overall - (facilityData?.overallRating || 3)) * 25000).toLocaleString()}
+            </div>
+            <div className="text-sm text-[var(--foreground-muted)]">Reduced Regulatory Costs</div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
