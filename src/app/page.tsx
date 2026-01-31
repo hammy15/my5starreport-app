@@ -110,6 +110,44 @@ import { PhilReportModal } from '@/components/PhilReportModal';
 import type { Facility, ImprovementRecommendation, ActionPlan, MedicaidRateLetter, MedicareRate, CostReport, RateBenchmark, RateTrend } from '@/types/facility';
 import { generateMedicaidRateLetters, generateMedicareRates, generateCostReport, generateBenchmarks, generateTrends } from '@/lib/sample-rates-data';
 
+// Professional Help Tooltip Component
+function HelpTooltip({ term, definition, children }: { term: string; definition: string; children?: React.ReactNode }) {
+  const [isOpen, setIsOpen] = useState(false);
+  return (
+    <span className="relative inline-flex items-center">
+      {children}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        onMouseEnter={() => setIsOpen(true)}
+        onMouseLeave={() => setIsOpen(false)}
+        className="ml-1 text-[var(--foreground-muted)] hover:text-cyan-500 transition-colors"
+        aria-label={`Help for ${term}`}
+      >
+        <HelpCircle className="w-3.5 h-3.5" />
+      </button>
+      {isOpen && (
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 w-64 p-3 rounded-lg bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-xs shadow-xl">
+          <div className="font-semibold mb-1">{term}</div>
+          <div className="opacity-90">{definition}</div>
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-slate-900 dark:bg-slate-100" />
+        </div>
+      )}
+    </span>
+  );
+}
+
+// Skeleton Loader Component for professional loading states
+function SkeletonLoader({ className = '', variant = 'text' }: { className?: string; variant?: 'text' | 'card' | 'circle' | 'rect' }) {
+  const baseClass = 'animate-pulse bg-slate-200 dark:bg-slate-700 rounded';
+  const variants = {
+    text: 'h-4 w-full',
+    card: 'h-32 w-full rounded-xl',
+    circle: 'h-12 w-12 rounded-full',
+    rect: 'h-8 w-24',
+  };
+  return <div className={`${baseClass} ${variants[variant]} ${className}`} />;
+}
+
 // Cascadia facility CCN list with company groupings - MUST be defined before components use it
 const CASCADIA_FACILITIES: Record<string, { ccn: string; shortName: string; company: string; isVincero?: boolean }> = {
   // Northern Healthcare - Northern ID, MT
@@ -986,19 +1024,80 @@ export default function HomePage() {
         )}
       </main>
 
-      {/* Footer */}
-      <footer className="card-neumorphic mx-4 mb-4 lg:mx-8 p-6">
-        <div className="text-center text-sm text-[var(--foreground-muted)]">
-          <p className="mb-2 font-medium">
-            <span>my</span>
-            <span className="text-amber-500">5</span>
-            <span className="text-cyan-500">STAR</span>
-            <span>report.com</span>
-          </p>
-          <p>Data sourced from CMS (Centers for Medicare & Medicaid Services)</p>
-          <p className="mt-2 text-xs">
-            This tool is for informational purposes. Always verify with official CMS sources.
-          </p>
+      {/* Professional Footer */}
+      <footer className="card-neumorphic mx-4 mb-4 lg:mx-8 p-6 mt-8">
+        <div className="max-w-6xl mx-auto">
+          {/* Main Footer Content */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+            {/* Brand Column */}
+            <div className="col-span-1 md:col-span-2">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
+                  <Star className="w-6 h-6 text-white" />
+                </div>
+                <span className="text-xl font-bold">
+                  <span>my</span>
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-amber-500">5</span>
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">STAR</span>
+                  <span>report</span>
+                </span>
+              </div>
+              <p className="text-sm text-[var(--foreground-muted)] mb-3">
+                The #1 CMS 5-Star Rating Analysis Platform for Skilled Nursing Facilities.
+                Helping DONs, administrators, and consultants improve quality outcomes.
+              </p>
+              <div className="flex items-center gap-2 text-xs text-[var(--foreground-muted)]">
+                <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full">
+                  ✓ HIPAA Compliant
+                </span>
+                <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full">
+                  ✓ CMS Data
+                </span>
+              </div>
+            </div>
+
+            {/* Quick Links */}
+            <div>
+              <h4 className="font-semibold mb-3 text-sm">Resources</h4>
+              <ul className="space-y-2 text-sm text-[var(--foreground-muted)]">
+                <li><a href="#" className="hover:text-cyan-500 transition-colors">How Ratings Work</a></li>
+                <li><a href="#" className="hover:text-cyan-500 transition-colors">HPRD Calculator</a></li>
+                <li><a href="#" className="hover:text-cyan-500 transition-colors">QM Definitions</a></li>
+                <li><a href="#" className="hover:text-cyan-500 transition-colors">F-Tag Reference</a></li>
+              </ul>
+            </div>
+
+            {/* Support */}
+            <div>
+              <h4 className="font-semibold mb-3 text-sm">Support</h4>
+              <ul className="space-y-2 text-sm text-[var(--foreground-muted)]">
+                <li><a href="#" className="hover:text-cyan-500 transition-colors">Help Center</a></li>
+                <li><a href="#" className="hover:text-cyan-500 transition-colors">Contact Us</a></li>
+                <li><a href="#" className="hover:text-cyan-500 transition-colors">Privacy Policy</a></li>
+                <li><a href="#" className="hover:text-cyan-500 transition-colors">Terms of Service</a></li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Bottom Bar */}
+          <div className="pt-6 border-t border-[var(--border-color)]">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-[var(--foreground-muted)]">
+              <div className="flex items-center gap-4">
+                <span>© {new Date().getFullYear()} my5STARreport.com. All rights reserved.</span>
+              </div>
+              <div className="flex items-center gap-4">
+                <span className="flex items-center gap-1">
+                  <Database className="w-3 h-3" />
+                  Data from CMS Care Compare
+                </span>
+                <span>|</span>
+                <span>Updated Monthly</span>
+              </div>
+            </div>
+            <p className="text-center text-[10px] text-[var(--foreground-muted)] mt-3">
+              This tool is for informational purposes only. Always verify information with official CMS sources before making decisions.
+            </p>
+          </div>
         </div>
       </footer>
     </div>
@@ -7105,7 +7204,51 @@ function TinkerStarView({
         <div className="w-24" />
       </div>
 
-      {/* Facility Selector */}
+      {/* Active Facility Banner */}
+      {facilityData && (
+        <div className="card-neumorphic p-4 bg-gradient-to-r from-cyan-50 to-blue-50 dark:from-cyan-900/20 dark:to-blue-900/20 border-2 border-cyan-300 dark:border-cyan-700">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-cyan-500 flex items-center justify-center text-white font-bold text-xl">
+                {facilityData.overallRating}★
+              </div>
+              <div>
+                <h2 className="font-bold text-lg text-cyan-800 dark:text-cyan-200">{facilityData.providerName}</h2>
+                <p className="text-sm text-[var(--foreground-muted)]">
+                  {facilityData.cityTown}, {facilityData.state} • CCN: {facilityData.federalProviderNumber}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4 text-sm">
+              <div className="text-center px-3 py-1 bg-white/50 dark:bg-slate-800/50 rounded-lg">
+                <div className="text-red-600 font-bold">{facilityData.healthRating || facilityData.healthInspectionRating}★</div>
+                <div className="text-[10px] text-[var(--foreground-muted)]">Health</div>
+              </div>
+              <div className="text-center px-3 py-1 bg-white/50 dark:bg-slate-800/50 rounded-lg">
+                <div className="text-purple-600 font-bold">{facilityData.staffingRating}★</div>
+                <div className="text-[10px] text-[var(--foreground-muted)]">Staffing</div>
+              </div>
+              <div className="text-center px-3 py-1 bg-white/50 dark:bg-slate-800/50 rounded-lg">
+                <div className="text-green-600 font-bold">{facilityData.qmRating || facilityData.qualityMeasureRating}★</div>
+                <div className="text-[10px] text-[var(--foreground-muted)]">Quality</div>
+              </div>
+              <button
+                onClick={() => {
+                  setFacilityData(null);
+                  setSelectedFacilityId('');
+                  setSearchQuery('');
+                }}
+                className="btn-neumorphic px-3 py-1 text-xs"
+              >
+                Change
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Facility Selector - Only show when no facility selected */}
+      {!facilityData && (
       <div className="card-neumorphic p-4">
         <div className="flex gap-3">
           <div className="flex-1 relative">
@@ -7166,6 +7309,7 @@ function TinkerStarView({
           ))}
         </div>
       </div>
+      )}
 
       {/* Current vs Projected Ratings */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -7241,7 +7385,12 @@ function TinkerStarView({
         <div className="card-neumorphic p-6 border-2 border-amber-200 dark:border-amber-800 bg-gradient-to-r from-amber-50/50 to-orange-50/50 dark:from-amber-900/20 dark:to-orange-900/20">
           <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-amber-600" />
-            Gap Analysis & Impact Ranking
+            <HelpTooltip
+              term="Gap Analysis & Impact Ranking"
+              definition="Shows exactly how far each metric is from the next star threshold, ranked by ROI (Return on Investment). Focus on #1 for the biggest impact with least effort."
+            >
+              Gap Analysis & Impact Ranking
+            </HelpTooltip>
             <span className="text-xs bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-full ml-2">
               {gapAnalysis.length} opportunities
             </span>
@@ -7356,21 +7505,23 @@ function TinkerStarView({
       <div className="card-neumorphic">
         <div className="flex border-b border-[var(--border-color)]">
           {[
-            { id: 'qm', label: 'Quality Measures', icon: <Heart className="w-4 h-4" /> },
-            { id: 'staffing', label: 'Staffing', icon: <Users className="w-4 h-4" /> },
-            { id: 'health', label: 'Health Inspection', icon: <ClipboardCheck className="w-4 h-4" /> },
+            { id: 'qm', label: 'Quality Measures', icon: <Heart className="w-4 h-4" />, weight: '15%', help: 'MDS-based clinical quality indicators like falls, pressure ulcers, antipsychotic use. Data from quarterly MDS submissions.' },
+            { id: 'staffing', label: 'Staffing', icon: <Users className="w-4 h-4" />, weight: '32%', help: 'PBJ-based staffing metrics including HPRD (Hours Per Resident Day), RN coverage, and turnover rates.' },
+            { id: 'health', label: 'Health Inspection', icon: <ClipboardCheck className="w-4 h-4" />, weight: '53%', help: 'Survey deficiency history from past 3 years. Scope & severity of F-tag citations determine point values.' },
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as 'qm' | 'staffing' | 'health')}
-              className={`flex-1 px-4 py-3 flex items-center justify-center gap-2 text-sm font-medium transition-colors ${
+              className={`flex-1 px-4 py-3 flex items-center justify-center gap-2 text-sm font-medium transition-colors relative group ${
                 activeTab === tab.id
                   ? 'bg-cyan-50 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300 border-b-2 border-cyan-500'
                   : 'text-[var(--foreground-muted)] hover:bg-slate-50 dark:hover:bg-slate-800/50'
               }`}
+              title={tab.help}
             >
               {tab.icon}
-              {tab.label}
+              <span>{tab.label}</span>
+              <span className="text-[10px] opacity-60">({tab.weight})</span>
             </button>
           ))}
         </div>
