@@ -133,16 +133,7 @@ export default function HomePage() {
     {
       id: '1',
       role: 'phil',
-      content: `Hey there! I'm 5 Star Phil, your expert SNF Quality Consultant. I have access to data on 14,000+ facilities and deep knowledge of the CMS 5-Star system.
-
-**Try asking me:**
-• "How do I improve from 2 to 4 stars?"
-• "Analyze staffing requirements for 5-star rating"
-• "What are the most common deficiencies?"
-• "Create an improvement plan for facility 135048"
-• "What's the ROI on reducing antipsychotic use?"
-
-I'll provide detailed analysis with benchmarks, cost estimates, timelines, and actionable recommendations. What would you like to explore?`,
+      content: `Hi! I'm 5 Star Phil. Ask me about improving your CMS star ratings, staffing, or quality measures.`,
       timestamp: new Date(),
     },
   ]);
@@ -156,16 +147,23 @@ I'll provide detailed analysis with benchmarks, cost estimates, timelines, and a
   useEffect(() => {
     const fetchFacilities = async () => {
       try {
+        // Get all CCNs from the Cascadia facilities list
         const ccnList = Object.keys(CASCADIA_FACILITIES).join(',');
+        console.log('Fetching Cascadia facilities with CCNs:', ccnList.substring(0, 50) + '...');
+
         const res = await fetch(`/api/facilities/search?ccns=${ccnList}&limit=100`);
         const data = await res.json();
+        console.log('Cascadia facilities API response:', data.count, 'facilities found');
+
         if (data.results && data.results.length > 0) {
           // Map and enrich with Cascadia metadata
           const enrichedFacilities = data.results.map((f: any) => {
             const cascadiaInfo = CASCADIA_FACILITIES[f.federalProviderNumber];
             return {
               id: f.federalProviderNumber,
-              name: cascadiaInfo?.shortName ? `${cascadiaInfo.shortName} (${f.providerName})` : f.providerName,
+              name: cascadiaInfo?.shortName
+                ? `${cascadiaInfo.shortName}`
+                : f.providerName.replace(/ OF CASCADIA$/i, '').replace(/HEALTH & REHABILITATION/i, 'H&R'),
               city: f.cityTown,
               state: f.state,
               overallRating: f.overallRating || 0,
@@ -178,7 +176,10 @@ I'll provide detailed analysis with benchmarks, cost estimates, timelines, and a
             if (companyCompare !== 0) return companyCompare;
             return a.name.localeCompare(b.name);
           });
+          console.log('Phil facilities loaded:', enrichedFacilities.length);
           setPhilFacilities(enrichedFacilities);
+        } else {
+          console.warn('No Cascadia facilities found in API response');
         }
       } catch (error) {
         console.error('Failed to fetch Cascadia facilities for Phil:', error);
