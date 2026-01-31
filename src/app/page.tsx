@@ -106,6 +106,7 @@ import {
 import { FacilitySearch } from '@/components/dashboard/facility-search';
 import { FacilityOverview } from '@/components/dashboard/facility-overview';
 import { PlanBuilder } from '@/components/plans/plan-builder';
+import { PhilReportModal } from '@/components/PhilReportModal';
 import type { Facility, ImprovementRecommendation, ActionPlan, MedicaidRateLetter, MedicareRate, CostReport, RateBenchmark, RateTrend } from '@/types/facility';
 import { generateMedicaidRateLetters, generateMedicareRates, generateCostReport, generateBenchmarks, generateTrends } from '@/lib/sample-rates-data';
 
@@ -132,11 +133,59 @@ export default function HomePage() {
     {
       id: '1',
       role: 'phil',
-      content: "Hey there! I'm 5 Star Phil, your CMS rating expert. I can help you understand the 5-star rating system, identify improvement opportunities, and create action plans. What would you like to know?",
+      content: `Hey there! I'm 5 Star Phil, your expert SNF Quality Consultant. I have access to data on 14,000+ facilities and deep knowledge of the CMS 5-Star system.
+
+**Try asking me:**
+• "How do I improve from 2 to 4 stars?"
+• "Analyze staffing requirements for 5-star rating"
+• "What are the most common deficiencies?"
+• "Create an improvement plan for facility 135048"
+• "What's the ROI on reducing antipsychotic use?"
+
+I'll provide detailed analysis with benchmarks, cost estimates, timelines, and actionable recommendations. What would you like to explore?`,
       timestamp: new Date(),
     },
   ]);
   const [philInput, setPhilInput] = useState('');
+  const [showPhilReport, setShowPhilReport] = useState(false);
+  const [philReportData, setPhilReportData] = useState<any>(null);
+  const [philFacilities, setPhilFacilities] = useState<Array<{ id: string; name: string; city: string; state: string; overallRating: number; company?: string }>>([]);
+  const [selectedPhilFacility, setSelectedPhilFacility] = useState('');
+
+  // Fetch Cascadia facilities for Phil dropdown using CASCADIA_FACILITIES CCNs
+  useEffect(() => {
+    const fetchFacilities = async () => {
+      try {
+        const ccnList = Object.keys(CASCADIA_FACILITIES).join(',');
+        const res = await fetch(`/api/facilities/search?ccns=${ccnList}&limit=100`);
+        const data = await res.json();
+        if (data.results && data.results.length > 0) {
+          // Map and enrich with Cascadia metadata
+          const enrichedFacilities = data.results.map((f: any) => {
+            const cascadiaInfo = CASCADIA_FACILITIES[f.federalProviderNumber];
+            return {
+              id: f.federalProviderNumber,
+              name: cascadiaInfo?.shortName ? `${cascadiaInfo.shortName} (${f.providerName})` : f.providerName,
+              city: f.cityTown,
+              state: f.state,
+              overallRating: f.overallRating || 0,
+              company: cascadiaInfo?.company || 'Other'
+            };
+          });
+          // Sort by company then name
+          enrichedFacilities.sort((a: any, b: any) => {
+            const companyCompare = (a.company || '').localeCompare(b.company || '');
+            if (companyCompare !== 0) return companyCompare;
+            return a.name.localeCompare(b.name);
+          });
+          setPhilFacilities(enrichedFacilities);
+        }
+      } catch (error) {
+        console.error('Failed to fetch Cascadia facilities for Phil:', error);
+      }
+    };
+    fetchFacilities();
+  }, []);
 
   // Splash screen timer
   useEffect(() => {
@@ -194,8 +243,8 @@ export default function HomePage() {
     setCurrentView(section);
   };
 
-  // Handle Phil chat
-  const handlePhilSend = useCallback(() => {
+  // Handle Phil chat - calls the knowledge-enhanced API
+  const handlePhilSend = useCallback(async () => {
     if (!philInput.trim()) return;
 
     const userMessage: PhilMessage = {
@@ -206,39 +255,56 @@ export default function HomePage() {
     };
 
     setPhilMessages(prev => [...prev, userMessage]);
+    const query = philInput;
     setPhilInput('');
 
-    // Simulate Phil's response (in production, this would call an AI API)
-    setTimeout(() => {
-      const responses: Record<string, string> = {
-        'staffing': "Staffing is one of the three pillars of the 5-star rating. CMS uses Payroll-Based Journal (PBJ) data to calculate Hours Per Resident Day (HPRD). For a 5-star staffing rating, you need ≥4.08 total nursing HPRD and ≥0.75 RN HPRD. Weekend staffing is weighted heavily - make sure you maintain consistent levels!",
-        'health': "Health Inspections account for about 50% of your overall rating influence. Surveys look at F-tags covering quality of care, resident rights, and facility administration. The key is being survey-ready every day, not just during inspection periods. Focus on the most commonly cited deficiencies: F686 (pressure ulcers), F689 (accidents), and F880 (infection control).",
-        'quality': "Quality Measures come from MDS data and include both long-stay and short-stay metrics. Key measures include antipsychotic medication use (target <12%), pressure ulcer rates, falls, and rehospitalizations. These are calculated quarterly, so consistent documentation is crucial.",
-        'improve': "To improve your rating cost-effectively, I recommend: 1) Audit your PBJ data for accuracy - this is free and often reveals easy wins. 2) Focus on quality measures with the biggest gaps vs. benchmarks. 3) Conduct mock surveys quarterly to catch issues before CMS does. 4) Invest in staff retention - turnover hurts all three rating components.",
-        'default': "Great question! The CMS 5-Star rating system evaluates nursing homes on Health Inspections, Staffing, and Quality Measures. Your overall rating starts with Health Inspections, then gets adjusted based on Staffing and QM performance. Would you like me to explain any specific component in more detail?",
-      };
+    // Add typing indicator
+    const typingId = (Date.now() + 1).toString();
+    setPhilMessages(prev => [...prev, {
+      id: typingId,
+      role: 'phil',
+      content: '...',
+      timestamp: new Date(),
+    }]);
 
-      const lowerInput = philInput.toLowerCase();
-      let response = responses.default;
-      if (lowerInput.includes('staff') || lowerInput.includes('hprd') || lowerInput.includes('pbj')) {
-        response = responses.staffing;
-      } else if (lowerInput.includes('health') || lowerInput.includes('inspection') || lowerInput.includes('survey') || lowerInput.includes('deficien')) {
-        response = responses.health;
-      } else if (lowerInput.includes('quality') || lowerInput.includes('measure') || lowerInput.includes('mds') || lowerInput.includes('antipsychotic')) {
-        response = responses.quality;
-      } else if (lowerInput.includes('improve') || lowerInput.includes('better') || lowerInput.includes('increase') || lowerInput.includes('cost')) {
-        response = responses.improve;
-      }
+    try {
+      // Call the Phil API with knowledge base and selected facility
+      const response = await fetch('/api/phil', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, facilityId: selectedPhilFacility || undefined }),
+      });
 
-      const philResponse: PhilMessage = {
-        id: (Date.now() + 1).toString(),
-        role: 'phil',
-        content: response,
-        timestamp: new Date(),
-      };
-      setPhilMessages(prev => [...prev, philResponse]);
-    }, 1000);
-  }, [philInput]);
+      const data = await response.json();
+
+      // Always store report data for the modal since API provides comprehensive analysis
+      setPhilReportData({
+        ...data,
+        query,
+        timestamp: new Date().toISOString(),
+      });
+
+      // Always add the view report button since Phil provides detailed analysis
+      const responseContent = data.response
+        ? `${data.response}\n\n📊 **[View Full Report]** - Click below to see the detailed analysis with downloadable PDF and presentation options.`
+        : "I couldn't find specific information on that. Could you rephrase your question?";
+
+      // Replace typing indicator with actual response
+      setPhilMessages(prev => prev.map(msg =>
+        msg.id === typingId
+          ? { ...msg, content: responseContent }
+          : msg
+      ));
+    } catch (error) {
+      console.error('Phil API error:', error);
+      // Fallback response
+      setPhilMessages(prev => prev.map(msg =>
+        msg.id === typingId
+          ? { ...msg, content: "I'm having trouble accessing my knowledge base right now. The CMS 5-Star system evaluates Health Inspections, Staffing, and Quality Measures. What specific area would you like to explore?" }
+          : msg
+      ));
+    }
+  }, [philInput, selectedPhilFacility]);
 
   // Splash Screen
   if (showSplash) {
@@ -256,7 +322,21 @@ export default function HomePage() {
         onInputChange={setPhilInput}
         onSend={handlePhilSend}
         isGlowing={philGlow}
+        hasReportData={!!philReportData}
+        onViewReport={() => setShowPhilReport(true)}
+        facilities={philFacilities}
+        selectedFacilityId={selectedPhilFacility}
+        onSelectFacility={setSelectedPhilFacility}
       />
+
+      {/* Phil Report Modal */}
+      {philReportData && (
+        <PhilReportModal
+          isOpen={showPhilReport}
+          onClose={() => setShowPhilReport(false)}
+          data={philReportData}
+        />
+      )}
 
       {/* Header */}
       <header className="card-neumorphic sticky top-0 z-50 mx-4 mt-4 mb-6 lg:mx-8">
@@ -928,6 +1008,11 @@ function FiveStarPhil({
   onInputChange,
   onSend,
   isGlowing,
+  hasReportData,
+  onViewReport,
+  facilities,
+  selectedFacilityId,
+  onSelectFacility,
 }: {
   isOpen: boolean;
   onToggle: () => void;
@@ -936,7 +1021,14 @@ function FiveStarPhil({
   onInputChange: (value: string) => void;
   onSend: () => void;
   isGlowing: boolean;
+  hasReportData: boolean;
+  onViewReport: () => void;
+  facilities: Array<{ id: string; name: string; city: string; state: string; overallRating: number; company?: string }>;
+  selectedFacilityId: string;
+  onSelectFacility: (id: string) => void;
 }) {
+  const [showFacilityDropdown, setShowFacilityDropdown] = useState(false);
+  const selectedFacility = facilities.find(f => f.id === selectedFacilityId);
   return (
     <>
       {/* Phil Avatar Button */}
@@ -1002,6 +1094,14 @@ function FiveStarPhil({
         )}
       </button>
 
+      {/* Backdrop - click to close */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/10"
+          onClick={onToggle}
+        />
+      )}
+
       {/* Chat Window */}
       <div className={`fixed bottom-6 right-6 z-50 w-96 max-w-[calc(100vw-3rem)] transition-all duration-300 ${
         isOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
@@ -1049,54 +1149,155 @@ function FiveStarPhil({
             </button>
           </div>
 
-          {/* Quick Actions */}
-          <div className="p-3 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border-b border-amber-200 dark:border-amber-800/50">
-            <p className="text-xs text-amber-700 dark:text-amber-300 mb-2 font-medium">Quick questions:</p>
-            <div className="flex flex-wrap gap-1">
-              {['How do I improve staffing?', 'Explain QMs', 'Survey tips'].map((q) => (
-                <button
-                  key={q}
-                  onClick={() => {
-                    onInputChange(q);
-                    setTimeout(onSend, 100);
-                  }}
-                  className="text-xs px-2 py-1 rounded-full bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors"
-                >
-                  {q}
-                </button>
-              ))}
+          {/* Facility Selector */}
+          <div className="p-3 bg-gradient-to-r from-cyan-50 to-blue-50 dark:from-cyan-900/20 dark:to-blue-900/20 border-b border-cyan-200 dark:border-cyan-800/50">
+            <div className="relative">
+              <button
+                onClick={() => setShowFacilityDropdown(!showFacilityDropdown)}
+                className="w-full flex items-center justify-between px-3 py-2 bg-white dark:bg-slate-800 border border-cyan-300 dark:border-cyan-700 rounded-lg text-sm"
+              >
+                <span className="flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-cyan-600" />
+                  {selectedFacility ? (
+                    <span className="font-medium">{selectedFacility.name} <span className="text-cyan-600">({selectedFacility.overallRating}★)</span></span>
+                  ) : (
+                    <span className="text-slate-400">Select a facility for specific analysis...</span>
+                  )}
+                </span>
+                <ChevronDown className={`w-4 h-4 text-cyan-600 transition-transform ${showFacilityDropdown ? 'rotate-180' : ''}`} />
+              </button>
+              {showFacilityDropdown && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-cyan-200 dark:border-cyan-700 rounded-lg shadow-lg max-h-64 overflow-y-auto z-10">
+                  <button
+                    onClick={() => { onSelectFacility(''); setShowFacilityDropdown(false); }}
+                    className="w-full px-3 py-2 text-left text-sm hover:bg-cyan-50 dark:hover:bg-cyan-900/30 text-slate-500 border-b border-slate-100 dark:border-slate-700"
+                  >
+                    General analysis (no specific facility)
+                  </button>
+                  {/* Group facilities by company */}
+                  {(() => {
+                    const companies = [...new Set(facilities.map(f => f.company || 'Other'))];
+                    return companies.map(company => (
+                      <div key={company}>
+                        <div className="px-3 py-1.5 text-xs font-semibold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 sticky top-0">
+                          {company}
+                        </div>
+                        {facilities.filter(f => (f.company || 'Other') === company).map(f => (
+                          <button
+                            key={f.id}
+                            onClick={() => { onSelectFacility(f.id); setShowFacilityDropdown(false); }}
+                            className={`w-full px-3 py-2 text-left text-sm hover:bg-cyan-50 dark:hover:bg-cyan-900/30 flex justify-between ${selectedFacilityId === f.id ? 'bg-cyan-100 dark:bg-cyan-900/50' : ''}`}
+                          >
+                            <span className="truncate pr-2">{f.name}</span>
+                            <span className={`font-medium flex-shrink-0 ${f.overallRating >= 4 ? 'text-green-600' : f.overallRating >= 3 ? 'text-yellow-600' : 'text-red-600'}`}>{f.overallRating}★</span>
+                          </button>
+                        ))}
+                      </div>
+                    ));
+                  })()}
+                </div>
+              )}
             </div>
           </div>
 
           {/* Messages */}
-          <div className="h-80 overflow-y-auto p-4 space-y-4 bg-[var(--card-background)]">
+          <div className="h-96 overflow-y-auto p-4 space-y-4 bg-[var(--card-background)]">
             {messages.map((msg) => (
               <div
                 key={msg.id}
                 className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[80%] rounded-2xl px-4 py-2 ${
+                  className={`max-w-[85%] rounded-2xl px-4 py-3 ${
                     msg.role === 'user'
                       ? 'bg-cyan-500 text-white rounded-br-none'
-                      : 'bg-amber-100 dark:bg-amber-900/30 text-amber-900 dark:text-amber-100 rounded-bl-none'
+                      : 'bg-amber-50 dark:bg-amber-900/30 text-amber-900 dark:text-amber-100 rounded-bl-none border border-amber-200 dark:border-amber-800'
                   }`}
                 >
-                  <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                  <div className="text-sm whitespace-pre-wrap prose prose-sm dark:prose-invert max-w-none prose-headings:text-amber-800 dark:prose-headings:text-amber-200 prose-strong:text-amber-700 dark:prose-strong:text-amber-300 prose-li:my-0.5">
+                    {msg.content === '...' ? (
+                      <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 bg-amber-500 rounded-full animate-bounce" style={{animationDelay: '0ms'}}></span>
+                        <span className="w-2 h-2 bg-amber-500 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></span>
+                        <span className="w-2 h-2 bg-amber-500 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></span>
+                      </span>
+                    ) : (
+                      msg.content.split('\n').map((line, i) => {
+                        // Check for View Full Report marker
+                        if (line.includes('**[View Full Report]**') && hasReportData) {
+                          return (
+                            <button
+                              key={i}
+                              onClick={onViewReport}
+                              className="mt-3 w-full flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-medium rounded-lg hover:shadow-lg transition-all hover:scale-[1.02]"
+                            >
+                              <FileText className="w-4 h-4" />
+                              View Full Report & Download PDF
+                            </button>
+                          );
+                        }
+                        // Simple markdown rendering
+                        if (line.startsWith('# ')) return <h3 key={i} className="text-base font-bold mt-2 mb-1">{line.slice(2)}</h3>;
+                        if (line.startsWith('## ')) return <h4 key={i} className="text-sm font-bold mt-2 mb-1">{line.slice(3)}</h4>;
+                        if (line.startsWith('### ')) return <h5 key={i} className="text-sm font-semibold mt-1.5 mb-0.5">{line.slice(4)}</h5>;
+                        if (line.startsWith('**') && line.endsWith('**')) return <p key={i} className="font-bold">{line.slice(2, -2)}</p>;
+                        if (line.startsWith('• ') || line.startsWith('- ')) return <p key={i} className="ml-3">• {line.slice(2)}</p>;
+                        if (line.startsWith('|')) return <p key={i} className="font-mono text-xs">{line}</p>;
+                        if (line.startsWith('---')) return <hr key={i} className="my-2 border-amber-300 dark:border-amber-700" />;
+                        if (line.trim() === '') return <br key={i} />;
+                        return <p key={i}>{line}</p>;
+                      })
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Input */}
+          {/* View Report Button - shown when report data is available */}
+          {hasReportData && (
+            <div className="px-4 py-3 border-t border-[var(--border-color)] bg-gradient-to-r from-cyan-50 to-blue-50 dark:from-cyan-900/30 dark:to-blue-900/30">
+              <button
+                onClick={onViewReport}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold rounded-xl hover:shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <FileText className="w-5 h-5" />
+                View Full Report & Download PDF
+              </button>
+              <p className="text-xs text-center text-slate-500 dark:text-slate-400 mt-2">
+                Professional analysis with benchmarks, recommendations & presentation
+              </p>
+            </div>
+          )}
+
+          {/* Input with Suggested Prompts */}
           <div className="p-4 border-t border-[var(--border-color)]">
+            {/* Suggested prompts - shown when input is empty */}
+            {!input && (
+              <div className="mb-3 flex flex-wrap gap-1">
+                {[
+                  'How do I improve my stars?',
+                  'Staffing requirements',
+                  'Top deficiencies',
+                  'Create improvement plan',
+                ].map((q) => (
+                  <button
+                    key={q}
+                    onClick={() => onInputChange(q)}
+                    className="text-xs px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:bg-amber-100 hover:text-amber-700 dark:hover:bg-amber-900/30 dark:hover:text-amber-300 transition-colors"
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="flex gap-2">
               <input
                 type="text"
                 value={input}
                 onChange={(e) => onInputChange(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && onSend()}
-                placeholder="Ask Phil anything about 5-star ratings..."
+                placeholder={selectedFacility ? `Ask about ${selectedFacility.name}...` : "Ask Phil anything about 5-star ratings..."}
                 className="flex-1 px-4 py-2 rounded-xl bg-[var(--card-background-alt)] border border-[var(--border-color)] text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
               <button
