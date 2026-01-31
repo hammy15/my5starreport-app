@@ -270,3 +270,170 @@ export interface FacilityAnalysis {
   complaints: Complaint[];
   recommendations: ImprovementRecommendation[];
 }
+
+// ==========================================
+// RATE LETTER & COST REPORT TYPES
+// ==========================================
+
+// Medicaid Rate Letter Data
+export interface MedicaidRateLetter {
+  facilityId: string;
+  effectiveDate: string;
+  expirationDate: string;
+  dailyPerDiemRate: number;
+  ancillaryRate: number;
+  therapyRate: number;
+  nursingComponent: number;
+  careComponent: number;
+  capitalComponent: number;
+  administrativeComponent: number;
+  qualityIncentivePayment: number;
+  specialCareFactor: number;
+  acuityAdjustment: number;
+  previousRate: number;
+  percentChange: number;
+  stateCode: string;
+  rateType: 'Nursing Facility' | 'ICF/IID' | 'Specialized';
+  payerMix: {
+    medicaid: number;
+    medicare: number;
+    private: number;
+    other: number;
+  };
+}
+
+// Medicare PDPM/RUG Rate Data
+export interface MedicareRate {
+  facilityId: string;
+  effectiveDate: string;
+  pdpmBaseRate: number;
+  nursingComponent: number;
+  therapyComponent: number;
+  nta: number;
+  rugIVBaseRate: number;
+  ptCmi: number;
+  otCmi: number;
+  slpCmi: number;
+  nursingCmi: number;
+  ntaCmi: number;
+  paymentCategories: PDPMCategory[];
+  maRates: MedicareAdvantageRate[];
+}
+
+export interface PDPMCategory {
+  name: string;
+  code: string;
+  dailyRate: number;
+  averageLOS: number;
+  caseCount: number;
+  totalPayments: number;
+}
+
+export interface MedicareAdvantageRate {
+  payerName: string;
+  dailyRate: number;
+  effectiveDate: string;
+  contractExpiration: string;
+  paymentTerms: string;
+}
+
+// CMS-2540 Cost Report Data
+export interface CostReport {
+  facilityId: string;
+  fiscalYearEnd: string;
+  reportPeriodStart: string;
+  reportPeriodEnd: string;
+  submissionDate: string;
+  status: 'Submitted' | 'Accepted' | 'Settled' | 'Reopened';
+  totalOperatingRevenue: number;
+  totalOperatingExpenses: number;
+  netPatientRevenue: number;
+  operatingMargin: number;
+  totalMargin: number;
+  costPerPatientDay: number;
+  routineCostPerDay: number;
+  ancillaryCostPerDay: number;
+  totalPatientDays: number;
+  averageDailyCensus: number;
+  occupancyRate: number;
+  licensedBeds: number;
+  certifiedBeds: number;
+  routineCosts: RoutineCosts;
+  ancillaryCosts: AncillaryCosts;
+  capitalCosts: CapitalCosts;
+  administrativeCosts: AdministrativeCosts;
+  stateMedianCostPerDay: number;
+  nationalMedianCostPerDay: number;
+  costEfficiencyRatio: number;
+}
+
+export interface RoutineCosts {
+  totalRoutine: number;
+  directNursing: number;
+  indirectNursing: number;
+  residentActivities: number;
+  socialServices: number;
+  dietaryServices: number;
+  laundry: number;
+  housekeeping: number;
+  utilities: number;
+  maintenance: number;
+}
+
+export interface AncillaryCosts {
+  totalAncillary: number;
+  physicalTherapy: number;
+  occupationalTherapy: number;
+  speechTherapy: number;
+  pharmacy: number;
+  laboratory: number;
+  radiology: number;
+  medicalSupplies: number;
+  dme: number;
+}
+
+export interface CapitalCosts {
+  totalCapital: number;
+  buildingDepreciation: number;
+  equipmentDepreciation: number;
+  interestExpense: number;
+  leaseExpense: number;
+  insurance: number;
+  propertyTax: number;
+}
+
+export interface AdministrativeCosts {
+  totalAdministrative: number;
+  executiveCompensation: number;
+  managementFees: number;
+  accounting: number;
+  legal: number;
+  humanResources: number;
+  marketing: number;
+  it: number;
+  generalAndAdmin: number;
+}
+
+// Rate & Cost Benchmarks
+export interface RateBenchmark {
+  state: string;
+  year: number;
+  medicaidMedianRate: number;
+  medicaidP25Rate: number;
+  medicaidP75Rate: number;
+  medicareMedianRate: number;
+  costPerDayMedian: number;
+  costPerDayP25: number;
+  costPerDayP75: number;
+  marginMedian: number;
+}
+
+// Historical Trends
+export interface RateTrend {
+  period: string;
+  medicaidRate: number;
+  medicareRate: number;
+  costPerDay: number;
+  margin: number;
+  occupancy: number;
+}

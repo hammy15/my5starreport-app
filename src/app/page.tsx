@@ -106,10 +106,11 @@ import {
 import { FacilitySearch } from '@/components/dashboard/facility-search';
 import { FacilityOverview } from '@/components/dashboard/facility-overview';
 import { PlanBuilder } from '@/components/plans/plan-builder';
-import type { Facility, ImprovementRecommendation, ActionPlan } from '@/types/facility';
+import type { Facility, ImprovementRecommendation, ActionPlan, MedicaidRateLetter, MedicareRate, CostReport, RateBenchmark, RateTrend } from '@/types/facility';
+import { generateMedicaidRateLetters, generateMedicareRates, generateCostReport, generateBenchmarks, generateTrends } from '@/lib/sample-rates-data';
 
 // View types for navigation
-type ViewType = 'search' | 'overview' | 'health' | 'staffing' | 'quality' | 'plan' | 'plan-preview' | 'training' | 'cascadia' | 'compare' | 'calculator' | 'templates' | 'executive' | 'tasks' | 'trends' | 'checklists' | 'alerts' | 'benchmarking' | 'board-reports' | 'portfolio' | 'survey-countdown' | 'scheduling' | 'financial-impact' | 'pbj-integration' | 'regulatory' | 'community';
+type ViewType = 'search' | 'overview' | 'health' | 'staffing' | 'quality' | 'plan' | 'plan-preview' | 'training' | 'cascadia' | 'compare' | 'calculator' | 'templates' | 'executive' | 'tasks' | 'trends' | 'checklists' | 'alerts' | 'benchmarking' | 'board-reports' | 'portfolio' | 'survey-countdown' | 'scheduling' | 'financial-impact' | 'pbj-integration' | 'regulatory' | 'community' | 'rates-costs';
 
 // 5 Star Phil Chat Message Type
 interface PhilMessage {
@@ -321,6 +322,12 @@ export default function HomePage() {
                   label="Trends"
                   isActive={currentView === 'trends'}
                   onClick={() => setCurrentView('trends')}
+                />
+                <NavButton
+                  icon={<DollarSign className="w-4 h-4" />}
+                  label="Rates & Costs"
+                  isActive={currentView === 'rates-costs'}
+                  onClick={() => setCurrentView('rates-costs')}
                 />
               </nav>
             )}
@@ -690,6 +697,14 @@ export default function HomePage() {
         {/* Trends View */}
         {currentView === 'trends' && selectedFacility && (
           <TrendsView
+            providerNumber={selectedFacility}
+            onBack={() => setCurrentView('overview')}
+          />
+        )}
+
+        {/* Rates & Costs View */}
+        {currentView === 'rates-costs' && selectedFacility && (
+          <RatesAndCostsView
             providerNumber={selectedFacility}
             onBack={() => setCurrentView('overview')}
           />
@@ -8444,6 +8459,731 @@ function TrendsView({
             </div>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+// ==========================================
+// RATE DETAIL MODAL COMPONENT
+// ==========================================
+function RateDetailModal({
+  ratePeriod,
+  rates,
+  onClose,
+}: {
+  ratePeriod: string;
+  rates: MedicaidRateLetter[];
+  onClose: () => void;
+}) {
+  const rate = rates.find(r => r.effectiveDate === ratePeriod);
+  if (!rate) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="card-neumorphic max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-bold">Rate Letter Details</h2>
+          <button onClick={onClose} className="btn-neumorphic p-2">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="space-y-6">
+          {/* Period Info */}
+          <div className="card-neumorphic-inset p-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <div className="text-xs text-[var(--foreground-muted)]">Effective Date</div>
+                <div className="font-medium">{rate.effectiveDate}</div>
+              </div>
+              <div>
+                <div className="text-xs text-[var(--foreground-muted)]">Expiration Date</div>
+                <div className="font-medium">{rate.expirationDate}</div>
+              </div>
+              <div>
+                <div className="text-xs text-[var(--foreground-muted)]">Rate Type</div>
+                <div className="font-medium">{rate.rateType}</div>
+              </div>
+              <div>
+                <div className="text-xs text-[var(--foreground-muted)]">State</div>
+                <div className="font-medium">{rate.stateCode}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Rate Components */}
+          <div>
+            <h3 className="font-semibold mb-3">Rate Components</h3>
+            <div className="space-y-2">
+              <div className="flex justify-between py-2 border-b border-[var(--border-color)]">
+                <span>Daily Per Diem Rate</span>
+                <span className="font-bold text-lg">${rate.dailyPerDiemRate.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between py-2">
+                <span className="text-[var(--foreground-muted)]">Nursing Component</span>
+                <span>${rate.nursingComponent.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between py-2">
+                <span className="text-[var(--foreground-muted)]">Care Component</span>
+                <span>${rate.careComponent.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between py-2">
+                <span className="text-[var(--foreground-muted)]">Capital Component</span>
+                <span>${rate.capitalComponent.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between py-2">
+                <span className="text-[var(--foreground-muted)]">Administrative Component</span>
+                <span>${rate.administrativeComponent.toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Adjustments */}
+          <div>
+            <h3 className="font-semibold mb-3">Adjustments</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="card-neumorphic-inset p-3">
+                <div className="text-xs text-[var(--foreground-muted)]">Acuity Adjustment</div>
+                <div className="font-medium">{rate.acuityAdjustment.toFixed(3)}</div>
+              </div>
+              <div className="card-neumorphic-inset p-3">
+                <div className="text-xs text-[var(--foreground-muted)]">Special Care Factor</div>
+                <div className="font-medium">{rate.specialCareFactor.toFixed(3)}</div>
+              </div>
+              <div className="card-neumorphic-inset p-3">
+                <div className="text-xs text-[var(--foreground-muted)]">Quality Incentive</div>
+                <div className="font-medium">${rate.qualityIncentivePayment.toFixed(2)}</div>
+              </div>
+              <div className="card-neumorphic-inset p-3">
+                <div className="text-xs text-[var(--foreground-muted)]">Year-over-Year Change</div>
+                <div className={`font-medium ${rate.percentChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {rate.percentChange >= 0 ? '+' : ''}{rate.percentChange.toFixed(1)}%
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-3">
+            <button className="btn-neumorphic flex-1 py-2 flex items-center justify-center gap-2">
+              <Download className="w-4 h-4" />
+              Download PDF
+            </button>
+            <button className="btn-neumorphic flex-1 py-2 flex items-center justify-center gap-2">
+              <Printer className="w-4 h-4" />
+              Print
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
+// RATES & COSTS VIEW
+// ==========================================
+function RatesAndCostsView({
+  providerNumber,
+  onBack,
+}: {
+  providerNumber: string;
+  onBack: () => void;
+}) {
+  const [data, setData] = useState<{
+    facility: Facility | null;
+    medicaidRates: MedicaidRateLetter[];
+    medicareRates: MedicareRate[];
+    costReports: CostReport[];
+    benchmarks: RateBenchmark[];
+    trends: RateTrend[];
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'overview' | 'rate-letters' | 'cost-report' | 'benchmarks' | 'trends'>('overview');
+  const [selectedRatePeriod, setSelectedRatePeriod] = useState<string | null>(null);
+  const [selectedCostYear, setSelectedCostYear] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const response = await fetch(`/api/facilities/${providerNumber}`);
+        const result = await response.json();
+
+        // Generate sample rates and costs data
+        const medicaidRates = generateMedicaidRateLetters(
+          providerNumber,
+          result.facility?.state || 'WA',
+          result.facility?.numberOfCertifiedBeds || 100
+        );
+        const medicareRates = generateMedicareRates(
+          providerNumber,
+          result.facility?.numberOfCertifiedBeds || 100
+        );
+        const costReports = generateCostReport(
+          providerNumber,
+          result.facility?.numberOfCertifiedBeds || 100,
+          85
+        );
+        const benchmarks = generateBenchmarks(result.facility?.state || 'WA');
+        const trends = generateTrends(providerNumber);
+
+        setData({
+          facility: result.facility,
+          medicaidRates,
+          medicareRates,
+          costReports,
+          benchmarks,
+          trends,
+        });
+      } catch (error) {
+        console.error('Failed to fetch rates data:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, [providerNumber]);
+
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-slide-up">
+        <button onClick={onBack} className="btn-neumorphic px-4 py-2 flex items-center gap-2">
+          <ArrowLeft className="w-4 h-4" />
+          Back to Overview
+        </button>
+        <div className="card-neumorphic p-8 text-center">
+          <div className="animate-spin w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-[var(--foreground-muted)]">Loading rates and cost data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const f = data?.facility;
+  const latestMedicaid = data?.medicaidRates?.[0];
+  const latestMedicare = data?.medicareRates?.[0];
+  const latestCostReport = data?.costReports?.[0];
+
+  const payerMixTotal = latestMedicaid?.payerMix
+    ? latestMedicaid.payerMix.medicaid + latestMedicaid.payerMix.medicare + latestMedicaid.payerMix.private
+    : 100;
+  const blendedRate = latestMedicaid && latestMedicare
+    ? (latestMedicaid.dailyPerDiemRate * (latestMedicaid.payerMix.medicaid / payerMixTotal)) +
+      (latestMedicare.pdpmBaseRate * (latestMedicaid.payerMix.medicare / payerMixTotal)) +
+      (350 * (latestMedicaid.payerMix.private / payerMixTotal))
+    : 0;
+
+  const marginStatus = (latestCostReport?.operatingMargin || 0) >= 3
+    ? 'Healthy'
+    : (latestCostReport?.operatingMargin || 0) >= 0
+      ? 'Marginal'
+      : 'At Risk';
+
+  return (
+    <div className="space-y-6 animate-slide-up">
+      <button onClick={onBack} className="btn-neumorphic px-4 py-2 flex items-center gap-2">
+        <ArrowLeft className="w-4 h-4" />
+        Back to Overview
+      </button>
+
+      {/* Header with Key Metrics */}
+      <div className="card-neumorphic p-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-xl bg-gradient-to-br from-green-400 to-emerald-600">
+              <DollarSign className="w-8 h-8 text-white" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-[var(--foreground)]">Rates & Costs Analysis</h2>
+              <p className="text-[var(--foreground-muted)]">{f?.providerName}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-6">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">
+                ${latestMedicaid?.dailyPerDiemRate?.toFixed(2) || '0.00'}
+              </div>
+              <div className="text-xs text-[var(--foreground-muted)]">Medicaid Rate</div>
+            </div>
+            <div className="text-center px-4 border-l border-[var(--border-color)]">
+              <div className="text-2xl font-bold text-blue-600">
+                ${latestMedicare?.pdpmBaseRate?.toFixed(2) || '0.00'}
+              </div>
+              <div className="text-xs text-[var(--foreground-muted)]">Medicare Base</div>
+            </div>
+            <div className="text-center px-4 border-l border-[var(--border-color)]">
+              <div className={`text-2xl font-bold ${
+                marginStatus === 'Healthy' ? 'text-green-600' :
+                marginStatus === 'Marginal' ? 'text-yellow-600' : 'text-red-600'
+              }`}>
+                {latestCostReport?.operatingMargin?.toFixed(1) || '0.0'}%
+              </div>
+              <div className="text-xs text-[var(--foreground-muted)]">Operating Margin</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Navigation Tabs */}
+      <div className="flex gap-2 overflow-x-auto pb-2">
+        {[
+          { id: 'overview', label: 'Overview', icon: BarChart3 },
+          { id: 'rate-letters', label: 'Rate Letters', icon: ScrollText },
+          { id: 'cost-report', label: 'Cost Report', icon: FileSpreadsheet },
+          { id: 'benchmarks', label: 'Benchmarks', icon: Scale },
+          { id: 'trends', label: 'Trends', icon: TrendingUp },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as typeof activeTab)}
+            className={`btn-neumorphic px-4 py-2 flex items-center gap-2 whitespace-nowrap ${
+              activeTab === tab.id ? 'ring-2 ring-green-500 bg-green-50 dark:bg-green-900/20' : ''
+            }`}
+          >
+            <tab.icon className="w-4 h-4" />
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Overview Tab */}
+      {activeTab === 'overview' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="card-neumorphic p-4">
+              <div className="flex items-center justify-between mb-2">
+                <CircleDollarSign className="w-5 h-5 text-green-500" />
+                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                  (latestMedicaid?.percentChange || 0) > 0
+                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                    : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                }`}>
+                  {(latestMedicaid?.percentChange || 0) > 0 ? '+' : ''}{latestMedicaid?.percentChange?.toFixed(1)}%
+                </span>
+              </div>
+              <div className="text-2xl font-bold">${latestMedicaid?.dailyPerDiemRate?.toFixed(2)}</div>
+              <div className="text-xs text-[var(--foreground-muted)]">Medicaid Per Diem</div>
+            </div>
+
+            <div className="card-neumorphic p-4">
+              <div className="flex items-center justify-between mb-2">
+                <Wallet className="w-5 h-5 text-blue-500" />
+                <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">PDPM</span>
+              </div>
+              <div className="text-2xl font-bold">${latestMedicare?.pdpmBaseRate?.toFixed(2)}</div>
+              <div className="text-xs text-[var(--foreground-muted)]">Medicare Base Rate</div>
+            </div>
+
+            <div className="card-neumorphic p-4">
+              <div className="flex items-center justify-between mb-2">
+                <Calculator className="w-5 h-5 text-purple-500" />
+              </div>
+              <div className="text-2xl font-bold">${blendedRate.toFixed(2)}</div>
+              <div className="text-xs text-[var(--foreground-muted)]">Blended Rate</div>
+            </div>
+
+            <div className="card-neumorphic p-4">
+              <div className="flex items-center justify-between mb-2">
+                <Gauge className="w-5 h-5 text-orange-500" />
+                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                  marginStatus === 'Healthy' ? 'bg-green-100 text-green-700' :
+                  marginStatus === 'Marginal' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
+                }`}>{marginStatus}</span>
+              </div>
+              <div className="text-2xl font-bold">${latestCostReport?.costPerPatientDay?.toFixed(2)}</div>
+              <div className="text-xs text-[var(--foreground-muted)]">Cost Per Day</div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="card-neumorphic p-6">
+              <h3 className="font-semibold mb-4 flex items-center gap-2">
+                <PieChart className="w-5 h-5 text-purple-500" />
+                Payer Mix
+              </h3>
+              <div className="space-y-3">
+                {[
+                  { label: 'Medicaid', value: latestMedicaid?.payerMix.medicaid || 0, color: 'bg-green-500' },
+                  { label: 'Medicare', value: latestMedicaid?.payerMix.medicare || 0, color: 'bg-blue-500' },
+                  { label: 'Private Pay', value: latestMedicaid?.payerMix.private || 0, color: 'bg-purple-500' },
+                  { label: 'Other', value: latestMedicaid?.payerMix.other || 0, color: 'bg-gray-500' },
+                ].map((payer) => (
+                  <div key={payer.label}>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span>{payer.label}</span>
+                      <span className="font-medium">{payer.value}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                      <div className={`h-full rounded-full ${payer.color}`} style={{ width: `${payer.value}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="card-neumorphic p-6">
+              <h3 className="font-semibold mb-4 flex items-center gap-2">
+                <BarChart2 className="w-5 h-5 text-cyan-500" />
+                Revenue Summary
+              </h3>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-[var(--foreground-muted)]">Total Revenue</span>
+                  <span className="text-xl font-bold">${((latestCostReport?.totalOperatingRevenue || 0) / 1000000).toFixed(2)}M</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-[var(--foreground-muted)]">Total Expenses</span>
+                  <span className="text-xl font-bold text-red-600">${((latestCostReport?.totalOperatingExpenses || 0) / 1000000).toFixed(2)}M</span>
+                </div>
+                <div className="border-t border-[var(--border-color)] pt-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[var(--foreground-muted)]">Net Operating Income</span>
+                    <span className={`text-xl font-bold ${(latestCostReport?.totalOperatingRevenue || 0) - (latestCostReport?.totalOperatingExpenses || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      ${(((latestCostReport?.totalOperatingRevenue || 0) - (latestCostReport?.totalOperatingExpenses || 0)) / 1000000).toFixed(2)}M
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="card-neumorphic p-6">
+            <h3 className="font-semibold mb-4">Quick Actions</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {[
+                { id: 'rate-letters', label: 'View Rate Letters', icon: ScrollText, color: 'text-green-500' },
+                { id: 'cost-report', label: 'Cost Report Details', icon: FileSpreadsheet, color: 'text-blue-500' },
+                { id: 'benchmarks', label: 'Compare Benchmarks', icon: Scale, color: 'text-purple-500' },
+                { id: 'trends', label: 'View Trends', icon: TrendingUp, color: 'text-cyan-500' },
+              ].map((action) => (
+                <button key={action.id} onClick={() => setActiveTab(action.id as typeof activeTab)} className="btn-neumorphic p-3 flex flex-col items-center gap-2">
+                  <action.icon className={`w-6 h-6 ${action.color}`} />
+                  <span className="text-sm">{action.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rate Letters Tab */}
+      {activeTab === 'rate-letters' && (
+        <div className="space-y-6">
+          <div className="card-neumorphic p-6">
+            <h3 className="font-semibold mb-4 flex items-center gap-2">
+              <ScrollText className="w-5 h-5 text-green-500" />
+              Medicaid Rate Letters
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--border-color)]">
+                    <th className="text-left py-2 px-3">Period</th>
+                    <th className="text-right py-2 px-3">Per Diem</th>
+                    <th className="text-right py-2 px-3">Nursing</th>
+                    <th className="text-right py-2 px-3">Care</th>
+                    <th className="text-right py-2 px-3">Capital</th>
+                    <th className="text-right py-2 px-3">Change</th>
+                    <th className="text-center py-2 px-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data?.medicaidRates?.map((rate, i) => (
+                    <tr key={i} className="border-b border-[var(--border-color)] hover:bg-[var(--card-background-alt)]">
+                      <td className="py-3 px-3">
+                        <div className="font-medium">{rate.effectiveDate}</div>
+                        <div className="text-xs text-[var(--foreground-muted)]">to {rate.expirationDate}</div>
+                      </td>
+                      <td className="text-right py-3 px-3 font-bold">${rate.dailyPerDiemRate.toFixed(2)}</td>
+                      <td className="text-right py-3 px-3">${rate.nursingComponent.toFixed(2)}</td>
+                      <td className="text-right py-3 px-3">${rate.careComponent.toFixed(2)}</td>
+                      <td className="text-right py-3 px-3">${rate.capitalComponent.toFixed(2)}</td>
+                      <td className="text-right py-3 px-3">
+                        <span className={`px-2 py-0.5 rounded-full text-xs ${rate.percentChange > 0 ? 'bg-green-100 text-green-700' : rate.percentChange < 0 ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}`}>
+                          {rate.percentChange > 0 ? '+' : ''}{rate.percentChange.toFixed(1)}%
+                        </span>
+                      </td>
+                      <td className="text-center py-3 px-3">
+                        <button onClick={() => setSelectedRatePeriod(rate.effectiveDate)} className="btn-neumorphic px-3 py-1 text-xs">Details</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="card-neumorphic p-6">
+            <h3 className="font-semibold mb-4 flex items-center gap-2">
+              <Wallet className="w-5 h-5 text-blue-500" />
+              Medicare PDPM Rates
+            </h3>
+            {data?.medicareRates?.map((rate, i) => (
+              <div key={i} className={`${i > 0 ? 'mt-6 pt-6 border-t border-[var(--border-color)]' : ''}`}>
+                <div className="flex items-center justify-between mb-4">
+                  <span className="font-medium">FY {rate.effectiveDate.slice(0, 4)}</span>
+                  <span className="text-2xl font-bold text-blue-600">${rate.pdpmBaseRate.toFixed(2)}</span>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  <div className="card-neumorphic-inset p-3"><div className="text-xs text-[var(--foreground-muted)]">Nursing</div><div className="font-bold">${rate.nursingComponent.toFixed(2)}</div></div>
+                  <div className="card-neumorphic-inset p-3"><div className="text-xs text-[var(--foreground-muted)]">Therapy</div><div className="font-bold">${rate.therapyComponent.toFixed(2)}</div></div>
+                  <div className="card-neumorphic-inset p-3"><div className="text-xs text-[var(--foreground-muted)]">NTA</div><div className="font-bold">${rate.nta.toFixed(2)}</div></div>
+                  <div className="card-neumorphic-inset p-3"><div className="text-xs text-[var(--foreground-muted)]">Nursing CMI</div><div className="font-bold">{rate.nursingCmi.toFixed(2)}</div></div>
+                  <div className="card-neumorphic-inset p-3"><div className="text-xs text-[var(--foreground-muted)]">RUG-IV Base</div><div className="font-bold">${rate.rugIVBaseRate.toFixed(2)}</div></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Cost Report Tab */}
+      {activeTab === 'cost-report' && (
+        <div className="space-y-6">
+          <div className="flex gap-2 flex-wrap">
+            {data?.costReports?.map((report, i) => (
+              <button key={i} onClick={() => setSelectedCostYear(report.fiscalYearEnd)} className={`btn-neumorphic px-4 py-2 ${(selectedCostYear || data?.costReports?.[0]?.fiscalYearEnd) === report.fiscalYearEnd ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/20' : ''}`}>
+                FY {report.fiscalYearEnd.slice(0, 4)}
+                <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${report.status === 'Settled' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{report.status}</span>
+              </button>
+            ))}
+          </div>
+
+          {(() => {
+            const report = data?.costReports?.find(r => r.fiscalYearEnd === (selectedCostYear || data?.costReports?.[0]?.fiscalYearEnd));
+            if (!report) return null;
+
+            return (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="card-neumorphic p-4 text-center">
+                    <CircleDollarSign className="w-6 h-6 mx-auto mb-2 text-green-500" />
+                    <div className="text-xl font-bold">${(report.totalOperatingRevenue / 1000000).toFixed(2)}M</div>
+                    <div className="text-xs text-[var(--foreground-muted)]">Total Revenue</div>
+                  </div>
+                  <div className="card-neumorphic p-4 text-center">
+                    <Wallet className="w-6 h-6 mx-auto mb-2 text-red-500" />
+                    <div className="text-xl font-bold">${(report.totalOperatingExpenses / 1000000).toFixed(2)}M</div>
+                    <div className="text-xs text-[var(--foreground-muted)]">Total Expenses</div>
+                  </div>
+                  <div className="card-neumorphic p-4 text-center">
+                    <Gauge className="w-6 h-6 mx-auto mb-2 text-purple-500" />
+                    <div className="text-xl font-bold">${report.costPerPatientDay.toFixed(2)}</div>
+                    <div className="text-xs text-[var(--foreground-muted)]">Cost Per Day</div>
+                  </div>
+                  <div className="card-neumorphic p-4 text-center">
+                    <TrendingUp className="w-6 h-6 mx-auto mb-2 text-cyan-500" />
+                    <div className={`text-xl font-bold ${report.operatingMargin >= 0 ? 'text-green-600' : 'text-red-600'}`}>{report.operatingMargin.toFixed(1)}%</div>
+                    <div className="text-xs text-[var(--foreground-muted)]">Operating Margin</div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="card-neumorphic p-6">
+                    <h3 className="font-semibold mb-4 flex items-center gap-2"><Users className="w-5 h-5 text-blue-500" />Routine Costs</h3>
+                    <div className="space-y-2">
+                      {[
+                        { label: 'Direct Nursing', value: report.routineCosts.directNursing },
+                        { label: 'Indirect Nursing', value: report.routineCosts.indirectNursing },
+                        { label: 'Dietary Services', value: report.routineCosts.dietaryServices },
+                        { label: 'Housekeeping', value: report.routineCosts.housekeeping },
+                      ].map((item) => (
+                        <div key={item.label} className="flex justify-between text-sm"><span>{item.label}</span><span className="font-medium">${(item.value / 1000).toFixed(0)}K</span></div>
+                      ))}
+                      <div className="border-t border-[var(--border-color)] pt-2 mt-2"><div className="flex justify-between font-bold"><span>Total Routine</span><span>${(report.routineCosts.totalRoutine / 1000000).toFixed(2)}M</span></div></div>
+                    </div>
+                  </div>
+
+                  <div className="card-neumorphic p-6">
+                    <h3 className="font-semibold mb-4 flex items-center gap-2"><Activity className="w-5 h-5 text-purple-500" />Ancillary Costs</h3>
+                    <div className="space-y-2">
+                      {[
+                        { label: 'Physical Therapy', value: report.ancillaryCosts.physicalTherapy },
+                        { label: 'Occupational Therapy', value: report.ancillaryCosts.occupationalTherapy },
+                        { label: 'Pharmacy', value: report.ancillaryCosts.pharmacy },
+                        { label: 'Medical Supplies', value: report.ancillaryCosts.medicalSupplies },
+                      ].map((item) => (
+                        <div key={item.label} className="flex justify-between text-sm"><span>{item.label}</span><span className="font-medium">${(item.value / 1000).toFixed(0)}K</span></div>
+                      ))}
+                      <div className="border-t border-[var(--border-color)] pt-2 mt-2"><div className="flex justify-between font-bold"><span>Total Ancillary</span><span>${(report.ancillaryCosts.totalAncillary / 1000000).toFixed(2)}M</span></div></div>
+                    </div>
+                  </div>
+
+                  <div className="card-neumorphic p-6">
+                    <h3 className="font-semibold mb-4 flex items-center gap-2"><Building2 className="w-5 h-5 text-orange-500" />Capital Costs</h3>
+                    <div className="space-y-2">
+                      {[
+                        { label: 'Building Depreciation', value: report.capitalCosts.buildingDepreciation },
+                        { label: 'Equipment Depreciation', value: report.capitalCosts.equipmentDepreciation },
+                        { label: 'Interest Expense', value: report.capitalCosts.interestExpense },
+                      ].map((item) => (
+                        <div key={item.label} className="flex justify-between text-sm"><span>{item.label}</span><span className="font-medium">${(item.value / 1000).toFixed(0)}K</span></div>
+                      ))}
+                      <div className="border-t border-[var(--border-color)] pt-2 mt-2"><div className="flex justify-between font-bold"><span>Total Capital</span><span>${(report.capitalCosts.totalCapital / 1000000).toFixed(2)}M</span></div></div>
+                    </div>
+                  </div>
+
+                  <div className="card-neumorphic p-6">
+                    <h3 className="font-semibold mb-4 flex items-center gap-2"><Briefcase className="w-5 h-5 text-cyan-500" />Administrative Costs</h3>
+                    <div className="space-y-2">
+                      {[
+                        { label: 'Executive Compensation', value: report.administrativeCosts.executiveCompensation },
+                        { label: 'Management Fees', value: report.administrativeCosts.managementFees },
+                        { label: 'IT', value: report.administrativeCosts.it },
+                      ].map((item) => (
+                        <div key={item.label} className="flex justify-between text-sm"><span>{item.label}</span><span className="font-medium">${(item.value / 1000).toFixed(0)}K</span></div>
+                      ))}
+                      <div className="border-t border-[var(--border-color)] pt-2 mt-2"><div className="flex justify-between font-bold"><span>Total Administrative</span><span>${(report.administrativeCosts.totalAdministrative / 1000000).toFixed(2)}M</span></div></div>
+                    </div>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+        </div>
+      )}
+
+      {/* Benchmarks Tab */}
+      {activeTab === 'benchmarks' && (
+        <div className="space-y-6">
+          <div className="card-neumorphic p-6">
+            <h3 className="font-semibold mb-4 flex items-center gap-2">
+              <Scale className="w-5 h-5 text-purple-500" />
+              Rate & Cost Benchmarks - {f?.state || 'State'}
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--border-color)]">
+                    <th className="text-left py-2 px-3">Metric</th>
+                    <th className="text-right py-2 px-3">Your Facility</th>
+                    <th className="text-right py-2 px-3">State P25</th>
+                    <th className="text-right py-2 px-3">State Median</th>
+                    <th className="text-right py-2 px-3">State P75</th>
+                    <th className="text-center py-2 px-3">Position</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { label: 'Medicaid Rate', facility: latestMedicaid?.dailyPerDiemRate || 0, p25: data?.benchmarks?.[0]?.medicaidP25Rate || 0, median: data?.benchmarks?.[0]?.medicaidMedianRate || 0, p75: data?.benchmarks?.[0]?.medicaidP75Rate || 0 },
+                    { label: 'Medicare Rate', facility: latestMedicare?.pdpmBaseRate || 0, p25: (data?.benchmarks?.[0]?.medicareMedianRate || 0) * 0.85, median: data?.benchmarks?.[0]?.medicareMedianRate || 0, p75: (data?.benchmarks?.[0]?.medicareMedianRate || 0) * 1.15 },
+                    { label: 'Cost Per Day', facility: latestCostReport?.costPerPatientDay || 0, p25: data?.benchmarks?.[0]?.costPerDayP25 || 0, median: data?.benchmarks?.[0]?.costPerDayMedian || 0, p75: data?.benchmarks?.[0]?.costPerDayP75 || 0 },
+                    { label: 'Operating Margin', facility: latestCostReport?.operatingMargin || 0, p25: (data?.benchmarks?.[0]?.marginMedian || 0) - 2, median: data?.benchmarks?.[0]?.marginMedian || 0, p75: (data?.benchmarks?.[0]?.marginMedian || 0) + 2, isPercent: true },
+                  ].map((row, i) => {
+                    const position = row.facility >= row.p75 ? 'Above P75' : row.facility >= row.median ? 'Above Median' : row.facility >= row.p25 ? 'Below Median' : 'Below P25';
+                    const positionColor = row.facility >= row.median ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700';
+                    return (
+                      <tr key={i} className="border-b border-[var(--border-color)]">
+                        <td className="py-3 px-3 font-medium">{row.label}</td>
+                        <td className="text-right py-3 px-3 font-bold">{row.isPercent ? `${row.facility.toFixed(1)}%` : `$${row.facility.toFixed(2)}`}</td>
+                        <td className="text-right py-3 px-3">{row.isPercent ? `${row.p25.toFixed(1)}%` : `$${row.p25.toFixed(2)}`}</td>
+                        <td className="text-right py-3 px-3">{row.isPercent ? `${row.median.toFixed(1)}%` : `$${row.median.toFixed(2)}`}</td>
+                        <td className="text-right py-3 px-3">{row.isPercent ? `${row.p75.toFixed(1)}%` : `$${row.p75.toFixed(2)}`}</td>
+                        <td className="text-center py-3 px-3"><span className={`px-2 py-1 rounded-full text-xs ${positionColor}`}>{position}</span></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="card-neumorphic p-6">
+            <h3 className="font-semibold mb-4 flex items-center gap-2"><Gauge className="w-5 h-5 text-cyan-500" />Cost Efficiency Analysis</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="text-center">
+                <div className="text-4xl font-bold mb-2 text-cyan-600">{((latestCostReport?.costEfficiencyRatio || 1) * 100).toFixed(0)}%</div>
+                <div className="text-sm text-[var(--foreground-muted)]">Cost Efficiency Ratio</div>
+              </div>
+              <div className="text-center">
+                <div className={`text-4xl font-bold mb-2 ${(latestCostReport?.costPerPatientDay || 0) <= (data?.benchmarks?.[0]?.costPerDayMedian || 300) ? 'text-green-600' : 'text-red-600'}`}>
+                  ${Math.abs((latestCostReport?.costPerPatientDay || 0) - (data?.benchmarks?.[0]?.costPerDayMedian || 0)).toFixed(2)}
+                </div>
+                <div className="text-sm text-[var(--foreground-muted)]">{(latestCostReport?.costPerPatientDay || 0) <= (data?.benchmarks?.[0]?.costPerDayMedian || 300) ? 'Below' : 'Above'} Median</div>
+              </div>
+              <div className="text-center">
+                <div className={`text-4xl font-bold mb-2 ${(latestCostReport?.operatingMargin || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>{latestCostReport?.operatingMargin?.toFixed(1)}%</div>
+                <div className="text-sm text-[var(--foreground-muted)]">Operating Margin</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Trends Tab */}
+      {activeTab === 'trends' && (
+        <div className="space-y-6">
+          <div className="card-neumorphic p-6">
+            <h3 className="font-semibold mb-4 flex items-center gap-2"><TrendingUp className="w-5 h-5 text-green-500" />Rate & Cost Trends (5 Years)</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--border-color)]">
+                    <th className="text-left py-2 px-3">Period</th>
+                    <th className="text-right py-2 px-3">Medicaid Rate</th>
+                    <th className="text-right py-2 px-3">Medicare Rate</th>
+                    <th className="text-right py-2 px-3">Cost/Day</th>
+                    <th className="text-right py-2 px-3">Margin</th>
+                    <th className="text-right py-2 px-3">Occupancy</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data?.trends?.slice(0, 12).map((trend, i) => (
+                    <tr key={i} className="border-b border-[var(--border-color)]">
+                      <td className="py-2 px-3 font-medium">{trend.period}</td>
+                      <td className="text-right py-2 px-3">${trend.medicaidRate.toFixed(2)}</td>
+                      <td className="text-right py-2 px-3">${trend.medicareRate.toFixed(2)}</td>
+                      <td className="text-right py-2 px-3">${trend.costPerDay.toFixed(2)}</td>
+                      <td className={`text-right py-2 px-3 ${trend.margin >= 0 ? 'text-green-600' : 'text-red-600'}`}>{trend.margin.toFixed(1)}%</td>
+                      <td className="text-right py-2 px-3">{trend.occupancy.toFixed(0)}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="card-neumorphic p-6">
+              <h4 className="font-medium mb-4">Rate Change Analysis</h4>
+              {(() => {
+                const rates = data?.medicaidRates || [];
+                const firstRate = rates[rates.length - 1]?.dailyPerDiemRate || 0;
+                const lastRate = rates[0]?.dailyPerDiemRate || 0;
+                const totalChange = firstRate > 0 ? ((lastRate - firstRate) / firstRate) * 100 : 0;
+                const avgAnnual = totalChange / Math.max(1, rates.length - 1);
+                return (
+                  <div className="space-y-4">
+                    <div className="flex justify-between"><span>5-Year Total Change</span><span className={`font-bold ${totalChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>{totalChange >= 0 ? '+' : ''}{totalChange.toFixed(1)}%</span></div>
+                    <div className="flex justify-between"><span>Average Annual Change</span><span className={`font-bold ${avgAnnual >= 0 ? 'text-green-600' : 'text-red-600'}`}>{avgAnnual >= 0 ? '+' : ''}{avgAnnual.toFixed(1)}%</span></div>
+                    <div className="flex justify-between"><span>Inflation-Adjusted</span><span className={`font-bold ${avgAnnual - 2.5 >= 0 ? 'text-green-600' : 'text-red-600'}`}>{avgAnnual - 2.5 >= 0 ? '+' : ''}{(avgAnnual - 2.5).toFixed(1)}%</span></div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            <div className="card-neumorphic p-6">
+              <h4 className="font-medium mb-4">Margin Trend</h4>
+              {(() => {
+                const reports = data?.costReports || [];
+                const marginTrend = reports.length > 1 ? reports[0].operatingMargin - reports[reports.length - 1].operatingMargin : 0;
+                return (
+                  <div className="space-y-4">
+                    <div className="flex justify-between"><span>Current Margin</span><span className={`font-bold ${(reports[0]?.operatingMargin || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>{reports[0]?.operatingMargin?.toFixed(1) || '0.0'}%</span></div>
+                    <div className="flex justify-between"><span>Margin Change</span><span className={`font-bold ${marginTrend >= 0 ? 'text-green-600' : 'text-red-600'}`}>{marginTrend >= 0 ? '+' : ''}{marginTrend.toFixed(1)}%</span></div>
+                    <div className="flex justify-between"><span>Trend</span><span className={`px-2 py-1 rounded-full text-xs ${marginTrend > 0.5 ? 'bg-green-100 text-green-700' : marginTrend < -0.5 ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>{marginTrend > 0.5 ? 'Improving' : marginTrend < -0.5 ? 'Declining' : 'Stable'}</span></div>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Detail Modal */}
+      {selectedRatePeriod && (
+        <RateDetailModal ratePeriod={selectedRatePeriod} rates={data?.medicaidRates || []} onClose={() => setSelectedRatePeriod(null)} />
       )}
     </div>
   );
