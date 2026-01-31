@@ -1,6 +1,15 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  viewportFit: 'cover',
+  themeColor: '#0891b2',
+};
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,9 +26,23 @@ export const metadata: Metadata = {
   description: "The industry expert on 5-star ratings for skilled nursing facilities. Analyze CMS data, improve ratings, and access training resources with 5 Star Phil.",
   keywords: "nursing home, 5-star rating, CMS, skilled nursing, HPRD, PBJ, quality measures, health inspections",
   metadataBase: new URL('https://my5starreport.com'),
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'my5STARreport',
+  },
+  formatDetection: {
+    telephone: false,
+  },
   icons: {
-    icon: '/icon.svg',
-    apple: '/apple-icon.svg',
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/icons/icon-192x192.svg', sizes: '192x192', type: 'image/svg+xml' },
+    ],
+    apple: [
+      { url: '/icons/icon-192x192.svg', sizes: '192x192', type: 'image/svg+xml' },
+    ],
   },
   openGraph: {
     title: 'my5STARreport.com | CMS 5-Star Rating Analysis Tool',

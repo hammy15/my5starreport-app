@@ -102,6 +102,7 @@ import {
   Check,
   BookOpen,
   ArrowRight,
+  FolderOpen,
 } from 'lucide-react';
 import { FacilitySearch } from '@/components/dashboard/facility-search';
 import { FacilityOverview } from '@/components/dashboard/facility-overview';
@@ -109,6 +110,7 @@ import { PlanBuilder } from '@/components/plans/plan-builder';
 import { PhilReportModal } from '@/components/PhilReportModal';
 import type { Facility, ImprovementRecommendation, ActionPlan, MedicaidRateLetter, MedicareRate, CostReport, RateBenchmark, RateTrend } from '@/types/facility';
 import { generateMedicaidRateLetters, generateMedicareRates, generateCostReport, generateBenchmarks, generateTrends } from '@/lib/sample-rates-data';
+import { generateFacilityReport, generateComparisonReport, generateScenarioReport, generateExecutiveReport } from '@/lib/pdf-export';
 
 // Professional Help Tooltip Component
 function HelpTooltip({ term, definition, children }: { term: string; definition: string; children?: React.ReactNode }) {
@@ -146,6 +148,188 @@ function SkeletonLoader({ className = '', variant = 'text' }: { className?: stri
     rect: 'h-8 w-24',
   };
   return <div className={`${baseClass} ${variants[variant]} ${className}`} />;
+}
+
+// User type for authentication
+interface AppUser {
+  id: number;
+  email: string;
+  name: string | null;
+  company: string | null;
+  role: string | null;
+}
+
+// Auth Modal Component
+function AuthModal({
+  isOpen,
+  onClose,
+  onLogin,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onLogin: (user: AppUser) => void;
+}) {
+  const [mode, setMode] = useState<'login' | 'signup'>('login');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [company, setCompany] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    try {
+      const endpoint = mode === 'login' ? '/api/auth/login' : '/api/auth/signup';
+      const body = mode === 'login'
+        ? { email, password }
+        : { email, password, name, company };
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || 'Something went wrong');
+        return;
+      }
+
+      // Save to localStorage
+      localStorage.setItem('user', JSON.stringify(data.user));
+      onLogin(data.user);
+      onClose();
+    } catch (err) {
+      setError('Network error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="card-neumorphic p-6 w-full max-w-md animate-slide-up">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-bold">
+            {mode === 'login' ? 'Welcome Back' : 'Create Account'}
+          </h2>
+          <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <p className="text-sm text-[var(--foreground-muted)] mb-6">
+          {mode === 'login'
+            ? 'Sign in to save scenarios, favorites, and access your data across devices.'
+            : 'Create a free account to save your Tinker Star scenarios and favorite facilities.'}
+        </p>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {mode === 'signup' && (
+            <>
+              <div>
+                <label className="block text-sm font-medium mb-1">Name</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="input-neumorphic w-full"
+                  placeholder="Your name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Company/Facility</label>
+                <input
+                  type="text"
+                  value={company}
+                  onChange={(e) => setCompany(e.target.value)}
+                  className="input-neumorphic w-full"
+                  placeholder="Company or facility name"
+                />
+              </div>
+            </>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="input-neumorphic w-full"
+              placeholder="you@example.com"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+              className="input-neumorphic w-full"
+              placeholder="••••••••"
+            />
+          </div>
+
+          {error && (
+            <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm rounded-lg">
+              {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="btn-neumorphic-primary w-full py-3 flex items-center justify-center gap-2"
+          >
+            {loading ? (
+              <RefreshCw className="w-4 h-4 animate-spin" />
+            ) : mode === 'login' ? (
+              <>Sign In</>
+            ) : (
+              <>Create Account</>
+            )}
+          </button>
+        </form>
+
+        <div className="mt-4 text-center text-sm">
+          {mode === 'login' ? (
+            <p>
+              Don&apos;t have an account?{' '}
+              <button onClick={() => setMode('signup')} className="text-cyan-600 hover:underline font-medium">
+                Sign up free
+              </button>
+            </p>
+          ) : (
+            <p>
+              Already have an account?{' '}
+              <button onClick={() => setMode('login')} className="text-cyan-600 hover:underline font-medium">
+                Sign in
+              </button>
+            </p>
+          )}
+        </div>
+
+        <div className="mt-4 pt-4 border-t border-[var(--border-color)]">
+          <p className="text-xs text-[var(--foreground-muted)] text-center">
+            Free accounts can save up to 10 scenarios and 20 favorites.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // Cascadia facility CCN list with company groupings - MUST be defined before components use it
@@ -230,6 +414,30 @@ export default function HomePage() {
   const [showPhilChat, setShowPhilChat] = useState(false);
   const [philGlow, setPhilGlow] = useState(false);
   const [showProMenu, setShowProMenu] = useState(false);
+  // User authentication state
+  const [user, setUser] = useState<AppUser | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+
+  // Load user from localStorage on mount
+  useEffect(() => {
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) {
+      try {
+        setUser(JSON.parse(savedUser));
+      } catch {
+        localStorage.removeItem('user');
+      }
+    }
+  }, []);
+
+  // Handle logout
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    setUser(null);
+    setShowUserMenu(false);
+  };
+
   const [philMessages, setPhilMessages] = useState<PhilMessage[]>([
     {
       id: '1',
@@ -711,6 +919,63 @@ export default function HomePage() {
                 )}
               </div>
 
+              {/* User Account Button */}
+              <div className="relative">
+                {user ? (
+                  <button
+                    onClick={() => setShowUserMenu(!showUserMenu)}
+                    className="btn-neumorphic p-2.5 flex items-center gap-2"
+                    title="Account"
+                  >
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold">
+                      {user.name?.[0]?.toUpperCase() || user.email[0].toUpperCase()}
+                    </div>
+                    <span className="hidden lg:inline text-sm">{user.name || user.email.split('@')[0]}</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setShowAuthModal(true)}
+                    className="btn-neumorphic px-4 py-2.5 flex items-center gap-2 text-sm"
+                    title="Sign in to save scenarios"
+                  >
+                    <UserCheck className="w-4 h-4" />
+                    <span className="hidden sm:inline">Sign In</span>
+                  </button>
+                )}
+
+                {/* User Menu Dropdown */}
+                {showUserMenu && user && (
+                  <div className="absolute right-0 top-full mt-2 w-64 card-neumorphic p-3 z-50">
+                    <div className="px-3 py-2 border-b border-[var(--border-color)] mb-2">
+                      <p className="font-medium">{user.name || 'User'}</p>
+                      <p className="text-xs text-[var(--foreground-muted)]">{user.email}</p>
+                      {user.company && <p className="text-xs text-cyan-600">{user.company}</p>}
+                    </div>
+                    <button
+                      onClick={() => { setCurrentView('search'); setShowUserMenu(false); }}
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg flex items-center gap-2"
+                    >
+                      <Bookmark className="w-4 h-4" />
+                      My Favorites
+                    </button>
+                    <button
+                      onClick={() => { setCurrentView('simulator'); setShowUserMenu(false); }}
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg flex items-center gap-2"
+                    >
+                      <Save className="w-4 h-4" />
+                      Saved Scenarios
+                    </button>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg flex items-center gap-2 mt-2"
+                    >
+                      <X className="w-4 h-4" />
+                      Sign Out
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <button
                 onClick={toggleDarkMode}
                 className="btn-neumorphic p-2.5"
@@ -726,6 +991,13 @@ export default function HomePage() {
           </div>
         </div>
       </header>
+
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onLogin={(u) => setUser(u)}
+      />
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 lg:px-8 pb-12">
@@ -913,6 +1185,8 @@ export default function HomePage() {
               setPhilInput(question);
               setShowPhilChat(true);
             }}
+            user={user}
+            onShowAuth={() => setShowAuthModal(true)}
           />
         )}
 
@@ -4764,6 +5038,14 @@ function BenchmarkingView({
   }>>([]);
   const [loading, setLoading] = useState(true);
   const [radius, setRadius] = useState(25);
+  const [stateAverages, setStateAverages] = useState<{
+    avgOverall: number;
+    avgHealth: number;
+    avgStaffing: number;
+    avgQM: number;
+    totalFacilities: number;
+  } | null>(null);
+  const [percentileRank, setPercentileRank] = useState<number | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -4772,25 +5054,47 @@ function BenchmarkingView({
         return;
       }
       try {
-        const facilityRes = await fetch(`/api/facilities/${providerNumber}`);
-        const facilityData = await facilityRes.json();
-        setFacility(facilityData.facility);
+        // Use the new competitors API
+        const competitorRes = await fetch(`/api/competitors?ccn=${providerNumber}&limit=15`);
+        const competitorData = await competitorRes.json();
 
-        // Fetch nearby facilities (simulated - in production would use geo query)
-        const state = facilityData.facility?.state;
-        if (state) {
-          const competitorRes = await fetch(`/api/facilities/search?state=${state}&limit=20`);
-          const competitorData = await competitorRes.json();
-          const filtered = (competitorData.results || [])
-            .filter((f: { federalProviderNumber: string }) => f.federalProviderNumber !== providerNumber)
-            .map((f: { federalProviderNumber: string; providerName: string; cityTown: string; state: string; overallRating: number; healthRating: number; staffingRating: number; qmRating: number; numberOfBeds: number }) => ({
-              ...f,
-              distance: Math.floor(Math.random() * radius) + 1,
-              beds: f.numberOfBeds,
-            }))
-            .sort((a: { distance: number }, b: { distance: number }) => a.distance - b.distance)
-            .slice(0, 10);
-          setCompetitors(filtered);
+        if (competitorData.targetFacility) {
+          setFacility({
+            ...competitorData.targetFacility,
+            federalProviderNumber: competitorData.targetFacility.ccn,
+            providerName: competitorData.targetFacility.name,
+            cityTown: competitorData.targetFacility.city,
+          } as Facility);
+        }
+
+        if (competitorData.competitors) {
+          const mapped = competitorData.competitors.map((c: any) => ({
+            federalProviderNumber: c.ccn,
+            providerName: c.name,
+            cityTown: c.city,
+            state: c.state,
+            overallRating: c.overallRating,
+            healthRating: c.healthRating,
+            staffingRating: c.staffingRating,
+            qmRating: c.qmRating,
+            beds: c.beds,
+            distance: Math.floor(Math.random() * radius) + 1, // Simulated distance
+          }));
+          setCompetitors(mapped);
+        }
+
+        if (competitorData.stateAverages) {
+          setStateAverages({
+            avgOverall: parseFloat(competitorData.stateAverages.avgOverall) || 0,
+            avgHealth: parseFloat(competitorData.stateAverages.avgHealth) || 0,
+            avgStaffing: parseFloat(competitorData.stateAverages.avgStaffing) || 0,
+            avgQM: parseFloat(competitorData.stateAverages.avgQM) || 0,
+            totalFacilities: parseInt(competitorData.stateAverages.totalFacilities) || 0,
+          });
+        }
+
+        if (competitorData.percentileRank) {
+          setPercentileRank(competitorData.percentileRank);
         }
       } catch (error) {
         console.error('Failed to fetch benchmarking data:', error);
@@ -4803,7 +5107,7 @@ function BenchmarkingView({
 
   const avgCompetitorRating = competitors.length > 0
     ? competitors.reduce((sum, c) => sum + (c.overallRating || 0), 0) / competitors.length
-    : 0;
+    : stateAverages?.avgOverall || 0;
 
   const marketPosition = facility?.overallRating
     ? competitors.filter(c => (c.overallRating || 0) < facility.overallRating).length + 1
@@ -4885,6 +5189,58 @@ function BenchmarkingView({
           <p className="text-sm text-[var(--foreground-muted)]">Competitors</p>
         </div>
       </div>
+
+      {/* State Averages & Percentile Rank */}
+      {stateAverages && (
+        <div className="card-neumorphic p-6 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div>
+              <h3 className="font-bold text-lg mb-1">State Performance</h3>
+              <p className="text-sm text-[var(--foreground-muted)]">
+                Compared to {stateAverages.totalFacilities} facilities in {facility?.state}
+              </p>
+            </div>
+            {percentileRank && (
+              <div className="text-center px-6 py-3 bg-white/50 dark:bg-slate-800/50 rounded-xl">
+                <div className={`text-4xl font-bold ${percentileRank >= 75 ? 'text-green-600' : percentileRank >= 50 ? 'text-cyan-600' : percentileRank >= 25 ? 'text-yellow-600' : 'text-red-600'}`}>
+                  Top {100 - percentileRank}%
+                </div>
+                <div className="text-sm text-[var(--foreground-muted)]">State Percentile</div>
+              </div>
+            )}
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+            <div className="text-center p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg">
+              <div className="text-sm text-[var(--foreground-muted)]">State Avg Overall</div>
+              <div className="text-xl font-bold">{stateAverages.avgOverall.toFixed(1)}★</div>
+              <div className={`text-xs ${(facility?.overallRating || 0) >= stateAverages.avgOverall ? 'text-green-600' : 'text-red-600'}`}>
+                You: {(facility?.overallRating || 0) >= stateAverages.avgOverall ? '+' : ''}{((facility?.overallRating || 0) - stateAverages.avgOverall).toFixed(1)}
+              </div>
+            </div>
+            <div className="text-center p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg">
+              <div className="text-sm text-[var(--foreground-muted)]">State Avg Health</div>
+              <div className="text-xl font-bold">{stateAverages.avgHealth.toFixed(1)}★</div>
+              <div className={`text-xs ${(facility?.healthInspectionRating || 0) >= stateAverages.avgHealth ? 'text-green-600' : 'text-red-600'}`}>
+                You: {(facility?.healthInspectionRating || 0) >= stateAverages.avgHealth ? '+' : ''}{((facility?.healthInspectionRating || 0) - stateAverages.avgHealth).toFixed(1)}
+              </div>
+            </div>
+            <div className="text-center p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg">
+              <div className="text-sm text-[var(--foreground-muted)]">State Avg Staffing</div>
+              <div className="text-xl font-bold">{stateAverages.avgStaffing.toFixed(1)}★</div>
+              <div className={`text-xs ${(facility?.staffingRating || 0) >= stateAverages.avgStaffing ? 'text-green-600' : 'text-red-600'}`}>
+                You: {(facility?.staffingRating || 0) >= stateAverages.avgStaffing ? '+' : ''}{((facility?.staffingRating || 0) - stateAverages.avgStaffing).toFixed(1)}
+              </div>
+            </div>
+            <div className="text-center p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg">
+              <div className="text-sm text-[var(--foreground-muted)]">State Avg QM</div>
+              <div className="text-xl font-bold">{stateAverages.avgQM.toFixed(1)}★</div>
+              <div className={`text-xs ${(facility?.qualityMeasureRating || 0) >= stateAverages.avgQM ? 'text-green-600' : 'text-red-600'}`}>
+                You: {(facility?.qualityMeasureRating || 0) >= stateAverages.avgQM ? '+' : ''}{((facility?.qualityMeasureRating || 0) - stateAverages.avgQM).toFixed(1)}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Competitor Table */}
       <div className="card-neumorphic p-6">
@@ -5229,11 +5585,70 @@ function PortfolioView({
     );
   }
 
+  // Export portfolio to CSV
+  const exportToCSV = () => {
+    const headers = ['CCN', 'Facility Name', 'City', 'State', 'Overall', 'Health', 'Staffing', 'QM', 'Beds', 'Company'];
+    const rows = facilities.map(f => [
+      f.federalProviderNumber,
+      f.providerName,
+      f.cityTown,
+      f.state,
+      f.overallRating || '',
+      f.healthRating || '',
+      f.staffingRating || '',
+      f.qmRating || '',
+      f.beds || '',
+      f.company || '',
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.map(v => `"${v}"`).join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `portfolio-analysis-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-6 animate-slide-up">
-      <button onClick={onBack} className="btn-neumorphic px-4 py-2 flex items-center gap-2">
-        <ArrowLeft className="w-4 h-4" /> Back
-      </button>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <button onClick={onBack} className="btn-neumorphic px-4 py-2 flex items-center gap-2">
+          <ArrowLeft className="w-4 h-4" /> Back
+        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={exportToCSV}
+            className="btn-neumorphic px-4 py-2 flex items-center gap-2 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            Export CSV
+          </button>
+          <button
+            onClick={() => {
+              const facilityList = facilities.map(f => ({
+                providerName: f.providerName,
+                federalProviderNumber: f.federalProviderNumber,
+                cityTown: f.cityTown,
+                state: f.state,
+                overallRating: f.overallRating || 0,
+                healthRating: f.healthRating || 0,
+                staffingRating: f.staffingRating || 0,
+                qmRating: f.qmRating || 0,
+              }));
+              generateComparisonReport(facilityList, {
+                title: 'Portfolio Analysis Report',
+                subtitle: 'Cascadia Healthcare',
+              });
+            }}
+            className="btn-neumorphic px-4 py-2 flex items-center gap-2 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/30 dark:to-teal-900/30"
+          >
+            <Download className="w-4 h-4" />
+            Export PDF
+          </button>
+        </div>
+      </div>
 
       {/* Header */}
       <div className="card-neumorphic p-6">
@@ -6702,10 +7117,14 @@ function TinkerStarView({
   onBack,
   onSelectFacility,
   onAskPhil,
+  user,
+  onShowAuth,
 }: {
   onBack: () => void;
   onSelectFacility: (providerNumber: string) => void;
   onAskPhil?: (question: string) => void;
+  user?: AppUser | null;
+  onShowAuth?: () => void;
 }) {
   const [selectedFacilityId, setSelectedFacilityId] = useState<string>('');
   const [facilityData, setFacilityData] = useState<any>(null);
@@ -6713,6 +7132,12 @@ function TinkerStarView({
   const [activeTab, setActiveTab] = useState<'qm' | 'staffing' | 'health'>('qm');
   const [showActionPlan, setShowActionPlan] = useState(true);
   const [tinkerFeedback, setTinkerFeedback] = useState<string>('');
+  const [savedScenarios, setSavedScenarios] = useState<any[]>([]);
+  const [showSavedScenarios, setShowSavedScenarios] = useState(false);
+  const [savingScenario, setSavingScenario] = useState(false);
+  const [scenarioName, setScenarioName] = useState('');
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [loadingSavedScenarios, setLoadingSavedScenarios] = useState(false);
 
   // What-If Scenario State - QM adjustments
   const [qmScenarios, setQmScenarios] = useState({
@@ -6909,6 +7334,86 @@ function TinkerStarView({
       console.error('Search failed:', error);
     }
   };
+
+  // Load saved scenarios when user is available
+  const loadSavedScenarios = async () => {
+    if (!user) return;
+    setLoadingSavedScenarios(true);
+    try {
+      const res = await fetch(`/api/scenarios?userId=${user.id}`);
+      const data = await res.json();
+      setSavedScenarios(data.scenarios || []);
+    } catch (error) {
+      console.error('Failed to load saved scenarios:', error);
+    } finally {
+      setLoadingSavedScenarios(false);
+    }
+  };
+
+  // Save current scenario
+  const saveScenario = async () => {
+    if (!user || !facilityData) return;
+    setSavingScenario(true);
+    try {
+      const scenarioData = {
+        qmScenarios,
+        staffingScenario,
+        healthScenario,
+      };
+      const res = await fetch('/api/scenarios', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          facilityCcn: facilityData.federalProviderNumber,
+          facilityName: facilityData.providerName,
+          scenarioName: scenarioName || `Scenario ${new Date().toLocaleDateString()}`,
+          scenarioData,
+          predictedRatings,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setShowSaveDialog(false);
+        setScenarioName('');
+        loadSavedScenarios();
+      }
+    } catch (error) {
+      console.error('Failed to save scenario:', error);
+    } finally {
+      setSavingScenario(false);
+    }
+  };
+
+  // Load a saved scenario
+  const loadScenario = (scenario: any) => {
+    if (scenario.scenario_data) {
+      setQmScenarios(scenario.scenario_data.qmScenarios);
+      setStaffingScenario(scenario.scenario_data.staffingScenario);
+      setHealthScenario(scenario.scenario_data.healthScenario);
+      setShowSavedScenarios(false);
+    }
+  };
+
+  // Delete a saved scenario
+  const deleteScenario = async (scenarioId: number) => {
+    if (!user) return;
+    try {
+      await fetch(`/api/scenarios?scenarioId=${scenarioId}&userId=${user.id}`, {
+        method: 'DELETE',
+      });
+      loadSavedScenarios();
+    } catch (error) {
+      console.error('Failed to delete scenario:', error);
+    }
+  };
+
+  // Load saved scenarios on user change
+  useEffect(() => {
+    if (user) {
+      loadSavedScenarios();
+    }
+  }, [user]);
 
   // Generate action plan based on current scenario
   const generateActionPlan = () => {
@@ -8028,7 +8533,33 @@ function TinkerStarView({
             <FileText className="w-5 h-5 text-cyan-500" />
             Your Improvement Plan
           </h3>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Save Scenario Button */}
+            {facilityData && (
+              <button
+                onClick={() => {
+                  if (!user) {
+                    onShowAuth?.();
+                  } else {
+                    setShowSaveDialog(true);
+                  }
+                }}
+                className="btn-neumorphic px-4 py-2 text-sm flex items-center gap-2 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 border border-green-200 dark:border-green-800"
+              >
+                <Save className="w-4 h-4 text-green-600" />
+                {user ? 'Save Scenario' : 'Sign in to Save'}
+              </button>
+            )}
+            {/* Load Saved Scenarios Button */}
+            {user && savedScenarios.length > 0 && (
+              <button
+                onClick={() => setShowSavedScenarios(true)}
+                className="btn-neumorphic px-4 py-2 text-sm flex items-center gap-2 bg-gradient-to-r from-purple-50 to-violet-50 dark:from-purple-900/30 dark:to-violet-900/30 border border-purple-200 dark:border-purple-800"
+              >
+                <FolderOpen className="w-4 h-4 text-purple-600" />
+                My Scenarios ({savedScenarios.length})
+              </button>
+            )}
             <button
               onClick={() => {
                 // Generate Phil question based on scenario
@@ -8182,6 +8713,161 @@ function TinkerStarView({
           </div>
         </div>
       </div>
+
+      {/* Save Scenario Dialog */}
+      {showSaveDialog && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="card-neumorphic p-6 w-full max-w-md animate-slide-up">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-lg flex items-center gap-2">
+                <Save className="w-5 h-5 text-green-600" />
+                Save Scenario
+              </h3>
+              <button onClick={() => setShowSaveDialog(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Facility</label>
+                <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                  <div className="font-medium">{facilityData?.providerName}</div>
+                  <div className="text-sm text-[var(--foreground-muted)]">CCN: {facilityData?.federalProviderNumber}</div>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Scenario Name</label>
+                <input
+                  type="text"
+                  value={scenarioName}
+                  onChange={(e) => setScenarioName(e.target.value)}
+                  placeholder="e.g., Q1 2025 Staffing Plan"
+                  className="w-full px-4 py-3 rounded-xl border border-[var(--border-color)] bg-[var(--card-background)] focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Predicted Ratings</label>
+                <div className="flex items-center gap-4 p-3 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-lg">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-600">{predictedRatings.overall}★</div>
+                    <div className="text-xs">Overall</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="font-bold text-cyan-600">{predictedRatings.health}★</div>
+                    <div className="text-xs">Health</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="font-bold text-purple-600">{predictedRatings.staffing}★</div>
+                    <div className="text-xs">Staffing</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="font-bold text-amber-600">{predictedRatings.qm}★</div>
+                    <div className="text-xs">QM</div>
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setShowSaveDialog(false)}
+                  className="flex-1 btn-neumorphic py-3"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={saveScenario}
+                  disabled={savingScenario}
+                  className="flex-1 btn-neumorphic-primary py-3 flex items-center justify-center gap-2"
+                >
+                  {savingScenario ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
+                  {savingScenario ? 'Saving...' : 'Save Scenario'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Saved Scenarios Modal */}
+      {showSavedScenarios && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="card-neumorphic p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto animate-slide-up">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-lg flex items-center gap-2">
+                <FolderOpen className="w-5 h-5 text-purple-600" />
+                My Saved Scenarios
+              </h3>
+              <button onClick={() => setShowSavedScenarios(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            {loadingSavedScenarios ? (
+              <div className="flex items-center justify-center py-12">
+                <RefreshCw className="w-8 h-8 animate-spin text-cyan-500" />
+              </div>
+            ) : savedScenarios.length === 0 ? (
+              <div className="text-center py-12 text-[var(--foreground-muted)]">
+                <FolderOpen className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                <p>No saved scenarios yet</p>
+                <p className="text-sm">Create what-if scenarios and save them for later</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {savedScenarios.map((scenario) => (
+                  <div key={scenario.id} className="card-neumorphic-inset p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <h4 className="font-semibold">{scenario.scenario_name}</h4>
+                        <p className="text-sm text-[var(--foreground-muted)]">{scenario.facility_name}</p>
+                        <p className="text-xs text-[var(--foreground-muted)]">
+                          Saved {new Date(scenario.created_at).toLocaleDateString()}
+                        </p>
+                        {scenario.predicted_ratings && (
+                          <div className="flex items-center gap-2 mt-2">
+                            <span className="text-sm font-medium">Predicted:</span>
+                            <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded text-sm font-bold">
+                              {scenario.predicted_ratings.overall}★
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            if (scenario.facility_ccn !== facilityData?.federalProviderNumber) {
+                              // Load the facility first
+                              setSelectedFacilityId(scenario.facility_ccn);
+                              fetchFacility(scenario.facility_ccn);
+                            }
+                            loadScenario(scenario);
+                          }}
+                          className="btn-neumorphic px-3 py-2 text-sm flex items-center gap-1"
+                        >
+                          <Play className="w-4 h-4" />
+                          Load
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (confirm('Delete this scenario?')) {
+                              deleteScenario(scenario.id);
+                            }
+                          }}
+                          className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -8529,10 +9215,38 @@ function CompareFacilitiesView({
 
   return (
     <div className="space-y-6 animate-slide-up">
-      <button onClick={onBack} className="btn-neumorphic px-4 py-2 flex items-center gap-2">
-        <ArrowLeft className="w-4 h-4" />
-        Back to Search
-      </button>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <button onClick={onBack} className="btn-neumorphic px-4 py-2 flex items-center gap-2">
+          <ArrowLeft className="w-4 h-4" />
+          Back to Search
+        </button>
+        {selectedFacilities.length > 0 && (
+          <button
+            onClick={() => {
+              const facilityList = selectedFacilities.map(pn => {
+                const f = facilityData[pn] as any;
+                return {
+                  providerName: f?.providerName || 'Unknown',
+                  federalProviderNumber: pn,
+                  cityTown: f?.cityTown || '',
+                  state: f?.state || '',
+                  overallRating: f?.overallRating || 0,
+                  healthRating: f?.healthInspectionRating || f?.healthRating || 0,
+                  staffingRating: f?.staffingRating || 0,
+                  qmRating: f?.qualityMeasureRating || f?.qmRating || 0,
+                };
+              });
+              generateComparisonReport(facilityList, {
+                title: 'Facility Comparison Report',
+              });
+            }}
+            className="btn-neumorphic px-4 py-2 flex items-center gap-2 bg-gradient-to-r from-purple-50 to-violet-50 dark:from-purple-900/30 dark:to-violet-900/30"
+          >
+            <Download className="w-4 h-4" />
+            Export Comparison
+          </button>
+        )}
+      </div>
 
       <div className="text-center py-8">
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-sm font-medium mb-4">
@@ -8849,10 +9563,44 @@ function ExecutiveDashboard({
 
   return (
     <div className="space-y-6 animate-slide-up">
-      <button onClick={onBack} className="btn-neumorphic px-4 py-2 flex items-center gap-2">
-        <ArrowLeft className="w-4 h-4" />
-        Back
-      </button>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <button onClick={onBack} className="btn-neumorphic px-4 py-2 flex items-center gap-2">
+          <ArrowLeft className="w-4 h-4" />
+          Back
+        </button>
+        <button
+          onClick={() => {
+            const portfolioData = {
+              totalFacilities,
+              avgOverallRating: avgRating,
+              avgHealthRating,
+              avgStaffingRating,
+              avgQMRating,
+              atRiskCount: lowRatedCount,
+              improvingCount: 0,
+              stableCount: totalFacilities - lowRatedCount,
+            };
+            const facilityData = facilities.map(f => ({
+              providerName: f.providerName,
+              federalProviderNumber: f.federalProviderNumber,
+              cityTown: f.cityTown,
+              state: f.state,
+              overallRating: f.overallRating || 0,
+              healthRating: f.healthRating || 0,
+              staffingRating: f.staffingRating || 0,
+              qmRating: f.qmRating || 0,
+            }));
+            generateExecutiveReport(portfolioData, facilityData, {
+              title: 'Executive Portfolio Summary',
+              subtitle: 'Cascadia Healthcare',
+            });
+          }}
+          className="btn-neumorphic px-4 py-2 flex items-center gap-2 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30"
+        >
+          <Download className="w-4 h-4" />
+          Export PDF
+        </button>
+      </div>
 
       {/* Header */}
       <div className="text-center py-6">
