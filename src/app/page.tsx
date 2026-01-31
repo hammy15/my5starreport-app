@@ -110,6 +110,69 @@ import { PhilReportModal } from '@/components/PhilReportModal';
 import type { Facility, ImprovementRecommendation, ActionPlan, MedicaidRateLetter, MedicareRate, CostReport, RateBenchmark, RateTrend } from '@/types/facility';
 import { generateMedicaidRateLetters, generateMedicareRates, generateCostReport, generateBenchmarks, generateTrends } from '@/lib/sample-rates-data';
 
+// Cascadia facility CCN list with company groupings - MUST be defined before components use it
+const CASCADIA_FACILITIES: Record<string, { ccn: string; shortName: string; company: string; isVincero?: boolean }> = {
+  // Northern Healthcare - Northern ID, MT
+  '135048': { ccn: '135048', shortName: 'Clearwater', company: 'Northern Healthcare' },
+  '135080': { ccn: '135080', shortName: 'Grangeville', company: 'Northern Healthcare' },
+  '135052': { ccn: '135052', shortName: 'CDA', company: 'Northern Healthcare' },
+  '135065': { ccn: '135065', shortName: 'Mountain Valley', company: 'Northern Healthcare' },
+  '135093': { ccn: '135093', shortName: 'Aspen Park', company: 'Northern Healthcare' },
+  '135067': { ccn: '135067', shortName: 'Paradise Creek', company: 'Northern Healthcare' },
+  '275040': { ccn: '275040', shortName: 'Libby', company: 'Northern Healthcare' },
+  '275084': { ccn: '275084', shortName: 'Mountain View', company: 'Northern Healthcare' },
+  '275044': { ccn: '275044', shortName: 'Mount Ascension', company: 'Northern Healthcare' },
+  // Columbia - OR, WA Columbia River region
+  '385195': { ccn: '385195', shortName: 'Beaverton', company: 'Columbia' },
+  '385147': { ccn: '385147', shortName: 'Creekside', company: 'Columbia' },
+  '385165': { ccn: '385165', shortName: 'Curry Village', company: 'Columbia' },
+  '385133': { ccn: '385133', shortName: 'Fairlawn', company: 'Columbia' },
+  '385264': { ccn: '385264', shortName: 'Secora', company: 'Columbia' },
+  '38E174': { ccn: '38E174', shortName: 'Village Manor', company: 'Columbia' },
+  '505331': { ccn: '505331', shortName: 'Brookfield', company: 'Columbia' },
+  '505260': { ccn: '505260', shortName: 'Hudson Bay', company: 'Columbia' },
+  // Envision - Southern ID (Boise/Treasure Valley)
+  '135079': { ccn: '135079', shortName: 'Arbor Valley', company: 'Envision' },
+  '135014': { ccn: '135014', shortName: 'Caldwell', company: 'Envision' },
+  '135051': { ccn: '135051', shortName: 'Canyon West', company: 'Envision' },
+  '135146': { ccn: '135146', shortName: 'Boise', company: 'Envision' },
+  '135144': { ccn: '135144', shortName: 'Nampa', company: 'Envision' },
+  '135095': { ccn: '135095', shortName: 'Cherry Ridge', company: 'Envision' },
+  '135019': { ccn: '135019', shortName: 'Orchards', company: 'Envision' },
+  '135015': { ccn: '135015', shortName: 'Payette', company: 'Envision' },
+  '135090': { ccn: '135090', shortName: 'Shaw Mountain', company: 'Envision' },
+  '135094': { ccn: '135094', shortName: 'Wellspring', company: 'Envision' },
+  '135010': { ccn: '135010', shortName: 'Weiser', company: 'Envision' },
+  // Vincero (under Columbia) - Eastern WA & Arizona
+  '505092': { ccn: '505092', shortName: 'Alderwood', company: 'Vincero' },
+  '505251': { ccn: '505251', shortName: 'Colfax', company: 'Vincero' },
+  '505275': { ccn: '505275', shortName: 'Colville', company: 'Vincero' },
+  '505140': { ccn: '505140', shortName: 'Highland', company: 'Vincero' },
+  '505338': { ccn: '505338', shortName: 'Snohomish', company: 'Vincero' },
+  '505099': { ccn: '505099', shortName: 'Spokane Valley', company: 'Vincero' },
+  '505395': { ccn: '505395', shortName: 'Stafholt', company: 'Vincero' },
+  '035121': { ccn: '035121', shortName: 'Boswell', company: 'Vincero' },
+  '035299': { ccn: '035299', shortName: 'North Park', company: 'Vincero' },
+  // Three Rivers - Lewiston/Clarkston area
+  '135145': { ccn: '135145', shortName: 'Cascadia of Lewiston', company: 'Three Rivers' },
+  '135021': { ccn: '135021', shortName: 'Lewiston TC', company: 'Three Rivers' },
+  '135116': { ccn: '135116', shortName: 'Royal Plaza', company: 'Three Rivers' },
+  '505283': { ccn: '505283', shortName: 'Clarkston', company: 'Three Rivers' },
+  '135069': { ccn: '135069', shortName: 'The Cove', company: 'Three Rivers' },
+  '135058': { ccn: '135058', shortName: 'Silverton', company: 'Three Rivers' },
+  '135092': { ccn: '135092', shortName: 'Eagle Rock', company: 'Three Rivers' },
+  '135104': { ccn: '135104', shortName: 'Twin Falls', company: 'Three Rivers' },
+  '135138': { ccn: '135138', shortName: 'Teton', company: 'Three Rivers' },
+};
+
+const COMPANY_COLORS: Record<string, string> = {
+  'Northern Healthcare': 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+  'Columbia': 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
+  'Envision': 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+  'Vincero': 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',
+  'Three Rivers': 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300',
+};
+
 // View types for navigation
 type ViewType = 'search' | 'overview' | 'health' | 'staffing' | 'quality' | 'plan' | 'plan-preview' | 'training' | 'cascadia' | 'compare' | 'calculator' | 'templates' | 'executive' | 'tasks' | 'trends' | 'checklists' | 'alerts' | 'benchmarking' | 'board-reports' | 'portfolio' | 'survey-countdown' | 'scheduling' | 'financial-impact' | 'pbj-integration' | 'regulatory' | 'community' | 'rates-costs';
 
@@ -6138,72 +6201,6 @@ function CommunityView({ onBack }: { onBack: () => void }) {
     </div>
   );
 }
-
-// Cascadia facility CCN list with company groupings
-const CASCADIA_FACILITIES: Record<string, { ccn: string; shortName: string; company: string; isVincero?: boolean }> = {
-  // Northern Healthcare - Northern ID, MT
-  '135048': { ccn: '135048', shortName: 'Clearwater', company: 'Northern Healthcare' },
-  '135080': { ccn: '135080', shortName: 'Grangeville', company: 'Northern Healthcare' },
-  '135052': { ccn: '135052', shortName: 'CDA', company: 'Northern Healthcare' },
-  '135065': { ccn: '135065', shortName: 'Mountain Valley', company: 'Northern Healthcare' },
-  '135093': { ccn: '135093', shortName: 'Aspen Park', company: 'Northern Healthcare' },
-  '135067': { ccn: '135067', shortName: 'Paradise Creek', company: 'Northern Healthcare' },
-  '275040': { ccn: '275040', shortName: 'Libby', company: 'Northern Healthcare' },
-  '275084': { ccn: '275084', shortName: 'Mountain View', company: 'Northern Healthcare' },
-  '275044': { ccn: '275044', shortName: 'Mount Ascension', company: 'Northern Healthcare' },
-
-  // Columbia - OR, WA Columbia River region
-  '385195': { ccn: '385195', shortName: 'Beaverton', company: 'Columbia' },
-  '385147': { ccn: '385147', shortName: 'Creekside', company: 'Columbia' },
-  '385165': { ccn: '385165', shortName: 'Curry Village', company: 'Columbia' },
-  '385133': { ccn: '385133', shortName: 'Fairlawn', company: 'Columbia' },
-  '385264': { ccn: '385264', shortName: 'Secora', company: 'Columbia' },
-  '38E174': { ccn: '38E174', shortName: 'Village Manor', company: 'Columbia' },
-  '505331': { ccn: '505331', shortName: 'Brookfield', company: 'Columbia' },
-  '505260': { ccn: '505260', shortName: 'Hudson Bay', company: 'Columbia' },
-
-  // Envision - Southern ID (Boise/Treasure Valley)
-  '135079': { ccn: '135079', shortName: 'Arbor Valley', company: 'Envision' },
-  '135014': { ccn: '135014', shortName: 'Caldwell', company: 'Envision' },
-  '135051': { ccn: '135051', shortName: 'Canyon West', company: 'Envision' },
-  '135146': { ccn: '135146', shortName: 'Boise', company: 'Envision' },
-  '135144': { ccn: '135144', shortName: 'Nampa', company: 'Envision' },
-  '135095': { ccn: '135095', shortName: 'Cherry Ridge', company: 'Envision' },
-  '135019': { ccn: '135019', shortName: 'Orchards', company: 'Envision' },
-  '135015': { ccn: '135015', shortName: 'Payette', company: 'Envision' },
-  '135090': { ccn: '135090', shortName: 'Shaw Mountain', company: 'Envision' },
-  '135094': { ccn: '135094', shortName: 'Wellspring', company: 'Envision' },
-  '135010': { ccn: '135010', shortName: 'Weiser', company: 'Envision' },
-
-  // Vincero (under Columbia) - Eastern WA & Arizona
-  '505092': { ccn: '505092', shortName: 'Alderwood', company: 'Columbia', isVincero: true },
-  '505251': { ccn: '505251', shortName: 'Colfax', company: 'Columbia', isVincero: true },
-  '505275': { ccn: '505275', shortName: 'Colville', company: 'Columbia', isVincero: true },
-  '505140': { ccn: '505140', shortName: 'Highland', company: 'Columbia', isVincero: true },
-  '505338': { ccn: '505338', shortName: 'Snohomish', company: 'Columbia', isVincero: true },
-  '505099': { ccn: '505099', shortName: 'Spokane Valley', company: 'Columbia', isVincero: true },
-  '505395': { ccn: '505395', shortName: 'Stafholt', company: 'Columbia', isVincero: true },
-  '035121': { ccn: '035121', shortName: 'Boswell', company: 'Columbia', isVincero: true },
-  '035299': { ccn: '035299', shortName: 'North Park', company: 'Columbia', isVincero: true },
-
-  // Three Rivers - Lewiston/Clarkston area
-  '135145': { ccn: '135145', shortName: 'Cascadia of Lewiston', company: 'Three Rivers' },
-  '135021': { ccn: '135021', shortName: 'Lewiston TC', company: 'Three Rivers' },
-  '135116': { ccn: '135116', shortName: 'Royal Plaza', company: 'Three Rivers' },
-  '505283': { ccn: '505283', shortName: 'Clarkston', company: 'Three Rivers' },
-  '135069': { ccn: '135069', shortName: 'The Cove', company: 'Three Rivers' },
-  '135058': { ccn: '135058', shortName: 'Silverton', company: 'Three Rivers' },
-  '135092': { ccn: '135092', shortName: 'Eagle Rock', company: 'Three Rivers' },
-  '135104': { ccn: '135104', shortName: 'Twin Falls', company: 'Three Rivers' },
-  '135138': { ccn: '135138', shortName: 'Teton', company: 'Three Rivers' },
-};
-
-const COMPANY_COLORS: Record<string, string> = {
-  'Northern Healthcare': 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
-  'Columbia': 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
-  'Envision': 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
-  'Three Rivers': 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300',
-};
 
 // Cascadia Stars View - Shows all Cascadia facilities with company groupings
 function CascadiaStarsView({
