@@ -7380,30 +7380,42 @@ function TinkerStarView({
           {activeTab === 'qm' && (
             <div className="space-y-6">
               <div className="text-sm text-[var(--foreground-muted)] mb-4">
-                Adjust Quality Measure values to see how changes affect your QM star rating.
+                Adjust Quality Measure values to see how changes affect your QM star rating. Click any measure for clinical details.
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Short Stay QMs */}
                 <div>
-                  <h4 className="font-semibold mb-4 text-cyan-700 dark:text-cyan-300">Short-Stay Measures</h4>
+                  <h4 className="font-semibold mb-4 text-cyan-700 dark:text-cyan-300 flex items-center gap-2">
+                    Short-Stay Measures
+                    <span className="text-xs bg-cyan-100 dark:bg-cyan-900/50 px-2 py-0.5 rounded-full">MDS 3.0</span>
+                  </h4>
                   <div className="space-y-4">
                     {[
-                      { key: 'fallsWithInjury', label: 'Falls with Injury', max: 10, target: 2, unit: '%', lowerBetter: true },
-                      { key: 'rehospitalization', label: 'Rehospitalization Rate', max: 40, target: 20, unit: '%', lowerBetter: true },
-                      { key: 'dischargeToCommunity', label: 'Discharge to Community', max: 100, target: 60, unit: '%', lowerBetter: false },
-                      { key: 'improvementInFunction', label: 'Functional Improvement', max: 100, target: 70, unit: '%', lowerBetter: false },
+                      { key: 'fallsWithInjury', label: 'Falls with Major Injury', max: 10, target: 2, unit: '%', lowerBetter: true, mds: 'J1800, J1900', ftag: 'F689', threshold: '≤1.0% for 5★' },
+                      { key: 'rehospitalization', label: 'Rehospitalization Rate', max: 40, target: 20, unit: '%', lowerBetter: true, mds: 'A2100', ftag: 'F626', threshold: '≤18% for 5★' },
+                      { key: 'dischargeToCommunity', label: 'Discharge to Community', max: 100, target: 60, unit: '%', lowerBetter: false, mds: 'A2100', ftag: 'N/A', threshold: '≥65% for 5★' },
+                      { key: 'improvementInFunction', label: 'Functional Improvement', max: 100, target: 70, unit: '%', lowerBetter: false, mds: 'GG0130, GG0170', ftag: 'F686', threshold: '≥75% for 5★' },
                     ].map((qm) => (
-                      <div key={qm.key} className="space-y-1">
+                      <div key={qm.key} className="space-y-1 p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 hover:bg-cyan-50 dark:hover:bg-cyan-900/20 transition-colors">
                         <div className="flex justify-between text-sm">
-                          <span>{qm.label}</span>
-                          <span className={`font-bold ${
-                            qm.lowerBetter
-                              ? (qmScenarios as any)[qm.key] <= qm.target ? 'text-green-600' : 'text-red-600'
-                              : (qmScenarios as any)[qm.key] >= qm.target ? 'text-green-600' : 'text-red-600'
-                          }`}>
-                            {(qmScenarios as any)[qm.key]}{qm.unit}
-                          </span>
+                          <div>
+                            <span className="font-medium">{qm.label}</span>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-[10px] px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded">MDS: {qm.mds}</span>
+                              {qm.ftag !== 'N/A' && <span className="text-[10px] px-1.5 py-0.5 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 rounded">F-Tag: {qm.ftag}</span>}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <span className={`font-bold ${
+                              qm.lowerBetter
+                                ? (qmScenarios as any)[qm.key] <= qm.target ? 'text-green-600' : 'text-red-600'
+                                : (qmScenarios as any)[qm.key] >= qm.target ? 'text-green-600' : 'text-red-600'
+                            }`}>
+                              {(qmScenarios as any)[qm.key]}{qm.unit}
+                            </span>
+                            <div className="text-[10px] text-[var(--foreground-muted)]">{qm.threshold}</div>
+                          </div>
                         </div>
                         <input
                           type="range"
@@ -7414,9 +7426,9 @@ function TinkerStarView({
                           className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
                         />
                         <div className="flex justify-between text-xs text-[var(--foreground-muted)]">
-                          <span>0{qm.unit}</span>
-                          <span className="text-green-600">Target: {qm.target}{qm.unit}</span>
-                          <span>{qm.max}{qm.unit}</span>
+                          <span>{qm.lowerBetter ? 'Better' : 'Worse'}</span>
+                          <span className="text-green-600 font-medium">Target: {qm.target}{qm.unit}</span>
+                          <span>{qm.lowerBetter ? 'Worse' : 'Better'}</span>
                         </div>
                       </div>
                     ))}
@@ -7425,22 +7437,34 @@ function TinkerStarView({
 
                 {/* Long Stay QMs */}
                 <div>
-                  <h4 className="font-semibold mb-4 text-purple-700 dark:text-purple-300">Long-Stay Measures</h4>
+                  <h4 className="font-semibold mb-4 text-purple-700 dark:text-purple-300 flex items-center gap-2">
+                    Long-Stay Measures
+                    <span className="text-xs bg-purple-100 dark:bg-purple-900/50 px-2 py-0.5 rounded-full">MDS 3.0</span>
+                  </h4>
                   <div className="space-y-4">
                     {[
-                      { key: 'antipsychoticUse', label: 'Antipsychotic Use', max: 30, target: 15, unit: '%' },
-                      { key: 'catheterUse', label: 'Catheter Use', max: 10, target: 2, unit: '%' },
-                      { key: 'pressureUlcersLongStay', label: 'Pressure Ulcers', max: 15, target: 5, unit: '%' },
-                      { key: 'physicalRestraints', label: 'Physical Restraints', max: 5, target: 1, unit: '%' },
-                      { key: 'uti', label: 'UTI Rate', max: 10, target: 4, unit: '%' },
-                      { key: 'fallsLongStay', label: 'Falls (Long-Stay)', max: 10, target: 3, unit: '%' },
+                      { key: 'antipsychoticUse', label: 'Antipsychotic Use (No Dx)', max: 30, target: 15, unit: '%', mds: 'N0410A', ftag: 'F758', threshold: '≤10% for 5★' },
+                      { key: 'catheterUse', label: 'Indwelling Catheter', max: 10, target: 2, unit: '%', mds: 'H0100A', ftag: 'F690', threshold: '≤1.5% for 5★' },
+                      { key: 'pressureUlcersLongStay', label: 'High-Risk Pressure Ulcers', max: 15, target: 5, unit: '%', mds: 'M0300', ftag: 'F686', threshold: '≤4% for 5★' },
+                      { key: 'physicalRestraints', label: 'Physical Restraints', max: 5, target: 1, unit: '%', mds: 'P0100', ftag: 'F604', threshold: '0% for 5★' },
+                      { key: 'uti', label: 'UTI Rate', max: 10, target: 4, unit: '%', mds: 'I2300', ftag: 'F881', threshold: '≤3% for 5★' },
+                      { key: 'fallsLongStay', label: 'Falls with Major Injury', max: 10, target: 3, unit: '%', mds: 'J1800, J1900', ftag: 'F689', threshold: '≤2.5% for 5★' },
                     ].map((qm) => (
-                      <div key={qm.key} className="space-y-1">
+                      <div key={qm.key} className="space-y-1 p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors">
                         <div className="flex justify-between text-sm">
-                          <span>{qm.label}</span>
-                          <span className={`font-bold ${(qmScenarios as any)[qm.key] <= qm.target ? 'text-green-600' : 'text-red-600'}`}>
-                            {(qmScenarios as any)[qm.key]}{qm.unit}
-                          </span>
+                          <div>
+                            <span className="font-medium">{qm.label}</span>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-[10px] px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded">MDS: {qm.mds}</span>
+                              <span className="text-[10px] px-1.5 py-0.5 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 rounded">F-Tag: {qm.ftag}</span>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <span className={`font-bold ${(qmScenarios as any)[qm.key] <= qm.target ? 'text-green-600' : 'text-red-600'}`}>
+                              {(qmScenarios as any)[qm.key]}{qm.unit}
+                            </span>
+                            <div className="text-[10px] text-[var(--foreground-muted)]">{qm.threshold}</div>
+                          </div>
                         </div>
                         <input
                           type="range"
@@ -7450,9 +7474,30 @@ function TinkerStarView({
                           onChange={(e) => setQmScenarios({ ...qmScenarios, [qm.key]: parseInt(e.target.value) })}
                           className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
                         />
+                        <div className="flex justify-between text-xs text-[var(--foreground-muted)]">
+                          <span>Better</span>
+                          <span className="text-green-600 font-medium">Target: {qm.target}{qm.unit}</span>
+                          <span>Worse</span>
+                        </div>
                       </div>
                     ))}
                   </div>
+                </div>
+              </div>
+
+              {/* CMS QM Rating Formula Reference */}
+              <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-xl mt-4">
+                <h5 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                  <Info className="w-4 h-4 text-blue-500" />
+                  CMS Quality Measure Rating Formula
+                </h5>
+                <div className="text-xs text-[var(--foreground-muted)] grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <div>• QM rating is 15% of overall star rating</div>
+                  <div>• Based on 15 quality measures from MDS 3.0</div>
+                  <div>• Measures are risk-adjusted using resident characteristics</div>
+                  <div>• National percentile thresholds determine star cutoffs</div>
+                  <div>• Short-stay measures weighted by SNF discharge volume</div>
+                  <div>• Updated monthly from CMS CASPER reports</div>
                 </div>
               </div>
             </div>
@@ -7461,18 +7506,54 @@ function TinkerStarView({
           {/* Staffing Scenarios */}
           {activeTab === 'staffing' && (
             <div className="space-y-6">
-              <div className="text-sm text-[var(--foreground-muted)] mb-4">
-                Adjust staffing metrics to see impact on your staffing star rating. Thresholds shown are for 5-star.
+              <div className="text-sm text-[var(--foreground-muted)] mb-4 flex items-center justify-between">
+                <span>Adjust staffing metrics based on PBJ data. Staffing is 32% of overall star rating.</span>
+                <span className="text-xs bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-full">PBJ Data</span>
+              </div>
+
+              {/* CMS Staffing Thresholds Reference */}
+              <div className="grid grid-cols-5 gap-2 text-center text-xs mb-4">
+                <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
+                  <div className="font-bold text-green-700 dark:text-green-300">5★</div>
+                  <div className="text-[10px]">≥4.08 HPRD</div>
+                  <div className="text-[10px]">≥0.75 RN</div>
+                </div>
+                <div className="p-2 rounded-lg bg-lime-100 dark:bg-lime-900/30">
+                  <div className="font-bold text-lime-700 dark:text-lime-300">4★</div>
+                  <div className="text-[10px]">≥3.58 HPRD</div>
+                  <div className="text-[10px]">≥0.55 RN</div>
+                </div>
+                <div className="p-2 rounded-lg bg-yellow-100 dark:bg-yellow-900/30">
+                  <div className="font-bold text-yellow-700 dark:text-yellow-300">3★</div>
+                  <div className="text-[10px]">≥3.18 HPRD</div>
+                  <div className="text-[10px]">≥0.40 RN</div>
+                </div>
+                <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/30">
+                  <div className="font-bold text-orange-700 dark:text-orange-300">2★</div>
+                  <div className="text-[10px]">≥2.82 HPRD</div>
+                  <div className="text-[10px]">≥0.30 RN</div>
+                </div>
+                <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30">
+                  <div className="font-bold text-red-700 dark:text-red-300">1★</div>
+                  <div className="text-[10px]">&lt;2.82 HPRD</div>
+                  <div className="text-[10px]">&lt;0.30 RN</div>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Total Nursing HPRD</span>
-                      <span className={`font-bold ${staffingScenario.totalNursingHPRD >= 4.08 ? 'text-green-600' : 'text-red-600'}`}>
-                        {staffingScenario.totalNursingHPRD.toFixed(2)}
-                      </span>
+                  <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                    <div className="flex justify-between text-sm mb-2">
+                      <div>
+                        <span className="font-medium">Total Nursing HPRD</span>
+                        <div className="text-[10px] text-[var(--foreground-muted)]">RN + LPN + CNA hours per resident day</div>
+                      </div>
+                      <div className="text-right">
+                        <span className={`font-bold text-lg ${staffingScenario.totalNursingHPRD >= 4.08 ? 'text-green-600' : staffingScenario.totalNursingHPRD >= 3.58 ? 'text-lime-600' : staffingScenario.totalNursingHPRD >= 3.18 ? 'text-yellow-600' : 'text-red-600'}`}>
+                          {staffingScenario.totalNursingHPRD.toFixed(2)}
+                        </span>
+                        <div className="text-[10px] text-[var(--foreground-muted)]">PBJ: Daily staffing log</div>
+                      </div>
                     </div>
                     <input
                       type="range"
@@ -7483,19 +7564,25 @@ function TinkerStarView({
                       onChange={(e) => setStaffingScenario({ ...staffingScenario, totalNursingHPRD: parseFloat(e.target.value) })}
                       className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
                     />
-                    <div className="flex justify-between text-xs text-[var(--foreground-muted)]">
-                      <span>2.0</span>
-                      <span className="text-green-600 font-medium">5★ Target: 4.08+</span>
+                    <div className="flex justify-between text-xs text-[var(--foreground-muted)] mt-1">
+                      <span>2.0 (1★)</span>
+                      <span className="text-green-600 font-medium">5★ ≥ 4.08</span>
                       <span>6.0</span>
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>RN HPRD</span>
-                      <span className={`font-bold ${staffingScenario.rnHPRD >= 0.55 ? 'text-green-600' : 'text-red-600'}`}>
-                        {staffingScenario.rnHPRD.toFixed(2)}
-                      </span>
+                  <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                    <div className="flex justify-between text-sm mb-2">
+                      <div>
+                        <span className="font-medium">RN HPRD</span>
+                        <div className="text-[10px] text-[var(--foreground-muted)]">Registered Nurse hours only</div>
+                      </div>
+                      <div className="text-right">
+                        <span className={`font-bold text-lg ${staffingScenario.rnHPRD >= 0.75 ? 'text-green-600' : staffingScenario.rnHPRD >= 0.55 ? 'text-lime-600' : staffingScenario.rnHPRD >= 0.40 ? 'text-yellow-600' : 'text-red-600'}`}>
+                          {staffingScenario.rnHPRD.toFixed(2)}
+                        </span>
+                        <div className="text-[10px] text-[var(--foreground-muted)]">PBJ: Job code 01-05</div>
+                      </div>
                     </div>
                     <input
                       type="range"
@@ -7506,21 +7593,27 @@ function TinkerStarView({
                       onChange={(e) => setStaffingScenario({ ...staffingScenario, rnHPRD: parseFloat(e.target.value) })}
                       className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
                     />
-                    <div className="flex justify-between text-xs text-[var(--foreground-muted)]">
-                      <span>0.10</span>
-                      <span className="text-green-600 font-medium">5★ Target: 0.55+</span>
+                    <div className="flex justify-between text-xs text-[var(--foreground-muted)] mt-1">
+                      <span>0.10 (1★)</span>
+                      <span className="text-green-600 font-medium">5★ ≥ 0.75</span>
                       <span>1.50</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-4">
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Total Nurse Turnover</span>
-                      <span className={`font-bold ${staffingScenario.totalNurseTurnover < 40 ? 'text-green-600' : 'text-red-600'}`}>
-                        {staffingScenario.totalNurseTurnover}%
-                      </span>
+                  <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                    <div className="flex justify-between text-sm mb-2">
+                      <div>
+                        <span className="font-medium">Total Nurse Turnover</span>
+                        <div className="text-[10px] text-[var(--foreground-muted)]">Annual turnover rate (PBJ quarterly)</div>
+                      </div>
+                      <div className="text-right">
+                        <span className={`font-bold text-lg ${staffingScenario.totalNurseTurnover < 40 ? 'text-green-600' : staffingScenario.totalNurseTurnover < 55 ? 'text-yellow-600' : 'text-red-600'}`}>
+                          {staffingScenario.totalNurseTurnover}%
+                        </span>
+                        <div className="text-[10px] text-[var(--foreground-muted)]">F-Tag: F725</div>
+                      </div>
                     </div>
                     <input
                       type="range"
@@ -7530,19 +7623,25 @@ function TinkerStarView({
                       onChange={(e) => setStaffingScenario({ ...staffingScenario, totalNurseTurnover: parseInt(e.target.value) })}
                       className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-red-500"
                     />
-                    <div className="flex justify-between text-xs text-[var(--foreground-muted)]">
-                      <span>0%</span>
+                    <div className="flex justify-between text-xs text-[var(--foreground-muted)] mt-1">
+                      <span>0% (Best)</span>
                       <span className="text-green-600 font-medium">Target: &lt;40%</span>
-                      <span>100%</span>
+                      <span>100% (Worst)</span>
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Weekend Staffing Ratio</span>
-                      <span className={`font-bold ${staffingScenario.weekendStaffing >= 0.95 ? 'text-green-600' : 'text-yellow-600'}`}>
-                        {(staffingScenario.weekendStaffing * 100).toFixed(0)}%
-                      </span>
+                  <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                    <div className="flex justify-between text-sm mb-2">
+                      <div>
+                        <span className="font-medium">Weekend Staffing Ratio</span>
+                        <div className="text-[10px] text-[var(--foreground-muted)]">Weekend vs weekday HPRD ratio</div>
+                      </div>
+                      <div className="text-right">
+                        <span className={`font-bold text-lg ${staffingScenario.weekendStaffing >= 0.95 ? 'text-green-600' : staffingScenario.weekendStaffing >= 0.85 ? 'text-yellow-600' : 'text-red-600'}`}>
+                          {(staffingScenario.weekendStaffing * 100).toFixed(0)}%
+                        </span>
+                        <div className="text-[10px] text-[var(--foreground-muted)]">CMS requirement</div>
+                      </div>
                     </div>
                     <input
                       type="range"
@@ -7553,12 +7652,28 @@ function TinkerStarView({
                       onChange={(e) => setStaffingScenario({ ...staffingScenario, weekendStaffing: parseFloat(e.target.value) })}
                       className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
                     />
-                    <div className="flex justify-between text-xs text-[var(--foreground-muted)]">
-                      <span>50%</span>
-                      <span className="text-green-600 font-medium">Target: 95%+</span>
-                      <span>110%</span>
+                    <div className="flex justify-between text-xs text-[var(--foreground-muted)] mt-1">
+                      <span>50% (Low)</span>
+                      <span className="text-green-600 font-medium">Target: ≥95%</span>
+                      <span>110%+</span>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              {/* Staffing Rating Formula Reference */}
+              <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-xl mt-4">
+                <h5 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                  <Info className="w-4 h-4 text-purple-500" />
+                  CMS Staffing Rating Methodology (32% of Overall)
+                </h5>
+                <div className="text-xs text-[var(--foreground-muted)] grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <div>• Based on PBJ (Payroll-Based Journal) data submitted quarterly</div>
+                  <div>• Adjusted for case-mix using RUG-IV/PDPM model</div>
+                  <div>• Total nursing = RN + LPN + CNA hours</div>
+                  <div>• RN staffing evaluated separately for quality threshold</div>
+                  <div>• Weekend staffing compared to weekday average</div>
+                  <div>• Turnover calculated as 12-month rolling average</div>
                 </div>
               </div>
             </div>
@@ -7567,16 +7682,66 @@ function TinkerStarView({
           {/* Health Inspection Scenarios */}
           {activeTab === 'health' && (
             <div className="space-y-6">
-              <div className="text-sm text-[var(--foreground-muted)] mb-4">
-                Health inspection ratings are based on deficiency history. Lower deficiency counts and points = higher rating.
+              <div className="text-sm text-[var(--foreground-muted)] mb-4 flex items-center justify-between">
+                <span>Health inspection is 53% of overall rating. Based on surveys from past 3 years.</span>
+                <span className="text-xs bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 px-2 py-0.5 rounded-full">F-Tag Citations</span>
+              </div>
+
+              {/* Scope/Severity Grid */}
+              <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+                <h5 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                  <ClipboardCheck className="w-4 h-4 text-red-500" />
+                  CMS Scope & Severity Matrix (Point Values)
+                </h5>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-[10px] text-center">
+                    <thead>
+                      <tr className="bg-slate-200 dark:bg-slate-700">
+                        <th className="p-1 rounded-tl">Severity</th>
+                        <th className="p-1">Isolated</th>
+                        <th className="p-1">Pattern</th>
+                        <th className="p-1 rounded-tr">Widespread</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="bg-green-50 dark:bg-green-900/20">
+                        <td className="p-1 font-medium text-left">No Actual Harm (potential)</td>
+                        <td className="p-1">A: 0</td>
+                        <td className="p-1">B: 0</td>
+                        <td className="p-1">C: 0</td>
+                      </tr>
+                      <tr className="bg-yellow-50 dark:bg-yellow-900/20">
+                        <td className="p-1 font-medium text-left">No Actual Harm (potential for more than minimal)</td>
+                        <td className="p-1">D: 4</td>
+                        <td className="p-1">E: 8</td>
+                        <td className="p-1">F: 16</td>
+                      </tr>
+                      <tr className="bg-orange-50 dark:bg-orange-900/20">
+                        <td className="p-1 font-medium text-left">Actual Harm (not immediate jeopardy)</td>
+                        <td className="p-1">G: 20</td>
+                        <td className="p-1">H: 35</td>
+                        <td className="p-1">I: 45</td>
+                      </tr>
+                      <tr className="bg-red-50 dark:bg-red-900/20">
+                        <td className="p-1 font-medium text-left rounded-bl">Immediate Jeopardy</td>
+                        <td className="p-1">J: 50</td>
+                        <td className="p-1">K: 100</td>
+                        <td className="p-1 rounded-br">L: 150</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Total Deficiencies</span>
-                      <span className={`font-bold ${healthScenario.totalDeficiencies <= 3 ? 'text-green-600' : healthScenario.totalDeficiencies <= 6 ? 'text-yellow-600' : 'text-red-600'}`}>
+                  <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                    <div className="flex justify-between text-sm mb-2">
+                      <div>
+                        <span className="font-medium">Total Deficiencies</span>
+                        <div className="text-[10px] text-[var(--foreground-muted)]">From most recent standard survey cycle</div>
+                      </div>
+                      <span className={`font-bold text-lg ${healthScenario.totalDeficiencies <= 3 ? 'text-green-600' : healthScenario.totalDeficiencies <= 6 ? 'text-yellow-600' : 'text-red-600'}`}>
                         {healthScenario.totalDeficiencies}
                       </span>
                     </div>
@@ -7588,12 +7753,20 @@ function TinkerStarView({
                       onChange={(e) => setHealthScenario({ ...healthScenario, totalDeficiencies: parseInt(e.target.value) })}
                       className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-red-500"
                     />
+                    <div className="flex justify-between text-xs text-[var(--foreground-muted)] mt-1">
+                      <span>0 (Excellent)</span>
+                      <span>National avg: 7.4</span>
+                      <span>20+</span>
+                    </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Health Inspection Points</span>
-                      <span className={`font-bold ${healthScenario.healthPoints < 10 ? 'text-green-600' : healthScenario.healthPoints < 25 ? 'text-yellow-600' : 'text-red-600'}`}>
+                  <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                    <div className="flex justify-between text-sm mb-2">
+                      <div>
+                        <span className="font-medium">Health Inspection Points</span>
+                        <div className="text-[10px] text-[var(--foreground-muted)]">Sum of scope/severity points from matrix</div>
+                      </div>
+                      <span className={`font-bold text-lg ${healthScenario.healthPoints < 10 ? 'text-green-600' : healthScenario.healthPoints < 25 ? 'text-lime-600' : healthScenario.healthPoints < 45 ? 'text-yellow-600' : 'text-red-600'}`}>
                         {healthScenario.healthPoints}
                       </span>
                     </div>
@@ -7605,11 +7778,11 @@ function TinkerStarView({
                       onChange={(e) => setHealthScenario({ ...healthScenario, healthPoints: parseInt(e.target.value) })}
                       className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-red-500"
                     />
-                    <div className="flex justify-between text-xs text-[var(--foreground-muted)]">
+                    <div className="flex justify-between text-xs text-[var(--foreground-muted)] mt-1">
                       <span>0 (5★)</span>
                       <span>&lt;25 (4★)</span>
                       <span>&lt;45 (3★)</span>
-                      <span>150+</span>
+                      <span>150+ (1★)</span>
                     </div>
                   </div>
                 </div>
@@ -7618,7 +7791,7 @@ function TinkerStarView({
                   <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
                     <div className="flex items-center gap-2 text-red-700 dark:text-red-300 font-medium mb-2">
                       <AlertTriangle className="w-5 h-5" />
-                      Substandard Quality of Care
+                      Substandard Quality of Care (SQC)
                     </div>
                     <div className="flex items-center gap-4">
                       <label className="flex items-center gap-2">
@@ -7628,23 +7801,67 @@ function TinkerStarView({
                           onChange={(e) => setHealthScenario({ ...healthScenario, substandardQuality: e.target.checked ? 1 : 0 })}
                           className="w-4 h-4 accent-red-500"
                         />
-                        <span className="text-sm">Has substandard quality citation</span>
+                        <span className="text-sm">Has SQC citation (G+ severity)</span>
                       </label>
                     </div>
-                    <p className="text-xs text-red-600 dark:text-red-400 mt-2">
-                      ⚠️ Substandard quality automatically caps health rating at 1 star
-                    </p>
+                    <div className="text-xs text-red-600 dark:text-red-400 mt-2 space-y-1">
+                      <div>⚠️ Automatic 1-star cap when SQC is present</div>
+                      <div className="text-[10px]">F-Tags: F684, F686, F689, F690, F691 at G+ level</div>
+                    </div>
                   </div>
 
                   <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl">
-                    <div className="text-sm font-medium mb-2">Rating Thresholds (Points)</div>
+                    <div className="text-sm font-medium mb-2">Star Rating Thresholds (Point-Based)</div>
                     <div className="grid grid-cols-5 gap-2 text-center text-xs">
-                      <div className="bg-green-100 dark:bg-green-900/50 p-2 rounded"><div className="font-bold">5★</div>&lt;10</div>
-                      <div className="bg-lime-100 dark:bg-lime-900/50 p-2 rounded"><div className="font-bold">4★</div>10-24</div>
-                      <div className="bg-yellow-100 dark:bg-yellow-900/50 p-2 rounded"><div className="font-bold">3★</div>25-44</div>
-                      <div className="bg-orange-100 dark:bg-orange-900/50 p-2 rounded"><div className="font-bold">2★</div>45-74</div>
-                      <div className="bg-red-100 dark:bg-red-900/50 p-2 rounded"><div className="font-bold">1★</div>75+</div>
+                      <div className="bg-green-100 dark:bg-green-900/50 p-2 rounded">
+                        <div className="font-bold">5★</div>
+                        <div>&lt;10 pts</div>
+                      </div>
+                      <div className="bg-lime-100 dark:bg-lime-900/50 p-2 rounded">
+                        <div className="font-bold">4★</div>
+                        <div>10-24 pts</div>
+                      </div>
+                      <div className="bg-yellow-100 dark:bg-yellow-900/50 p-2 rounded">
+                        <div className="font-bold">3★</div>
+                        <div>25-44 pts</div>
+                      </div>
+                      <div className="bg-orange-100 dark:bg-orange-900/50 p-2 rounded">
+                        <div className="font-bold">2★</div>
+                        <div>45-74 pts</div>
+                      </div>
+                      <div className="bg-red-100 dark:bg-red-900/50 p-2 rounded">
+                        <div className="font-bold">1★</div>
+                        <div>75+ pts</div>
+                      </div>
                     </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Common F-Tags Reference */}
+              <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-xl mt-4">
+                <h5 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                  <Info className="w-4 h-4 text-red-500" />
+                  Common High-Impact F-Tags
+                </h5>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+                  <div className="p-2 bg-white dark:bg-slate-700 rounded">
+                    <span className="font-bold text-red-600">F686</span> - Pressure Ulcers/Injuries
+                  </div>
+                  <div className="p-2 bg-white dark:bg-slate-700 rounded">
+                    <span className="font-bold text-red-600">F689</span> - Free from Accidents/Falls
+                  </div>
+                  <div className="p-2 bg-white dark:bg-slate-700 rounded">
+                    <span className="font-bold text-red-600">F690</span> - Bowel/Bladder Incontinence
+                  </div>
+                  <div className="p-2 bg-white dark:bg-slate-700 rounded">
+                    <span className="font-bold text-red-600">F758</span> - Psychotropic Drug Use
+                  </div>
+                  <div className="p-2 bg-white dark:bg-slate-700 rounded">
+                    <span className="font-bold text-red-600">F880</span> - Infection Control
+                  </div>
+                  <div className="p-2 bg-white dark:bg-slate-700 rounded">
+                    <span className="font-bold text-red-600">F725</span> - Sufficient Nursing Staff
                   </div>
                 </div>
               </div>
