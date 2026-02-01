@@ -43,7 +43,30 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { StarRating } from '@/components/ui/star-rating';
+import { SkeletonCard, SkeletonMetric, SkeletonRating, SkeletonText } from '@/components/ui/skeleton';
+import { exportFacilitiesToExcel, exportFacilitiesToCSV } from '@/lib/export-utils';
 import type { FacilityAnalysis } from '@/types/facility';
+
+// Calculate projected survey date based on last survey (typically 9-15 months)
+function calculateProjectedSurveyWindow(lastSurveyDate: string | undefined): { earliest: Date; latest: Date; daysUntilEarliest: number } | null {
+  if (!lastSurveyDate) return null;
+  const lastSurvey = new Date(lastSurveyDate);
+  if (isNaN(lastSurvey.getTime())) return null;
+
+  const earliest = new Date(lastSurvey);
+  earliest.setMonth(earliest.getMonth() + 9);
+  const latest = new Date(lastSurvey);
+  latest.setMonth(latest.getMonth() + 15);
+
+  const today = new Date();
+  const daysUntilEarliest = Math.ceil((earliest.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+  return { earliest, latest, daysUntilEarliest };
+}
+
+function formatSurveyDate(date: Date): string {
+  return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+}
 
 interface FacilityOverviewProps {
   providerNumber: string;
@@ -84,9 +107,52 @@ export function FacilityOverview({ providerNumber, onBack, onViewDetails }: Faci
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-        <span className="ml-3 text-gray-600">Loading facility data...</span>
+      <div className="space-y-6">
+        {/* Header skeleton */}
+        <div className="flex items-center justify-between">
+          <div className="h-8 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+          <div className="flex gap-2">
+            <div className="h-8 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+            <div className="h-8 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+          </div>
+        </div>
+
+        {/* Facility card skeleton */}
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
+              <div className="flex-1 space-y-4">
+                <div className="h-8 w-64 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                <div className="flex flex-wrap gap-4">
+                  <div className="h-4 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                  <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                </div>
+                <div className="flex gap-2">
+                  <div className="h-6 w-20 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse" />
+                  <div className="h-6 w-20 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse" />
+                </div>
+              </div>
+              <div className="text-center space-y-2">
+                <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mx-auto" />
+                <SkeletonRating size="lg" showLabel />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Quick stats skeleton */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          {[...Array(5)].map((_, i) => (
+            <SkeletonMetric key={i} size="md" />
+          ))}
+        </div>
+
+        {/* Rating cards skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[...Array(3)].map((_, i) => (
+            <SkeletonCard key={i} lines={2} />
+          ))}
+        </div>
       </div>
     );
   }
@@ -227,15 +293,31 @@ export function FacilityOverview({ providerNumber, onBack, onViewDetails }: Faci
   return (
     <div className="space-y-6">
       {/* Header with Back and Export */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <Button onClick={onBack} variant="ghost" size="sm">
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Search
         </Button>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button onClick={handleExport} variant="outline" size="sm">
             <Printer className="w-4 h-4 mr-2" />
-            Print Report
+            Print
+          </Button>
+          <Button
+            onClick={() => exportFacilitiesToExcel([facility as unknown as Record<string, unknown>], `${facility.providerName.replace(/[^a-z0-9]/gi, '-')}-report`)}
+            variant="outline"
+            size="sm"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Excel
+          </Button>
+          <Button
+            onClick={() => exportFacilitiesToCSV([facility as unknown as Record<string, unknown>], `${facility.providerName.replace(/[^a-z0-9]/gi, '-')}-report`)}
+            variant="outline"
+            size="sm"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            CSV
           </Button>
         </div>
       </div>
@@ -306,16 +388,36 @@ export function FacilityOverview({ providerNumber, onBack, onViewDetails }: Faci
       </Card>
 
       {/* Data Freshness Indicator */}
-      <div className="flex items-center justify-between px-4 py-2 bg-gradient-to-r from-cyan-50 to-blue-50 dark:from-cyan-900/20 dark:to-blue-900/20 rounded-lg border border-cyan-200 dark:border-cyan-800">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-4 py-3 bg-gradient-to-r from-cyan-50 to-blue-50 dark:from-cyan-900/20 dark:to-blue-900/20 rounded-lg border border-cyan-200 dark:border-cyan-800">
         <div className="flex items-center gap-2 text-sm">
           <Shield className="w-4 h-4 text-cyan-600" />
           <span className="text-gray-600 dark:text-gray-400">Data Source: <strong className="text-gray-900 dark:text-gray-100">CMS Care Compare</strong></span>
         </div>
-        <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+        <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
           <span className="flex items-center gap-1">
             <Calendar className="w-3 h-3" />
             Last Updated: {facility.lastUpdated ? new Date(facility.lastUpdated).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Jan 2026'}
           </span>
+          {(() => {
+            const surveyWindow = calculateProjectedSurveyWindow(facility.lastSurveyDate);
+            if (surveyWindow) {
+              const isOverdue = surveyWindow.daysUntilEarliest < 0;
+              const isImminent = surveyWindow.daysUntilEarliest <= 60 && surveyWindow.daysUntilEarliest >= 0;
+              return (
+                <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full ${
+                  isOverdue ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' :
+                  isImminent ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300' :
+                  'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                }`}>
+                  <Clock className="w-3 h-3" />
+                  Survey Window: {formatSurveyDate(surveyWindow.earliest)} - {formatSurveyDate(surveyWindow.latest)}
+                  {isOverdue && ' (Overdue)'}
+                  {isImminent && ' (Soon)'}
+                </span>
+              );
+            }
+            return null;
+          })()}
           <span className="flex items-center gap-1 text-green-600">
             <CheckCircle2 className="w-3 h-3" />
             Verified

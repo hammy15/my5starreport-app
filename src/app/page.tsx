@@ -114,6 +114,32 @@ import { PhilReportModal } from '@/components/PhilReportModal';
 import type { Facility, ImprovementRecommendation, ActionPlan, MedicaidRateLetter, MedicareRate, CostReport, RateBenchmark, RateTrend } from '@/types/facility';
 import { generateMedicaidRateLetters, generateMedicareRates, generateCostReport, generateBenchmarks, generateTrends } from '@/lib/sample-rates-data';
 import { generateFacilityReport, generateComparisonReport, generateScenarioReport, generateExecutiveReport } from '@/lib/pdf-export';
+import { exportFacilitiesToExcel, exportFacilitiesToCSV, exportPortfolioToExcel, exportPortfolioToCSV } from '@/lib/export-utils';
+import { ToastProvider, useToast } from '@/components/ui/toast';
+import { ErrorBoundary } from '@/components/ui/error-boundary';
+import { Skeleton, SkeletonCard, SkeletonTable, SkeletonMetric, SkeletonRating, SkeletonChart, SkeletonText } from '@/components/ui/skeleton';
+
+// Calculate projected survey date based on last survey (typically 9-15 months)
+function calculateProjectedSurveyWindow(lastSurveyDate: string | undefined): { earliest: Date; latest: Date; daysUntilEarliest: number } | null {
+  if (!lastSurveyDate) return null;
+  const lastSurvey = new Date(lastSurveyDate);
+  if (isNaN(lastSurvey.getTime())) return null;
+
+  const earliest = new Date(lastSurvey);
+  earliest.setMonth(earliest.getMonth() + 9);
+  const latest = new Date(lastSurvey);
+  latest.setMonth(latest.getMonth() + 15);
+
+  const today = new Date();
+  const daysUntilEarliest = Math.ceil((earliest.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+  return { earliest, latest, daysUntilEarliest };
+}
+
+// Format date for display
+function formatSurveyDate(date: Date): string {
+  return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+}
 
 // Professional Help Tooltip Component
 function HelpTooltip({ term, definition, children }: { term: string; definition: string; children?: React.ReactNode }) {
@@ -665,7 +691,9 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen transition-colors duration-300">
+    <ToastProvider>
+      <ErrorBoundary>
+        <div className="min-h-screen transition-colors duration-300">
       {/* 5 Star Phil Chat Bot */}
       <FiveStarPhil
         isOpen={showPhilChat}
@@ -1455,7 +1483,9 @@ export default function HomePage() {
           </div>
         </div>
       </footer>
-    </div>
+        </div>
+      </ErrorBoundary>
+    </ToastProvider>
   );
 }
 
