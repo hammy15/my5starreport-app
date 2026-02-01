@@ -7226,27 +7226,79 @@ function BoardReportsView({ onBack }: { onBack: () => void }) {
     `;
   };
 
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [downloadMethod, setDownloadMethod] = useState<'print' | 'download'>('print');
+
   const handleGenerateReport = () => {
     setGenerating(true);
-    setTimeout(() => {
-      setGenerating(false);
-      const reportWindow = window.open('', '_blank');
-      if (reportWindow) {
-        let reportContent = '';
-        switch (reportType) {
-          case 'executive':
-            reportContent = generateExecutiveReport();
-            break;
-          case 'detailed':
-            reportContent = generateDetailedReport();
-            break;
-          case 'compliance':
-            reportContent = generateComplianceReport();
-            break;
-        }
-        reportWindow.document.write(reportContent);
+    setDownloadError(null);
+
+    // Generate content immediately
+    let reportContent = '';
+    switch (reportType) {
+      case 'executive':
+        reportContent = generateExecutiveReport();
+        break;
+      case 'detailed':
+        reportContent = generateDetailedReport();
+        break;
+      case 'compliance':
+        reportContent = generateComplianceReport();
+        break;
+    }
+
+    if (downloadMethod === 'download') {
+      // Direct HTML file download - works without popups
+      try {
+        const blob = new Blob([reportContent], { type: 'text/html;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        const fileName = `${reportType}-report-${new Date().toISOString().split('T')[0]}.html`;
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        setGenerating(false);
+      } catch (error) {
+        setDownloadError('Download failed. Please try the Print/Preview option.');
+        setGenerating(false);
       }
-    }, 2000);
+    } else {
+      // Open print preview - must happen synchronously to avoid popup blockers
+      const reportWindow = window.open('', '_blank', 'width=900,height=700,scrollbars=yes,resizable=yes');
+
+      if (reportWindow) {
+        // Write loading state first
+        reportWindow.document.write(`
+          <!DOCTYPE html>
+          <html>
+          <head><title>Generating Report...</title></head>
+          <body style="font-family: system-ui; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0;">
+            <div style="text-align: center;">
+              <div style="width: 40px; height: 40px; border: 4px solid #0891b2; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
+              <p style="color: #64748b;">Generating professional report...</p>
+            </div>
+            <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+          </body>
+          </html>
+        `);
+
+        // After a brief delay for visual feedback, replace with actual content
+        setTimeout(() => {
+          reportWindow.document.open();
+          reportWindow.document.write(reportContent);
+          reportWindow.document.close();
+          setGenerating(false);
+        }, 500);
+      } else {
+        // Popup was blocked - offer download alternative
+        setDownloadError('Popup was blocked by your browser. Please click "Download HTML" below, or allow popups for this site.');
+        setDownloadMethod('download');
+        setGenerating(false);
+      }
+    }
   };
 
   if (loading) {
@@ -7358,6 +7410,48 @@ function BoardReportsView({ onBack }: { onBack: () => void }) {
           </div>
         </div>
 
+        {/* Download Method Selection */}
+        <div className="flex items-center justify-center gap-4 mb-4">
+          <span className="text-sm text-[var(--foreground-muted)]">Output Method:</span>
+          <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
+            <button
+              onClick={() => setDownloadMethod('print')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                downloadMethod === 'print'
+                  ? 'bg-white dark:bg-slate-700 shadow-sm text-violet-600'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              <Printer className="w-4 h-4 inline mr-2" />
+              Print / Preview
+            </button>
+            <button
+              onClick={() => setDownloadMethod('download')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                downloadMethod === 'download'
+                  ? 'bg-white dark:bg-slate-700 shadow-sm text-violet-600'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              <Download className="w-4 h-4 inline mr-2" />
+              Download HTML
+            </button>
+          </div>
+        </div>
+
+        {/* Error Message */}
+        {downloadError && (
+          <div className="mb-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm text-amber-800 dark:text-amber-200">{downloadError}</p>
+              <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                Tip: Downloaded HTML files can be opened in any browser and printed/saved as PDF.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Generate Button */}
         <button
           onClick={handleGenerateReport}
@@ -7371,13 +7465,16 @@ function BoardReportsView({ onBack }: { onBack: () => void }) {
             </>
           ) : (
             <>
-              <Download className="w-5 h-5" />
-              Generate {reportType === 'executive' ? 'Executive Summary' : reportType === 'detailed' ? 'Detailed Analysis' : 'Compliance Report'}
+              {downloadMethod === 'print' ? <Printer className="w-5 h-5" /> : <Download className="w-5 h-5" />}
+              {downloadMethod === 'print' ? 'Generate & Print' : 'Download'} {reportType === 'executive' ? 'Executive Summary' : reportType === 'detailed' ? 'Detailed Analysis' : 'Compliance Report'}
             </>
           )}
         </button>
         <p className="text-xs text-center text-[var(--foreground-muted)] mt-2">
-          Report will open in a new window ready for printing or saving as PDF
+          {downloadMethod === 'print'
+            ? 'Opens print preview - use browser\'s "Save as PDF" to download'
+            : 'Downloads as HTML file - open in browser to print or save as PDF'
+          }
         </p>
       </div>
     </div>

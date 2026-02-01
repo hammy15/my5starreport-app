@@ -1,6 +1,7 @@
 /**
  * PDF Export Utility
  * Generates professional PDF reports for nursing home data
+ * Includes fallback download when popups are blocked
  */
 
 interface FacilityData {
@@ -33,6 +34,45 @@ function getRatingColor(rating: number): string {
   if (rating >= 4) return '#16a34a'; // green
   if (rating >= 3) return '#f59e0b'; // yellow
   return '#dc2626'; // red
+}
+
+// Helper function to download as HTML file (fallback when popup blocked)
+function downloadAsHTML(content: string, filename: string): void {
+  try {
+    const blob = new Blob([content], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    // Clean up after a short delay
+    setTimeout(() => {
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }, 100);
+  } catch (error) {
+    console.error('Download failed:', error);
+  }
+}
+
+// Open print window with content, with fallback to download
+function openReportWindow(content: string, filename: string): void {
+  // Try to open popup window
+  const printWindow = window.open('', '_blank', 'width=900,height=700,scrollbars=yes,resizable=yes');
+
+  if (printWindow) {
+    printWindow.document.write(content);
+    printWindow.document.close();
+  } else {
+    // Popup was blocked - use download fallback
+    downloadAsHTML(content, filename);
+    // Show a toast-like notification (using alert as fallback)
+    setTimeout(() => {
+      alert('Your browser blocked the popup. The report has been downloaded as an HTML file.\n\nTo view it:\n1. Open the downloaded file in your browser\n2. Use Print (Ctrl+P / Cmd+P) to save as PDF');
+    }, 100);
+  }
 }
 
 // Generate CSS styles for the PDF
@@ -229,25 +269,38 @@ function getPDFStyles(): string {
       font-size: 24px;
       font-weight: bold;
     }
+    .print-btn {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 12px 24px;
+      background: #0891b2;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .print-btn:hover {
+      background: #0e7490;
+    }
     @media print {
       body { padding: 20px; }
-      .no-print { display: none; }
+      .no-print, .print-btn { display: none; }
     }
   `;
 }
 
 // Generate Facility Overview Report
 export function generateFacilityReport(facility: FacilityData, options: ReportOptions = { title: 'Facility Report' }): void {
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) return;
-
   const date = new Date().toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
     day: 'numeric'
   });
 
-  printWindow.document.write(`
+  const content = `
     <!DOCTYPE html>
     <html>
     <head>
@@ -255,6 +308,8 @@ export function generateFacilityReport(facility: FacilityData, options: ReportOp
       <style>${getPDFStyles()}</style>
     </head>
     <body>
+      <button class="print-btn no-print" onclick="window.print()">Print / Save as PDF</button>
+
       <div class="header">
         <div class="logo">my5STARreport.com</div>
         <div class="title">${options.title}</div>
@@ -312,10 +367,10 @@ export function generateFacilityReport(facility: FacilityData, options: ReportOp
       ` : ''}
     </body>
     </html>
-  `);
+  `;
 
-  printWindow.document.close();
-  printWindow.print();
+  const filename = `facility-report-${facility.federalProviderNumber}-${new Date().toISOString().split('T')[0]}.html`;
+  openReportWindow(content, filename);
 }
 
 // Generate Comparison Report
@@ -323,9 +378,6 @@ export function generateComparisonReport(
   facilities: FacilityData[],
   options: ReportOptions = { title: 'Facility Comparison Report' }
 ): void {
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) return;
-
   const date = new Date().toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
@@ -337,7 +389,7 @@ export function generateComparisonReport(
   const avgStaffing = facilities.reduce((sum, f) => sum + f.staffingRating, 0) / facilities.length;
   const avgQM = facilities.reduce((sum, f) => sum + f.qmRating, 0) / facilities.length;
 
-  printWindow.document.write(`
+  const content = `
     <!DOCTYPE html>
     <html>
     <head>
@@ -345,6 +397,8 @@ export function generateComparisonReport(
       <style>${getPDFStyles()}</style>
     </head>
     <body>
+      <button class="print-btn no-print" onclick="window.print()">Print / Save as PDF</button>
+
       <div class="header">
         <div class="logo">my5STARreport.com</div>
         <div class="title">${options.title}</div>
@@ -408,10 +462,10 @@ export function generateComparisonReport(
       </div>
     </body>
     </html>
-  `);
+  `;
 
-  printWindow.document.close();
-  printWindow.print();
+  const filename = `comparison-report-${new Date().toISOString().split('T')[0]}.html`;
+  openReportWindow(content, filename);
 }
 
 // Generate Tinker Star Scenario Report
@@ -422,16 +476,13 @@ export function generateScenarioReport(
   actionPlan: Array<{ priority: string; action: string; impact: string; timeline: string }>,
   options: ReportOptions = { title: 'Tinker Star Improvement Plan' }
 ): void {
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) return;
-
   const date = new Date().toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
     day: 'numeric'
   });
 
-  printWindow.document.write(`
+  const content = `
     <!DOCTYPE html>
     <html>
     <head>
@@ -439,6 +490,8 @@ export function generateScenarioReport(
       <style>${getPDFStyles()}</style>
     </head>
     <body>
+      <button class="print-btn no-print" onclick="window.print()">Print / Save as PDF</button>
+
       <div class="header">
         <div class="logo">my5STARreport.com</div>
         <div class="title">${options.title}</div>
@@ -511,10 +564,10 @@ export function generateScenarioReport(
       </div>
     </body>
     </html>
-  `);
+  `;
 
-  printWindow.document.close();
-  printWindow.print();
+  const filename = `scenario-report-${facility.federalProviderNumber}-${new Date().toISOString().split('T')[0]}.html`;
+  openReportWindow(content, filename);
 }
 
 // Generate Executive Summary Report
@@ -532,16 +585,13 @@ export function generateExecutiveReport(
   facilities: FacilityData[],
   options: ReportOptions = { title: 'Executive Portfolio Summary' }
 ): void {
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) return;
-
   const date = new Date().toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
     day: 'numeric'
   });
 
-  printWindow.document.write(`
+  const content = `
     <!DOCTYPE html>
     <html>
     <head>
@@ -549,6 +599,8 @@ export function generateExecutiveReport(
       <style>${getPDFStyles()}</style>
     </head>
     <body>
+      <button class="print-btn no-print" onclick="window.print()">Print / Save as PDF</button>
+
       <div class="header">
         <div class="logo">my5STARreport.com</div>
         <div class="title">${options.title}</div>
@@ -646,8 +698,8 @@ export function generateExecutiveReport(
       </div>
     </body>
     </html>
-  `);
+  `;
 
-  printWindow.document.close();
-  printWindow.print();
+  const filename = `executive-report-${new Date().toISOString().split('T')[0]}.html`;
+  openReportWindow(content, filename);
 }
