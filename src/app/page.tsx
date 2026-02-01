@@ -6473,7 +6473,7 @@ function BenchmarkingView({
     healthRating: number | null;
     staffingRating: number | null;
     qmRating: number | null;
-    distance?: number;
+    distance: number | null;
     beds?: number;
   }>>([]);
   const [loading, setLoading] = useState(false);
@@ -6486,6 +6486,7 @@ function BenchmarkingView({
     totalFacilities: number;
   } | null>(null);
   const [percentileRank, setPercentileRank] = useState<number | null>(null);
+  const [fetchKey, setFetchKey] = useState(0); // Force refetch
 
   // Update selectedCCN when providerNumber changes
   useEffect(() => {
@@ -6494,17 +6495,43 @@ function BenchmarkingView({
     }
   }, [providerNumber]);
 
+  // Handle radius change - clear data and trigger refetch
+  const handleRadiusChange = (newRadius: number) => {
+    setCompetitors([]); // Clear old data immediately
+    setRadius(newRadius);
+    setFetchKey(prev => prev + 1); // Force refetch
+  };
+
   useEffect(() => {
+    let cancelled = false;
+
     async function fetchData() {
       if (!selectedCCN) {
         setLoading(false);
         return;
       }
+
+      // Clear previous data before fetching
+      setCompetitors([]);
       setLoading(true);
+
       try {
-        // Use the new competitors API with radius parameter
-        const competitorRes = await fetch(`/api/competitors?ccn=${selectedCCN}&limit=15&radius=${radius}`);
+        const url = `/api/competitors?ccn=${selectedCCN}&radius=${radius}&limit=50`;
+        console.log('[Benchmark] Fetching:', url);
+
+        const competitorRes = await fetch(url, {
+          cache: 'no-store', // Prevent caching
+          headers: { 'Cache-Control': 'no-cache' }
+        });
         const competitorData = await competitorRes.json();
+
+        if (cancelled) return;
+
+        console.log('[Benchmark] Response:', {
+          radiusUsed: competitorData.radiusUsed,
+          competitorsCount: competitorData.competitors?.length,
+          targetFacility: competitorData.targetFacility?.name
+        });
 
         if (competitorData.targetFacility) {
           setFacility({
@@ -6515,7 +6542,7 @@ function BenchmarkingView({
           } as Facility);
         }
 
-        // Always update competitors list (even if empty)
+        // Map competitors with their real distances
         const mapped = (competitorData.competitors || []).map((c: any) => ({
           federalProviderNumber: c.ccn,
           providerName: c.name,
@@ -6526,8 +6553,10 @@ function BenchmarkingView({
           staffingRating: c.staffingRating,
           qmRating: c.qmRating,
           beds: c.beds,
-          distance: c.distance !== null ? Math.round(c.distance * 10) / 10 : null, // Real distance from API
+          distance: typeof c.distance === 'number' ? Math.round(c.distance * 10) / 10 : null,
         }));
+
+        console.log('[Benchmark] Mapped competitors:', mapped.length, 'Max distance:', mapped.length > 0 ? Math.max(...mapped.map((c: any) => c.distance || 0)) : 0);
         setCompetitors(mapped);
 
         if (competitorData.stateAverages) {
@@ -6544,13 +6573,20 @@ function BenchmarkingView({
           setPercentileRank(competitorData.percentileRank);
         }
       } catch (error) {
-        console.error('Failed to fetch benchmarking data:', error);
+        console.error('[Benchmark] Failed to fetch:', error);
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
+
     fetchData();
-  }, [selectedCCN, radius]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedCCN, radius, fetchKey]);
 
   const avgCompetitorRating = competitors.length > 0
     ? competitors.reduce((sum, c) => sum + (c.overallRating || 0), 0) / competitors.length
@@ -6632,15 +6668,24 @@ function BenchmarkingView({
               {[10, 25, 50, 100].map((r) => (
                 <button
                   key={r}
-                  onClick={() => setRadius(r)}
-                  className={`px-3 py-1 rounded-lg text-sm ${
-                    radius === r ? 'bg-indigo-500 text-white' : 'btn-neumorphic'
-                  }`}
+                  onClick={() => handleRadiusChange(r)}
+                  disabled={loading}
+                  className={`px-3 py-1 rounded-lg text-sm transition-all ${
+                    radius === r
+                      ? 'bg-indigo-500 text-white'
+                      : 'btn-neumorphic hover:bg-indigo-100 dark:hover:bg-indigo-900/30'
+                  } ${loading ? 'opacity-50 cursor-wait' : ''}`}
                 >
                   {r} mi
                 </button>
               ))}
             </div>
+            {loading && (
+              <span className="text-sm text-[var(--foreground-muted)] flex items-center gap-2">
+                <span className="animate-spin w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full"></span>
+                Searching...
+              </span>
+            )}
           </div>
         )}
       </div>
