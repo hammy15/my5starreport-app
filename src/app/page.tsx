@@ -6515,21 +6515,20 @@ function BenchmarkingView({
           } as Facility);
         }
 
-        if (competitorData.competitors) {
-          const mapped = competitorData.competitors.map((c: any) => ({
-            federalProviderNumber: c.ccn,
-            providerName: c.name,
-            cityTown: c.city,
-            state: c.state,
-            overallRating: c.overallRating,
-            healthRating: c.healthRating,
-            staffingRating: c.staffingRating,
-            qmRating: c.qmRating,
-            beds: c.beds,
-            distance: c.distance !== null ? Math.round(c.distance * 10) / 10 : null, // Real distance from API
-          }));
-          setCompetitors(mapped);
-        }
+        // Always update competitors list (even if empty)
+        const mapped = (competitorData.competitors || []).map((c: any) => ({
+          federalProviderNumber: c.ccn,
+          providerName: c.name,
+          cityTown: c.city,
+          state: c.state,
+          overallRating: c.overallRating,
+          healthRating: c.healthRating,
+          staffingRating: c.staffingRating,
+          qmRating: c.qmRating,
+          beds: c.beds,
+          distance: c.distance !== null ? Math.round(c.distance * 10) / 10 : null, // Real distance from API
+        }));
+        setCompetitors(mapped);
 
         if (competitorData.stateAverages) {
           setStateAverages({
@@ -6775,20 +6774,31 @@ function BenchmarkingView({
                   <td className="text-center py-3 px-2">{facility.numberOfCertifiedBeds}</td>
                 </tr>
               )}
-              {competitors.map((c, i) => (
-                <tr key={c.federalProviderNumber} className="border-b border-[var(--border-color)] hover:bg-[var(--card-background-alt)]">
-                  <td className="py-3 px-2">
-                    <div className="font-medium">{c.providerName}</div>
-                    <div className="text-xs text-[var(--foreground-muted)]">{c.cityTown}</div>
+              {competitors.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-8 text-center text-[var(--foreground-muted)]">
+                    <div className="space-y-2">
+                      <p>No facilities found within {radius} miles.</p>
+                      <p className="text-sm">Try increasing the search radius above.</p>
+                    </div>
                   </td>
-                  <td className="text-center py-3 px-2">{c.distance !== null ? `${c.distance} mi` : 'N/A'}</td>
-                  <td className="text-center py-3 px-2 font-bold">{c.overallRating}★</td>
-                  <td className="text-center py-3 px-2">{c.healthRating}★</td>
-                  <td className="text-center py-3 px-2">{c.staffingRating}★</td>
-                  <td className="text-center py-3 px-2">{c.qmRating}★</td>
-                  <td className="text-center py-3 px-2">{c.beds}</td>
                 </tr>
-              ))}
+              ) : (
+                competitors.map((c, i) => (
+                  <tr key={c.federalProviderNumber} className="border-b border-[var(--border-color)] hover:bg-[var(--card-background-alt)]">
+                    <td className="py-3 px-2">
+                      <div className="font-medium">{c.providerName}</div>
+                      <div className="text-xs text-[var(--foreground-muted)]">{c.cityTown}</div>
+                    </td>
+                    <td className="text-center py-3 px-2">{c.distance !== null ? `${c.distance} mi` : 'N/A'}</td>
+                    <td className="text-center py-3 px-2 font-bold">{c.overallRating}★</td>
+                    <td className="text-center py-3 px-2">{c.healthRating}★</td>
+                    <td className="text-center py-3 px-2">{c.staffingRating}★</td>
+                    <td className="text-center py-3 px-2">{c.qmRating}★</td>
+                    <td className="text-center py-3 px-2">{c.beds}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
