@@ -1,10 +1,26 @@
 /**
  * API Route: Competitor Analysis
- * Find and compare nearby facilities
+ * Find and compare nearby facilities within a specified radius
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
+
+/**
+ * Calculate distance between two coordinates using the Haversine formula
+ * @returns distance in miles
+ */
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 3959; // Earth's radius in miles
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -42,19 +58,57 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      // Find competitors in same state (simple approach without distance calc for now)
-      const results = await sql`
-        SELECT ccn, name, city, state, latitude, longitude,
-               "overallRating", "healthRating", "staffingRating", "qmRating",
-               beds, "nursingHoursPerResidentDay" as "totalHPRD",
-               "rnHoursPerResidentDay" as "rnHPRD"
-        FROM "Facility"
-        WHERE state = ${targetFacility.state}
-          AND ccn != ${ccn}
-        ORDER BY "overallRating" DESC
-        LIMIT ${limit}
-      `;
-      competitors = results;
+      // Check if target facility has coordinates
+      const hasCoordinates = targetFacility.latitude && targetFacility.longitude;
+
+      if (hasCoordinates) {
+        // Find competitors within the specified radius using distance calculation
+        // First get a broader set of candidates (facilities in nearby states or within a lat/lng box)
+        const latDelta = radius / 69; // Approximate miles per degree of latitude
+        const lonDelta = radius / (69 * Math.cos(targetFacility.latitude * Math.PI / 180));
+
+        const candidates = await sql`
+          SELECT ccn, name, city, state, latitude, longitude,
+                 "overallRating", "healthRating", "staffingRating", "qmRating",
+                 beds, "nursingHoursPerResidentDay" as "totalHPRD",
+                 "rnHoursPerResidentDay" as "rnHPRD"
+          FROM "Facility"
+          WHERE ccn != ${ccn}
+            AND latitude IS NOT NULL
+            AND longitude IS NOT NULL
+            AND latitude BETWEEN ${targetFacility.latitude - latDelta} AND ${targetFacility.latitude + latDelta}
+            AND longitude BETWEEN ${targetFacility.longitude - lonDelta} AND ${targetFacility.longitude + lonDelta}
+        `;
+
+        // Calculate actual distance for each candidate and filter by radius
+        competitors = candidates
+          .map((c: any) => ({
+            ...c,
+            distance: calculateDistance(
+              targetFacility.latitude,
+              targetFacility.longitude,
+              c.latitude,
+              c.longitude
+            )
+          }))
+          .filter((c: any) => c.distance <= radius)
+          .sort((a: any, b: any) => a.distance - b.distance)
+          .slice(0, limit);
+      } else {
+        // Fallback: Find competitors in same state if no coordinates available
+        const results = await sql`
+          SELECT ccn, name, city, state, latitude, longitude,
+                 "overallRating", "healthRating", "staffingRating", "qmRating",
+                 beds, "nursingHoursPerResidentDay" as "totalHPRD",
+                 "rnHoursPerResidentDay" as "rnHPRD"
+          FROM "Facility"
+          WHERE state = ${targetFacility.state}
+            AND ccn != ${ccn}
+          ORDER BY "overallRating" DESC
+          LIMIT ${limit}
+        `;
+        competitors = results.map((c: any) => ({ ...c, distance: null }));
+      }
     } else if (state) {
       // Get top facilities in state
       const results = await sql`
@@ -104,6 +158,7 @@ export async function GET(request: NextRequest) {
       competitors,
       stateAverages: stateAvg[0],
       percentileRank,
+      radiusUsed: radius,
       comparisonMetrics: targetFacility ? {
         vsStateOverall: (targetFacility.overallRating - parseFloat(stateAvg[0]?.avgOverall || '3')).toFixed(2),
         vsStateHealth: (targetFacility.healthRating - parseFloat(stateAvg[0]?.avgHealth || '3')).toFixed(2),

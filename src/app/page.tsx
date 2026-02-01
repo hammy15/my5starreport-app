@@ -6502,8 +6502,8 @@ function BenchmarkingView({
       }
       setLoading(true);
       try {
-        // Use the new competitors API
-        const competitorRes = await fetch(`/api/competitors?ccn=${selectedCCN}&limit=15`);
+        // Use the new competitors API with radius parameter
+        const competitorRes = await fetch(`/api/competitors?ccn=${selectedCCN}&limit=15&radius=${radius}`);
         const competitorData = await competitorRes.json();
 
         if (competitorData.targetFacility) {
@@ -6526,7 +6526,7 @@ function BenchmarkingView({
             staffingRating: c.staffingRating,
             qmRating: c.qmRating,
             beds: c.beds,
-            distance: Math.floor(Math.random() * radius) + 1, // Simulated distance
+            distance: c.distance !== null ? Math.round(c.distance * 10) / 10 : null, // Real distance from API
           }));
           setCompetitors(mapped);
         }
@@ -6739,7 +6739,10 @@ function BenchmarkingView({
       <div className="card-neumorphic p-6">
         <h3 className="font-bold mb-4 flex items-center gap-2">
           <Globe className="w-5 h-5 text-indigo-500" />
-          Nearby Competitors
+          Nearby Competitors within {radius} miles
+          <span className="text-sm font-normal text-[var(--foreground-muted)]">
+            ({competitors.length} found)
+          </span>
         </h3>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -6778,7 +6781,7 @@ function BenchmarkingView({
                     <div className="font-medium">{c.providerName}</div>
                     <div className="text-xs text-[var(--foreground-muted)]">{c.cityTown}</div>
                   </td>
-                  <td className="text-center py-3 px-2">{c.distance} mi</td>
+                  <td className="text-center py-3 px-2">{c.distance !== null ? `${c.distance} mi` : 'N/A'}</td>
                   <td className="text-center py-3 px-2 font-bold">{c.overallRating}★</td>
                   <td className="text-center py-3 px-2">{c.healthRating}★</td>
                   <td className="text-center py-3 px-2">{c.staffingRating}★</td>
