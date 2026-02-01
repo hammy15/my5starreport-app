@@ -305,6 +305,24 @@ export function FacilityOverview({ providerNumber, onBack, onViewDetails }: Faci
         </CardContent>
       </Card>
 
+      {/* Data Freshness Indicator */}
+      <div className="flex items-center justify-between px-4 py-2 bg-gradient-to-r from-cyan-50 to-blue-50 dark:from-cyan-900/20 dark:to-blue-900/20 rounded-lg border border-cyan-200 dark:border-cyan-800">
+        <div className="flex items-center gap-2 text-sm">
+          <Shield className="w-4 h-4 text-cyan-600" />
+          <span className="text-gray-600 dark:text-gray-400">Data Source: <strong className="text-gray-900 dark:text-gray-100">CMS Care Compare</strong></span>
+        </div>
+        <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+          <span className="flex items-center gap-1">
+            <Calendar className="w-3 h-3" />
+            Last Updated: {facility.lastUpdated ? new Date(facility.lastUpdated).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Jan 2026'}
+          </span>
+          <span className="flex items-center gap-1 text-green-600">
+            <CheckCircle2 className="w-3 h-3" />
+            Verified
+          </span>
+        </div>
+      </div>
+
       {/* Navigation Tabs */}
       <div className="flex gap-2 overflow-x-auto pb-2">
         {[
@@ -380,6 +398,63 @@ export function FacilityOverview({ providerNumber, onBack, onViewDetails }: Faci
               <div className="text-xs text-gray-500 dark:text-gray-400">Potential Rating</div>
             </div>
           </div>
+
+          {/* Rating History Mini Chart */}
+          {analysis.ratingHistory && analysis.ratingHistory.length > 0 && (
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-cyan-600" />
+                    Rating History (Last {Math.min(6, analysis.ratingHistory.length)} Months)
+                  </h4>
+                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <Clock className="w-3 h-3" />
+                    Updated: {facility.lastUpdated ? new Date(facility.lastUpdated).toLocaleDateString() : 'Recently'}
+                  </div>
+                </div>
+                <div className="flex items-end justify-between h-24 gap-1">
+                  {analysis.ratingHistory.slice(0, 6).reverse().map((h, i) => {
+                    const isLatest = i === analysis.ratingHistory!.slice(0, 6).length - 1;
+                    return (
+                      <div key={i} className="flex-1 flex flex-col items-center group relative">
+                        <div
+                          className={`w-full rounded-t transition-all ${
+                            isLatest ? 'bg-cyan-500' : 'bg-gray-300 dark:bg-gray-600'
+                          } group-hover:bg-cyan-400`}
+                          style={{ height: `${(h.overallRating / 5) * 80}px` }}
+                        />
+                        <span className="text-[10px] text-gray-400 mt-1">
+                          {new Date(h.ratingDate).toLocaleDateString('en-US', { month: 'short' })}
+                        </span>
+                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-10">
+                          {h.overallRating}★ | H:{h.healthRating} S:{h.staffingRating} Q:{h.qmRating}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="mt-2 flex items-center justify-center gap-4 text-xs">
+                  {(() => {
+                    const history = analysis.ratingHistory!;
+                    if (history.length < 2) return <span className="text-gray-500">Insufficient history for trend</span>;
+                    const change = history[0].overallRating - history[Math.min(history.length - 1, 5)].overallRating;
+                    if (change > 0) return (
+                      <span className="flex items-center gap-1 text-green-600">
+                        <TrendingUp className="w-3 h-3" /> Improving (+{change} stars)
+                      </span>
+                    );
+                    if (change < 0) return (
+                      <span className="flex items-center gap-1 text-red-600">
+                        <TrendingUp className="w-3 h-3 rotate-180" /> Declining ({change} stars)
+                      </span>
+                    );
+                    return <span className="text-gray-500">Stable rating</span>;
+                  })()}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Star Rating Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

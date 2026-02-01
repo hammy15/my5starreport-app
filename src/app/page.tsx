@@ -103,6 +103,9 @@ import {
   BookOpen,
   ArrowRight,
   FolderOpen,
+  Menu,
+  Home,
+  Compass,
 } from 'lucide-react';
 import { FacilitySearch } from '@/components/dashboard/facility-search';
 import { FacilityOverview } from '@/components/dashboard/facility-overview';
@@ -396,7 +399,7 @@ const COMPANY_COLORS: Record<string, string> = {
 };
 
 // View types for navigation
-type ViewType = 'search' | 'overview' | 'health' | 'staffing' | 'quality' | 'plan' | 'plan-preview' | 'training' | 'cascadia' | 'compare' | 'calculator' | 'templates' | 'executive' | 'tasks' | 'trends' | 'checklists' | 'alerts' | 'benchmarking' | 'board-reports' | 'portfolio' | 'survey-countdown' | 'scheduling' | 'financial-impact' | 'pbj-integration' | 'regulatory' | 'community' | 'rates-costs' | 'simulator';
+type ViewType = 'search' | 'overview' | 'health' | 'staffing' | 'quality' | 'plan' | 'plan-preview' | 'training' | 'cascadia' | 'compare' | 'calculator' | 'templates' | 'executive' | 'tasks' | 'trends' | 'checklists' | 'alerts' | 'benchmarking' | 'board-reports' | 'portfolio' | 'survey-countdown' | 'scheduling' | 'financial-impact' | 'pbj-integration' | 'regulatory' | 'community' | 'rates-costs' | 'simulator' | 'sidebyside' | 'admin';
 
 // 5 Star Phil Chat Message Type
 interface PhilMessage {
@@ -414,10 +417,42 @@ export default function HomePage() {
   const [showPhilChat, setShowPhilChat] = useState(false);
   const [philGlow, setPhilGlow] = useState(false);
   const [showProMenu, setShowProMenu] = useState(false);
+  const [showHamburgerMenu, setShowHamburgerMenu] = useState(false);
   // User authentication state
   const [user, setUser] = useState<AppUser | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+
+  // Admin authentication state
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showAdminLogin, setShowAdminLogin] = useState(false);
+  const [adminPassword, setAdminPassword] = useState('');
+  const [adminError, setAdminError] = useState('');
+
+  const handleAdminLogin = () => {
+    if (adminPassword === 'jockibox26') {
+      setIsAdmin(true);
+      setShowAdminLogin(false);
+      setAdminPassword('');
+      setAdminError('');
+      localStorage.setItem('isAdmin', 'true');
+    } else {
+      setAdminError('Invalid password');
+    }
+  };
+
+  const handleAdminLogout = () => {
+    setIsAdmin(false);
+    localStorage.removeItem('isAdmin');
+  };
+
+  // Check for admin session on mount
+  useEffect(() => {
+    const adminSession = localStorage.getItem('isAdmin');
+    if (adminSession === 'true') {
+      setIsAdmin(true);
+    }
+  }, []);
 
   // Load user from localStorage on mount
   useEffect(() => {
@@ -539,9 +574,17 @@ export default function HomePage() {
     }
   };
 
-  const handleSelectFacility = (providerNumber: string) => {
+  // Pro tools that should preserve their view when a facility is selected
+  const proToolViews = ['benchmarking', 'financial-impact', 'survey-countdown', 'alerts', 'portfolio', 'scheduling', 'pbj-integration', 'board-reports', 'regulatory', 'community', 'rates-costs', 'simulator', 'sidebyside'];
+
+  const handleSelectFacility = (providerNumber: string, preserveView?: boolean) => {
     setSelectedFacility(providerNumber);
-    setCurrentView('overview');
+    // If we're in a Pro tool or preserveView is true, stay in the current view
+    if (preserveView || proToolViews.includes(currentView)) {
+      // Stay in current view - just update the facility
+    } else {
+      setCurrentView('overview');
+    }
   };
 
   const handleBackToSearch = () => {
@@ -650,7 +693,7 @@ export default function HomePage() {
 
       {/* Header */}
       <header className="card-neumorphic sticky top-0 z-50 mx-4 mt-4 mb-6 lg:mx-8">
-        <div className="px-4 py-4 lg:px-8">
+        <div className="px-4 py-3 lg:px-6">
           <div className="flex items-center justify-between">
             {/* Logo */}
             <div
@@ -660,260 +703,238 @@ export default function HomePage() {
                 setCurrentView('search');
               }}
             >
-              <div className="p-3 rounded-xl bg-gradient-to-br from-cyan-400 to-cyan-600 shadow-lg">
-                <Star className="w-6 h-6 text-white" />
+              <div className="p-2.5 rounded-xl bg-gradient-to-br from-cyan-400 to-cyan-600 shadow-lg">
+                <Star className="w-5 h-5 text-white" />
               </div>
-              <div>
-                <h1 className="text-xl font-bold">
+              <div className="hidden sm:block">
+                <h1 className="text-lg font-bold">
                   <span className="text-[var(--foreground)]">my</span>
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-amber-500 to-yellow-500">5</span>
                   <span className="text-gradient-primary">STAR</span>
                   <span className="text-[var(--foreground)]">report</span>
                 </h1>
-                <p className="text-xs text-[var(--foreground-muted)]">Skilled Nursing Excellence</p>
               </div>
             </div>
 
-            {/* Navigation when facility is selected */}
-            {selectedFacility && currentView !== 'search' && (
-              <nav className="hidden md:flex items-center gap-2">
-                <NavButton
-                  icon={<Building2 className="w-4 h-4" />}
-                  label="Overview"
-                  isActive={currentView === 'overview'}
-                  onClick={() => setCurrentView('overview')}
-                />
-                <NavButton
-                  icon={<ClipboardCheck className="w-4 h-4" />}
-                  label="Inspections"
-                  isActive={currentView === 'health'}
-                  onClick={() => setCurrentView('health')}
-                />
-                <NavButton
-                  icon={<UserCheck className="w-4 h-4" />}
-                  label="Staffing"
-                  isActive={currentView === 'staffing'}
-                  onClick={() => setCurrentView('staffing')}
-                />
-                <NavButton
-                  icon={<Heart className="w-4 h-4" />}
-                  label="Quality"
-                  isActive={currentView === 'quality'}
-                  onClick={() => setCurrentView('quality')}
-                />
-                <NavButton
-                  icon={<FileText className="w-4 h-4" />}
-                  label="Plan"
-                  isActive={currentView === 'plan'}
-                  onClick={() => setCurrentView('plan')}
-                />
-                <NavButton
-                  icon={<Activity className="w-4 h-4" />}
-                  label="Trends"
-                  isActive={currentView === 'trends'}
-                  onClick={() => setCurrentView('trends')}
-                />
-                <NavButton
-                  icon={<Gauge className="w-4 h-4" />}
-                  label="Tinker Star"
-                  isActive={currentView === 'simulator'}
-                  onClick={() => setCurrentView('simulator')}
-                />
-              </nav>
-            )}
+            {/* Main 4 Navigation Tabs */}
+            <nav className="hidden md:flex items-center gap-1">
+              <button
+                onClick={() => { setSelectedFacility(null); setCurrentView('search'); }}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  currentView === 'search'
+                    ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg'
+                    : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-[var(--foreground)]'
+                }`}
+              >
+                <Home className="w-4 h-4" />
+                <span>Home</span>
+              </button>
 
-            {/* Right side actions */}
-            <div className="flex items-center gap-2">
               <button
                 onClick={() => setCurrentView('executive')}
-                className={`btn-neumorphic p-2.5 hidden sm:flex items-center gap-2 ${currentView === 'executive' ? 'ring-2 ring-cyan-500' : ''}`}
-                title="Executive Dashboard"
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  currentView === 'executive'
+                    ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg'
+                    : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-[var(--foreground)]'
+                }`}
               >
-                <PieChart className="w-5 h-5 text-indigo-500" />
-                <span className="hidden xl:inline text-sm">Dashboard</span>
+                <PieChart className="w-4 h-4" />
+                <span>Dashboard</span>
               </button>
 
               <button
                 onClick={() => setCurrentView('cascadia')}
-                className={`btn-neumorphic p-2.5 hidden sm:flex items-center gap-2 ${currentView === 'cascadia' ? 'ring-2 ring-cyan-500' : ''}`}
-                title="Cascadia Stars"
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  currentView === 'cascadia'
+                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg'
+                    : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-[var(--foreground)]'
+                }`}
               >
-                <Award className="w-5 h-5 text-amber-500" />
-                <span className="hidden xl:inline text-sm">Cascadia</span>
-              </button>
-
-              <button
-                onClick={() => setCurrentView('tasks')}
-                className={`btn-neumorphic p-2.5 hidden md:flex items-center gap-2 ${currentView === 'tasks' ? 'ring-2 ring-cyan-500' : ''}`}
-                title="Action Tasks"
-              >
-                <ListChecks className="w-5 h-5 text-green-500" />
-              </button>
-
-              <button
-                onClick={() => setCurrentView('checklists')}
-                className={`btn-neumorphic p-2.5 hidden md:flex items-center gap-2 ${currentView === 'checklists' ? 'ring-2 ring-cyan-500' : ''}`}
-                title="Survey Checklists"
-              >
-                <ClipboardCheck className="w-5 h-5 text-blue-500" />
-              </button>
-
-              <button
-                onClick={() => setCurrentView('training')}
-                className={`btn-neumorphic p-2.5 hidden sm:flex items-center gap-2 ${currentView === 'training' ? 'ring-2 ring-cyan-500' : ''}`}
-                title="Training Resources"
-              >
-                <GraduationCap className="w-5 h-5 text-cyan-500" />
+                <Award className="w-4 h-4" />
+                <span>Cascadia</span>
               </button>
 
               {/* Pro Features Dropdown */}
               <div className="relative">
                 <button
                   onClick={() => setShowProMenu(!showProMenu)}
-                  className={`btn-neumorphic p-2.5 flex items-center gap-2 ${showProMenu ? 'ring-2 ring-cyan-500' : ''}`}
-                  title="Pro Features"
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    showProMenu || ['benchmarking', 'financial-impact', 'survey-countdown', 'alerts', 'portfolio', 'scheduling', 'pbj-integration', 'board-reports', 'regulatory', 'community', 'rates-costs', 'simulator'].includes(currentView)
+                      ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-white shadow-lg'
+                      : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-[var(--foreground)]'
+                  }`}
                 >
-                  <Crown className="w-5 h-5 text-amber-500" />
-                  <span className="hidden lg:inline text-sm font-medium">Pro</span>
+                  <Crown className="w-4 h-4" />
+                  <span>Pro Tools</span>
                   <ChevronDown className={`w-4 h-4 transition-transform ${showProMenu ? 'rotate-180' : ''}`} />
                 </button>
 
                 {showProMenu && (
                   <>
-                    {/* Backdrop */}
-                    <div
-                      className="fixed inset-0 z-40"
-                      onClick={() => setShowProMenu(false)}
-                    />
-
-                    {/* Dropdown Menu */}
-                    <div className="absolute right-0 mt-2 w-64 card-neumorphic p-2 z-50 animate-fade-in">
-                      <div className="text-xs font-semibold text-[var(--foreground-muted)] px-3 py-2 uppercase tracking-wider">
-                        Analysis Tools
-                      </div>
-                      <button
-                        onClick={() => { setCurrentView('simulator'); setShowProMenu(false); }}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[var(--background)] transition-colors text-left bg-gradient-to-r from-cyan-50 to-blue-50 dark:from-cyan-900/20 dark:to-blue-900/20"
-                      >
+                    <div className="fixed inset-0 z-40" onClick={() => setShowProMenu(false)} />
+                    <div className="absolute left-0 mt-2 w-72 card-neumorphic p-2 z-50 animate-fade-in max-h-[70vh] overflow-y-auto">
+                      <div className="text-xs font-semibold text-[var(--foreground-muted)] px-3 py-2 uppercase tracking-wider">Analysis</div>
+                      <button onClick={() => { setCurrentView('simulator'); setShowProMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[var(--background)] transition-colors text-left bg-gradient-to-r from-cyan-50 to-blue-50 dark:from-cyan-900/20 dark:to-blue-900/20">
                         <Gauge className="w-5 h-5 text-cyan-500" />
-                        <div>
-                          <div className="font-medium text-sm">Tinker Star</div>
-                          <div className="text-xs text-[var(--foreground-muted)]">What-If scenarios & rating predictions</div>
-                        </div>
+                        <div><div className="font-medium text-sm">Tinker Star</div><div className="text-xs text-[var(--foreground-muted)]">What-If scenarios</div></div>
                         <span className="ml-auto text-[10px] font-bold text-white bg-gradient-to-r from-cyan-500 to-blue-500 px-2 py-0.5 rounded-full">NEW</span>
                       </button>
-                      <button
-                        onClick={() => { setCurrentView('benchmarking'); setShowProMenu(false); }}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[var(--background)] transition-colors text-left"
-                      >
+                      <button onClick={() => { setCurrentView('benchmarking'); setShowProMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[var(--background)] transition-colors text-left">
                         <Scale className="w-5 h-5 text-purple-500" />
-                        <div>
-                          <div className="font-medium text-sm">Competitor Benchmarking</div>
-                          <div className="text-xs text-[var(--foreground-muted)]">Compare with market</div>
-                        </div>
+                        <div><div className="font-medium text-sm">Competitor Benchmarking</div><div className="text-xs text-[var(--foreground-muted)]">Market comparison</div></div>
                       </button>
-                      <button
-                        onClick={() => { setCurrentView('financial-impact'); setShowProMenu(false); }}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[var(--background)] transition-colors text-left"
-                      >
+                      <button onClick={() => { setCurrentView('financial-impact'); setShowProMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[var(--background)] transition-colors text-left">
                         <CircleDollarSign className="w-5 h-5 text-green-500" />
-                        <div>
-                          <div className="font-medium text-sm">Financial Impact</div>
-                          <div className="text-xs text-[var(--foreground-muted)]">Revenue projections</div>
-                        </div>
+                        <div><div className="font-medium text-sm">Financial Impact</div><div className="text-xs text-[var(--foreground-muted)]">Revenue projections</div></div>
                       </button>
-                      <button
-                        onClick={() => { setCurrentView('survey-countdown'); setShowProMenu(false); }}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[var(--background)] transition-colors text-left"
-                      >
-                        <Timer className="w-5 h-5 text-red-500" />
-                        <div>
-                          <div className="font-medium text-sm">Survey Countdown</div>
-                          <div className="text-xs text-[var(--foreground-muted)]">Track survey timing</div>
-                        </div>
-                      </button>
-                      <button
-                        onClick={() => { setCurrentView('alerts'); setShowProMenu(false); }}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[var(--background)] transition-colors text-left"
-                      >
-                        <Bell className="w-5 h-5 text-amber-500" />
-                        <div>
-                          <div className="font-medium text-sm">Automated Alerts</div>
-                          <div className="text-xs text-[var(--foreground-muted)]">Rating change notifications</div>
-                        </div>
-                      </button>
-
                       <div className="border-t border-[var(--border-color)] my-2" />
-
-                      <div className="text-xs font-semibold text-[var(--foreground-muted)] px-3 py-2 uppercase tracking-wider">
-                        Operations
-                      </div>
-                      <button
-                        onClick={() => { setCurrentView('portfolio'); setShowProMenu(false); }}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[var(--background)] transition-colors text-left"
-                      >
+                      <div className="text-xs font-semibold text-[var(--foreground-muted)] px-3 py-2 uppercase tracking-wider">Operations</div>
+                      <button onClick={() => { setCurrentView('portfolio'); setShowProMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[var(--background)] transition-colors text-left">
                         <Layers className="w-5 h-5 text-blue-500" />
-                        <div>
-                          <div className="font-medium text-sm">Portfolio View</div>
-                          <div className="text-xs text-[var(--foreground-muted)]">Multi-facility dashboard</div>
-                        </div>
+                        <div><div className="font-medium text-sm">Portfolio View</div><div className="text-xs text-[var(--foreground-muted)]">Multi-facility dashboard</div></div>
                       </button>
-                      <button
-                        onClick={() => { setCurrentView('scheduling'); setShowProMenu(false); }}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[var(--background)] transition-colors text-left"
-                      >
+                      <button onClick={() => { setCurrentView('scheduling'); setShowProMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[var(--background)] transition-colors text-left">
                         <UsersRound className="w-5 h-5 text-cyan-500" />
-                        <div>
-                          <div className="font-medium text-sm">Scheduling Optimizer</div>
-                          <div className="text-xs text-[var(--foreground-muted)]">Staff HPRD targets</div>
-                        </div>
+                        <div><div className="font-medium text-sm">Scheduling Optimizer</div><div className="text-xs text-[var(--foreground-muted)]">Staff HPRD targets</div></div>
                       </button>
-                      <button
-                        onClick={() => { setCurrentView('pbj-integration'); setShowProMenu(false); }}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[var(--background)] transition-colors text-left"
-                      >
+                      <button onClick={() => { setCurrentView('survey-countdown'); setShowProMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[var(--background)] transition-colors text-left">
+                        <Timer className="w-5 h-5 text-red-500" />
+                        <div><div className="font-medium text-sm">Survey Countdown</div><div className="text-xs text-[var(--foreground-muted)]">Track survey timing</div></div>
+                      </button>
+                      <button onClick={() => { setCurrentView('pbj-integration'); setShowProMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[var(--background)] transition-colors text-left">
                         <FileSpreadsheet className="w-5 h-5 text-orange-500" />
-                        <div>
-                          <div className="font-medium text-sm">PBJ Integration</div>
-                          <div className="text-xs text-[var(--foreground-muted)]">Upload & sync data</div>
-                        </div>
+                        <div><div className="font-medium text-sm">PBJ Integration</div><div className="text-xs text-[var(--foreground-muted)]">Upload & sync data</div></div>
                       </button>
-
+                      <button onClick={() => { setCurrentView('alerts'); setShowProMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[var(--background)] transition-colors text-left">
+                        <Bell className="w-5 h-5 text-amber-500" />
+                        <div><div className="font-medium text-sm">Automated Alerts</div><div className="text-xs text-[var(--foreground-muted)]">Rating notifications</div></div>
+                      </button>
                       <div className="border-t border-[var(--border-color)] my-2" />
-
-                      <div className="text-xs font-semibold text-[var(--foreground-muted)] px-3 py-2 uppercase tracking-wider">
-                        Reporting & Community
-                      </div>
-                      <button
-                        onClick={() => { setCurrentView('board-reports'); setShowProMenu(false); }}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[var(--background)] transition-colors text-left"
-                      >
+                      <div className="text-xs font-semibold text-[var(--foreground-muted)] px-3 py-2 uppercase tracking-wider">Reporting</div>
+                      <button onClick={() => { setCurrentView('board-reports'); setShowProMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[var(--background)] transition-colors text-left">
                         <Briefcase className="w-5 h-5 text-indigo-500" />
-                        <div>
-                          <div className="font-medium text-sm">Board Reports</div>
-                          <div className="text-xs text-[var(--foreground-muted)]">Generate PDF reports</div>
-                        </div>
+                        <div><div className="font-medium text-sm">Board Reports</div><div className="text-xs text-[var(--foreground-muted)]">Professional reports</div></div>
                       </button>
-                      <button
-                        onClick={() => { setCurrentView('regulatory'); setShowProMenu(false); }}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[var(--background)] transition-colors text-left"
-                      >
+                      <button onClick={() => { setCurrentView('regulatory'); setShowProMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[var(--background)] transition-colors text-left">
                         <Gavel className="w-5 h-5 text-rose-500" />
-                        <div>
-                          <div className="font-medium text-sm">Regulatory Tracker</div>
-                          <div className="text-xs text-[var(--foreground-muted)]">CMS rule changes</div>
-                        </div>
+                        <div><div className="font-medium text-sm">Regulatory Tracker</div><div className="text-xs text-[var(--foreground-muted)]">CMS rule changes</div></div>
                       </button>
-                      <button
-                        onClick={() => { setCurrentView('community'); setShowProMenu(false); }}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[var(--background)] transition-colors text-left"
-                      >
+                      <button onClick={() => { setCurrentView('community'); setShowProMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[var(--background)] transition-colors text-left">
                         <Network className="w-5 h-5 text-teal-500" />
-                        <div>
-                          <div className="font-medium text-sm">Peer Community</div>
-                          <div className="text-xs text-[var(--foreground-muted)]">Connect with peers</div>
-                        </div>
+                        <div><div className="font-medium text-sm">Peer Community</div><div className="text-xs text-[var(--foreground-muted)]">Connect with peers</div></div>
                       </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </nav>
+
+            {/* Right side - Hamburger Menu + User + Dark Mode */}
+            <div className="flex items-center gap-2">
+              {/* Hamburger Menu for Tools & Facility Navigation */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowHamburgerMenu(!showHamburgerMenu)}
+                  className={`btn-neumorphic p-2.5 flex items-center gap-2 ${showHamburgerMenu ? 'ring-2 ring-cyan-500' : ''}`}
+                  title="All Tools & Navigation"
+                >
+                  <Menu className="w-5 h-5" />
+                  <span className="hidden lg:inline text-sm">More</span>
+                </button>
+
+                {showHamburgerMenu && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowHamburgerMenu(false)} />
+                    <div className="absolute right-0 mt-2 w-80 card-neumorphic p-3 z-50 animate-fade-in max-h-[80vh] overflow-y-auto">
+                      {/* Quick Facility Selector */}
+                      <div className="mb-3">
+                        <label className="text-xs font-semibold text-[var(--foreground-muted)] uppercase tracking-wider mb-2 block">Quick Select Facility</label>
+                        <select
+                          value={selectedFacility || ''}
+                          onChange={(e) => { if (e.target.value) { handleSelectFacility(e.target.value); setShowHamburgerMenu(false); } }}
+                          className="input-neumorphic text-sm py-2 px-3 w-full"
+                        >
+                          <option value="">Choose a facility...</option>
+                          {Object.entries(
+                            Object.entries(CASCADIA_FACILITIES).reduce((acc, [, info]) => {
+                              if (!acc[info.company]) acc[info.company] = [];
+                              acc[info.company].push(info);
+                              return acc;
+                            }, {} as Record<string, Array<{ ccn: string; shortName: string; company: string }>>)
+                          ).map(([company, facilities]) => (
+                            <optgroup key={company} label={company}>
+                              {facilities.map((f) => (
+                                <option key={f.ccn} value={f.ccn}>{f.shortName}</option>
+                              ))}
+                            </optgroup>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Facility Analysis Tools - shown when facility selected */}
+                      {selectedFacility && (
+                        <>
+                          <div className="border-t border-[var(--border-color)] my-3" />
+                          <div className="text-xs font-semibold text-[var(--foreground-muted)] px-2 py-2 uppercase tracking-wider">Facility Analysis</div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <button onClick={() => { setCurrentView('overview'); setShowHamburgerMenu(false); }} className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors ${currentView === 'overview' ? 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                              <Building2 className="w-4 h-4" /> Overview
+                            </button>
+                            <button onClick={() => { setCurrentView('health'); setShowHamburgerMenu(false); }} className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors ${currentView === 'health' ? 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                              <ClipboardCheck className="w-4 h-4" /> Inspections
+                            </button>
+                            <button onClick={() => { setCurrentView('staffing'); setShowHamburgerMenu(false); }} className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors ${currentView === 'staffing' ? 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                              <UserCheck className="w-4 h-4" /> Staffing
+                            </button>
+                            <button onClick={() => { setCurrentView('quality'); setShowHamburgerMenu(false); }} className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors ${currentView === 'quality' ? 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                              <Heart className="w-4 h-4" /> Quality
+                            </button>
+                            <button onClick={() => { setCurrentView('plan'); setShowHamburgerMenu(false); }} className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors ${currentView === 'plan' ? 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                              <FileText className="w-4 h-4" /> Plan
+                            </button>
+                            <button onClick={() => { setCurrentView('trends'); setShowHamburgerMenu(false); }} className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors ${currentView === 'trends' ? 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                              <Activity className="w-4 h-4" /> Trends
+                            </button>
+                          </div>
+                        </>
+                      )}
+
+                      <div className="border-t border-[var(--border-color)] my-3" />
+                      <div className="text-xs font-semibold text-[var(--foreground-muted)] px-2 py-2 uppercase tracking-wider">Tools & Resources</div>
+                      <div className="space-y-1">
+                        <button onClick={() => { setCurrentView('sidebyside'); setShowHamburgerMenu(false); }} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors text-left ${currentView === 'sidebyside' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                          <GitCompare className="w-5 h-5 text-purple-500" />
+                          <span>Side-by-Side Compare</span>
+                        </button>
+                        <button onClick={() => { setCurrentView('tasks'); setShowHamburgerMenu(false); }} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors text-left ${currentView === 'tasks' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                          <ListChecks className="w-5 h-5 text-green-500" />
+                          <span>Action Tasks</span>
+                        </button>
+                        <button onClick={() => { setCurrentView('checklists'); setShowHamburgerMenu(false); }} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors text-left ${currentView === 'checklists' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                          <ClipboardCheck className="w-5 h-5 text-blue-500" />
+                          <span>Survey Checklists</span>
+                        </button>
+                        <button onClick={() => { setCurrentView('training'); setShowHamburgerMenu(false); }} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors text-left ${currentView === 'training' ? 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                          <GraduationCap className="w-5 h-5 text-cyan-500" />
+                          <span>Training Academy</span>
+                        </button>
+                      </div>
+
+                      {/* Mobile Only - Main Nav Items */}
+                      <div className="md:hidden border-t border-[var(--border-color)] my-3">
+                        <div className="text-xs font-semibold text-[var(--foreground-muted)] px-2 py-2 uppercase tracking-wider">Main Navigation</div>
+                        <div className="space-y-1">
+                          <button onClick={() => { setSelectedFacility(null); setCurrentView('search'); setShowHamburgerMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm hover:bg-slate-100 dark:hover:bg-slate-800 text-left">
+                            <Home className="w-5 h-5 text-cyan-500" /> Home
+                          </button>
+                          <button onClick={() => { setCurrentView('executive'); setShowHamburgerMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm hover:bg-slate-100 dark:hover:bg-slate-800 text-left">
+                            <PieChart className="w-5 h-5 text-indigo-500" /> Dashboard
+                          </button>
+                          <button onClick={() => { setCurrentView('cascadia'); setShowHamburgerMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm hover:bg-slate-100 dark:hover:bg-slate-800 text-left">
+                            <Award className="w-5 h-5 text-amber-500" /> Cascadia
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </>
                 )}
@@ -930,20 +951,17 @@ export default function HomePage() {
                     <div className="w-6 h-6 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold">
                       {user.name?.[0]?.toUpperCase() || user.email[0].toUpperCase()}
                     </div>
-                    <span className="hidden lg:inline text-sm">{user.name || user.email.split('@')[0]}</span>
                   </button>
                 ) : (
                   <button
                     onClick={() => setShowAuthModal(true)}
-                    className="btn-neumorphic px-4 py-2.5 flex items-center gap-2 text-sm"
+                    className="btn-neumorphic p-2.5 flex items-center gap-2 text-sm"
                     title="Sign in to save scenarios"
                   >
-                    <UserCheck className="w-4 h-4" />
-                    <span className="hidden sm:inline">Sign In</span>
+                    <UserCheck className="w-5 h-5" />
                   </button>
                 )}
 
-                {/* User Menu Dropdown */}
                 {showUserMenu && user && (
                   <div className="absolute right-0 top-full mt-2 w-64 card-neumorphic p-3 z-50">
                     <div className="px-3 py-2 border-b border-[var(--border-color)] mb-2">
@@ -951,31 +969,39 @@ export default function HomePage() {
                       <p className="text-xs text-[var(--foreground-muted)]">{user.email}</p>
                       {user.company && <p className="text-xs text-cyan-600">{user.company}</p>}
                     </div>
-                    <button
-                      onClick={() => { setCurrentView('search'); setShowUserMenu(false); }}
-                      className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg flex items-center gap-2"
-                    >
-                      <Bookmark className="w-4 h-4" />
-                      My Favorites
+                    <button onClick={() => { setCurrentView('search'); setShowUserMenu(false); }} className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg flex items-center gap-2">
+                      <Bookmark className="w-4 h-4" /> My Favorites
                     </button>
-                    <button
-                      onClick={() => { setCurrentView('simulator'); setShowUserMenu(false); }}
-                      className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg flex items-center gap-2"
-                    >
-                      <Save className="w-4 h-4" />
-                      Saved Scenarios
+                    <button onClick={() => { setCurrentView('simulator'); setShowUserMenu(false); }} className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg flex items-center gap-2">
+                      <Save className="w-4 h-4" /> Saved Scenarios
                     </button>
-                    <button
-                      onClick={handleLogout}
-                      className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg flex items-center gap-2 mt-2"
-                    >
-                      <X className="w-4 h-4" />
-                      Sign Out
+                    <button onClick={handleLogout} className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg flex items-center gap-2 mt-2">
+                      <X className="w-4 h-4" /> Sign Out
                     </button>
                   </div>
                 )}
               </div>
 
+              {/* Admin Button */}
+              {isAdmin ? (
+                <button
+                  onClick={() => setCurrentView('admin')}
+                  className={`btn-neumorphic p-2.5 ${currentView === 'admin' ? 'ring-2 ring-red-500' : ''}`}
+                  title="Admin Panel"
+                >
+                  <Settings className="w-5 h-5 text-red-500" />
+                </button>
+              ) : (
+                <button
+                  onClick={() => setShowAdminLogin(true)}
+                  className="btn-neumorphic p-2.5"
+                  title="Admin Login"
+                >
+                  <Settings className="w-5 h-5 text-slate-400" />
+                </button>
+              )}
+
+              {/* Dark Mode Toggle */}
               <button
                 onClick={toggleDarkMode}
                 className="btn-neumorphic p-2.5"
@@ -991,6 +1017,44 @@ export default function HomePage() {
           </div>
         </div>
       </header>
+
+      {/* Admin Login Modal */}
+      {showAdminLogin && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="card-neumorphic p-6 w-full max-w-md animate-slide-up">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold flex items-center gap-2">
+                <Settings className="w-6 h-6 text-red-500" />
+                Admin Login
+              </h3>
+              <button onClick={() => { setShowAdminLogin(false); setAdminPassword(''); setAdminError(''); }} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Admin Password</label>
+                <input
+                  type="password"
+                  value={adminPassword}
+                  onChange={(e) => { setAdminPassword(e.target.value); setAdminError(''); }}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAdminLogin()}
+                  className="w-full input-neumorphic"
+                  placeholder="Enter admin password"
+                  autoFocus
+                />
+                {adminError && <p className="text-red-500 text-sm mt-2">{adminError}</p>}
+              </div>
+              <button
+                onClick={handleAdminLogin}
+                className="w-full btn-neumorphic-primary py-3 font-semibold"
+              >
+                Login as Admin
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Auth Modal */}
       <AuthModal
@@ -1241,7 +1305,8 @@ export default function HomePage() {
         {currentView === 'benchmarking' && (
           <BenchmarkingView
             providerNumber={selectedFacility}
-            onBack={() => selectedFacility ? setCurrentView('overview') : setCurrentView('search')}
+            onBack={() => setCurrentView('search')}
+            onSelectFacility={(ccn) => handleSelectFacility(ccn, true)}
           />
         )}
 
@@ -1295,6 +1360,22 @@ export default function HomePage() {
         {/* Community/Peer Networking */}
         {currentView === 'community' && (
           <CommunityView onBack={() => setCurrentView('search')} />
+        )}
+
+        {/* Side-by-Side Facility Comparison */}
+        {currentView === 'sidebyside' && (
+          <SideBySideComparison
+            onBack={() => setCurrentView('search')}
+            onSelectFacility={handleSelectFacility}
+          />
+        )}
+
+        {/* Admin Panel */}
+        {currentView === 'admin' && isAdmin && (
+          <AdminPanel
+            onBack={() => setCurrentView('search')}
+            onLogout={handleAdminLogout}
+          />
         )}
       </main>
 
@@ -1839,6 +1920,1106 @@ interface TrainingResource {
 }
 
 // Training content database
+// ==========================================
+// CASCADIA HEALTHCARE TRAINING CONTENT
+// Comprehensive training modules with detailed content
+// ==========================================
+
+const cascadiaTrainingModules = {
+  // STAFFING EXCELLENCE TRACK
+  staffing: {
+    trackName: 'Staffing Excellence',
+    trackIcon: '👥',
+    trackColor: 'cyan',
+    description: 'Master the staffing metrics that drive your star rating',
+    modules: [
+      {
+        id: 'staff-101',
+        title: 'HPRD Fundamentals: The Foundation of Your Staffing Rating',
+        duration: 45,
+        difficulty: 'beginner',
+        type: 'course',
+        objectives: [
+          'Understand how CMS calculates Hours Per Resident Day',
+          'Learn the current staffing thresholds for each star level',
+          'Identify staffing gaps in your facility',
+          'Calculate your daily HPRD accurately',
+        ],
+        content: `
+## Introduction to Hours Per Resident Day (HPRD)
+
+At Cascadia Healthcare, we recognize that staffing is the backbone of quality care. Your staffing rating accounts for **32% of your overall CMS star rating**, making it one of the most controllable factors in achieving and maintaining high performance.
+
+### What is HPRD?
+
+HPRD (Hours Per Resident Day) measures the total nursing staff time available per resident in a 24-hour period. This metric tells CMS—and your residents' families—how much hands-on care capacity your facility provides.
+
+**The Formula:**
+\`\`\`
+HPRD = Total Nursing Staff Hours Worked ÷ Total Resident Days
+\`\`\`
+
+### Cascadia's HPRD Calculation Example
+
+Let's use Clearwater Health & Rehabilitation as an example:
+- **Census:** 85 residents
+- **RN Hours:** 64 hours (8 RNs × 8 hours)
+- **LPN Hours:** 96 hours (12 LPNs × 8 hours)
+- **CNA Hours:** 240 hours (30 CNAs × 8 hours)
+- **Total Nursing Hours:** 400 hours
+
+**Calculation:**
+- Total HPRD = 400 ÷ 85 = **4.71 HPRD** ✓ (5-Star threshold)
+- RN HPRD = 64 ÷ 85 = **0.75 HPRD** ✓ (5-Star threshold)
+
+### Current CMS Staffing Thresholds (2024-2025)
+
+| Star Level | Total HPRD | RN HPRD | Weekend Requirement |
+|------------|------------|---------|---------------------|
+| ⭐⭐⭐⭐⭐ 5-Star | ≥ 4.08 | ≥ 0.75 | Consistent coverage |
+| ⭐⭐⭐⭐ 4-Star | ≥ 3.58 | ≥ 0.55 | Minimal variance |
+| ⭐⭐⭐ 3-Star | ≥ 3.18 | ≥ 0.40 | Acceptable variance |
+| ⭐⭐ 2-Star | ≥ 2.82 | ≥ 0.30 | Below standard |
+| ⭐ 1-Star | < 2.82 | < 0.30 | Critical deficiency |
+
+### Cascadia Standard: Exceeding Minimums
+
+Our corporate standard requires all facilities to maintain:
+- **Total HPRD:** Minimum 4.0 (targeting 4.2+)
+- **RN HPRD:** Minimum 0.70 (targeting 0.80+)
+- **Weekend Staffing:** No more than 10% variance from weekday levels
+
+### The New CMS Minimum Staffing Rule
+
+Effective May 2026 (urban) and May 2027 (rural), CMS requires:
+- **3.48 total nursing HPRD** minimum
+- **0.55 RN HPRD** minimum
+- **24/7 RN coverage** on-site
+
+**Cascadia's Position:** All facilities should already exceed these minimums. Use the transition period to optimize scheduling and reduce agency reliance.
+
+### Staff Categories That Count Toward HPRD
+
+**Included in HPRD:**
+✅ Registered Nurses (RNs)
+✅ Licensed Practical/Vocational Nurses (LPN/LVNs)
+✅ Certified Nursing Assistants (CNAs)
+✅ Medication Aides/Technicians (in states where permitted)
+✅ Nurse Aides in Training (under RN supervision)
+
+**NOT Included:**
+❌ Directors of Nursing (administrative time)
+❌ Activities staff
+❌ Social workers
+❌ Dietary staff
+❌ Housekeeping/maintenance
+
+### Common HPRD Calculation Errors to Avoid
+
+1. **Excluding agency staff:** All nursing hours count, regardless of employment status
+2. **Double-counting:** Staff working double shifts should only be counted once
+3. **Including non-nursing tasks:** Administrative time for nurses should not be included
+4. **Census errors:** Use actual midnight census, not average or projected
+5. **Missing weekend data:** Weekend staffing is weighted heavily—ensure accurate capture
+        `,
+        keyPoints: [
+          'Staffing rating = 32% of your overall star rating',
+          'Both Total HPRD and RN HPRD must meet thresholds',
+          'Weekend staffing consistency is critical',
+          'New CMS minimums take effect 2026-2027',
+          'Cascadia standard exceeds CMS requirements',
+        ],
+        checklist: [
+          'Calculate current Total HPRD for your facility',
+          'Calculate current RN HPRD separately',
+          'Compare weekend vs. weekday staffing variance',
+          'Identify gaps between current levels and 5-star thresholds',
+          'Review PBJ submission accuracy for last quarter',
+          'Create action plan to address any shortfalls',
+        ],
+        quiz: [
+          { question: 'What percentage of the overall star rating does staffing represent?', answer: '32%' },
+          { question: 'What is the 5-star threshold for Total HPRD?', answer: '4.08 or higher' },
+          { question: 'When does the new CMS minimum staffing rule take effect for urban facilities?', answer: 'May 2026' },
+        ],
+      },
+      {
+        id: 'staff-102',
+        title: 'PBJ Mastery: Accurate Reporting for Maximum Stars',
+        duration: 60,
+        difficulty: 'intermediate',
+        type: 'course',
+        objectives: [
+          'Master Payroll-Based Journal submission requirements',
+          'Ensure accurate staff categorization and coding',
+          'Implement quality control processes for PBJ data',
+          'Avoid common errors that damage your rating',
+        ],
+        content: `
+## Payroll-Based Journal (PBJ): Your Staffing Rating Lifeline
+
+The PBJ system is how CMS captures your staffing data. Errors in PBJ submission directly translate to lower star ratings—even if your actual staffing is excellent.
+
+### Cascadia PBJ Submission Standards
+
+**Submission Deadlines:**
+| Quarter | Dates Covered | Due Date |
+|---------|--------------|----------|
+| Q1 | Jan 1 - Mar 31 | May 15 |
+| Q2 | Apr 1 - Jun 30 | Aug 14 |
+| Q3 | Jul 1 - Sep 30 | Nov 14 |
+| Q4 | Oct 1 - Dec 31 | Feb 14 |
+
+**Cascadia Policy:** Submit at least 10 days before the CMS deadline to allow for corrections.
+
+### Critical Job Codes for PBJ
+
+Each staff member must be coded to the correct category:
+
+| Code | Title | Counts Toward |
+|------|-------|---------------|
+| 1 | Administrator | Not HPRD |
+| 2 | Medical Director | Not HPRD |
+| 5 | Director of Nursing | Split: Admin vs. Clinical |
+| 7 | RN | RN HPRD + Total HPRD |
+| 8 | RN with Admin Duties | Split required |
+| 9 | LPN/LVN | Total HPRD only |
+| 10 | LPN/LVN with Admin | Split required |
+| 22 | CNA | Total HPRD only |
+| 23 | CNA-Medication Aide | Total HPRD only |
+
+### The DON Split Calculation
+
+Directors of Nursing must split their time between administrative and clinical duties:
+
+**Example - DON Working 50 Hours/Week:**
+- Administrative duties: 30 hours (meetings, paperwork, scheduling)
+- Clinical/direct care: 20 hours (floor coverage, treatments, supervision)
+
+**PBJ Entry:**
+- Job Code 5 (DON): 30 hours/week
+- Job Code 7 (RN): 20 hours/week
+
+### Weekend Staffing: The Hidden Rating Killer
+
+CMS specifically evaluates weekend staffing levels. A significant drop from weekday staffing will damage your rating.
+
+**Cascadia Weekend Staffing Policy:**
+- Saturday staffing: ≥95% of weekday average
+- Sunday staffing: ≥90% of weekday average
+- No single weekend day below 85% of weekday average
+
+### PBJ Quality Control Checklist
+
+Before each quarterly submission:
+
+1. **Reconcile with Payroll:**
+   - Match PBJ hours to payroll system hours
+   - Variance should be <2%
+
+2. **Verify Census Data:**
+   - Daily census matches MDS admission/discharge records
+   - No duplicate or missing residents
+
+3. **Check Job Codes:**
+   - All new hires properly coded
+   - Job code changes (promotions) reflected
+
+4. **Review Agency Staff:**
+   - All agency/contract hours included
+   - Proper job codes for agency staff
+
+5. **Weekend Analysis:**
+   - Compare weekend totals to weekday averages
+   - Flag any weekends with >15% variance
+
+### Common PBJ Errors That Destroy Ratings
+
+**Error 1: Missing Agency Hours**
+- Impact: Underreported HPRD
+- Fix: Create separate tracking for agency staff
+
+**Error 2: Incorrect Job Codes**
+- Impact: Misclassified RN vs. LPN hours
+- Fix: Regular audits of job code assignments
+
+**Error 3: Time System Errors**
+- Impact: Missing shifts or inaccurate hours
+- Fix: Daily review of time clock exceptions
+
+**Error 4: Census Discrepancies**
+- Impact: HPRD calculated with wrong denominator
+- Fix: Reconcile census with MDS coordinator weekly
+        `,
+        keyPoints: [
+          'Submit PBJ 10+ days before CMS deadline',
+          'DON time must be split between admin and clinical',
+          'Weekend staffing is evaluated separately by CMS',
+          'Agency staff hours MUST be included',
+          'Reconcile PBJ with payroll before submission',
+        ],
+        checklist: [
+          'Verify all staff job codes are current',
+          'Ensure agency staff hours are captured in time system',
+          'Calculate DON clinical vs. administrative split',
+          'Compare weekend staffing to weekday baseline',
+          'Run payroll-to-PBJ reconciliation report',
+          'Review for time clock exceptions and corrections',
+          'Validate census data with MDS coordinator',
+          'Submit at least 10 days before deadline',
+        ],
+      },
+      {
+        id: 'staff-103',
+        title: 'Strategic Scheduling for 5-Star Staffing',
+        duration: 75,
+        difficulty: 'advanced',
+        type: 'course',
+        objectives: [
+          'Design schedules that consistently meet HPRD targets',
+          'Optimize staff mix for maximum rating impact',
+          'Reduce agency reliance while maintaining levels',
+          'Handle census fluctuations without rating damage',
+        ],
+        content: `
+## Strategic Scheduling: A Cascadia Approach
+
+Achieving 5-star staffing isn't about adding more staff—it's about deploying the right staff at the right times. This module provides Cascadia's proven scheduling strategies.
+
+### The Cascadia Staffing Matrix
+
+Every facility should maintain a staffing matrix that automatically adjusts to census:
+
+| Census Range | RN Hours | LPN Hours | CNA Hours | Total HPRD Target |
+|--------------|----------|-----------|-----------|-------------------|
+| 80-90 | 64 | 96 | 240 | 4.44-5.00 |
+| 70-79 | 56 | 88 | 216 | 4.57-5.14 |
+| 60-69 | 48 | 80 | 192 | 4.62-5.33 |
+| 50-59 | 40 | 72 | 168 | 4.67-5.60 |
+
+### RN Coverage Optimization
+
+The RN component is often the bottleneck for 5-star staffing:
+
+**Strategy 1: Overlapping Shifts**
+- 7a-3p: 2 RNs
+- 11a-7p: 1 RN (overlap increases peak coverage)
+- 3p-11p: 2 RNs
+- 11p-7a: 1 RN
+
+**Strategy 2: PRN Pool Development**
+- Maintain 3-4 PRN RNs per facility
+- Minimum 2 shifts/month to stay current
+- First call for open shifts before agency
+
+**Strategy 3: RN Supervisor Deployment**
+- When census drops, RN supervisors take floor assignments
+- Maintains RN HPRD during low census periods
+
+### Weekend Staffing Solutions
+
+Weekend staffing drop-off is the #1 cause of staffing rating loss.
+
+**Cascadia Weekend Programs:**
+
+1. **Weekend Warrior Premium**
+   - $3-5/hour weekend differential
+   - Guaranteed hours for weekend-committed staff
+
+2. **Baylor Plan Option**
+   - Work Saturday and Sunday (24 hours)
+   - Paid for 32-36 hours
+   - Benefits eligible
+
+3. **Self-Scheduling Windows**
+   - Staff select weekend shifts first
+   - Remaining weekday shifts filled after
+
+### Managing Census Fluctuations
+
+**High Census Surge Protocol:**
+1. Day 1-2: Overtime for core staff
+2. Day 3+: Activate PRN pool
+3. Day 5+: Agency as last resort
+4. Document HPRD maintained daily
+
+**Low Census Protocol:**
+1. Reduce agency first
+2. Offer voluntary time off (VTO) to CNAs before nurses
+3. Float RNs to other Cascadia facilities if needed
+4. Never reduce below 4.0 Total HPRD or 0.70 RN HPRD
+
+### Turnover Prevention: The Long Game
+
+High turnover destroys staffing consistency. Cascadia's retention strategies:
+
+1. **90-Day Focus:** Highest turnover risk is first 90 days
+   - Structured orientation with mentor
+   - Weekly check-ins with supervisor
+   - 30/60/90 day formal evaluations
+
+2. **Career Ladder Program:**
+   - CNA → CMA → LPN → RN pathways
+   - Tuition assistance for advancing staff
+   - Promotes from within for leadership roles
+
+3. **Recognition Programs:**
+   - Monthly star performer awards
+   - Quarterly retention bonuses
+   - Annual service awards
+        `,
+        keyPoints: [
+          'Use a census-based staffing matrix for consistency',
+          'Develop PRN pools before relying on agency',
+          'Weekend differentials and Baylor plans maintain coverage',
+          'Reduce agency first during low census, not core staff',
+          '90-day retention focus prevents turnover',
+        ],
+        checklist: [
+          'Create facility-specific staffing matrix by census',
+          'Implement weekend differential program',
+          'Build PRN pool with minimum 4 RNs and 8 CNAs',
+          'Establish Baylor plan option for weekend coverage',
+          'Create high census and low census protocols',
+          'Review 90-day turnover rate and address root causes',
+        ],
+      },
+    ],
+  },
+
+  // QUALITY MEASURES TRACK
+  quality: {
+    trackName: 'Quality Measures Excellence',
+    trackIcon: '📊',
+    trackColor: 'purple',
+    description: 'Improve clinical outcomes that drive your QM rating',
+    modules: [
+      {
+        id: 'qm-101',
+        title: 'Understanding Your Quality Measures: The 15% That Matters',
+        duration: 50,
+        difficulty: 'beginner',
+        type: 'course',
+        objectives: [
+          'Understand how CMS calculates Quality Measure ratings',
+          'Identify the key measures that impact your star rating',
+          'Learn the difference between long-stay and short-stay measures',
+          'Recognize Cascadia priority measures',
+        ],
+        content: `
+## Quality Measures: Clinical Excellence Drives Stars
+
+Quality Measures account for **15% of your overall star rating**. While this seems small, poor QM performance signals clinical care problems that will eventually impact health inspections and referral relationships.
+
+### How QM Rating is Calculated
+
+CMS uses 15 quality measures (9 long-stay, 6 short-stay) calculated from MDS assessments. Your facility is ranked against all nursing homes nationally, and your percentile determines your star level.
+
+**QM Star Thresholds:**
+| Star Level | Percentile Range |
+|------------|------------------|
+| 5-Star | 90th percentile or above |
+| 4-Star | 70th - 89th percentile |
+| 3-Star | 40th - 69th percentile |
+| 2-Star | 20th - 39th percentile |
+| 1-Star | Below 20th percentile |
+
+### Long-Stay Measures (Residents 101+ Days)
+
+| Measure | Lower is Better | National Avg | Cascadia Target |
+|---------|-----------------|--------------|-----------------|
+| High-Risk Pressure Ulcers | ✓ | 5.8% | <3.0% |
+| Antipsychotic Medication Use | ✓ | 14.2% | <10.0% |
+| Physical Restraints | ✓ | 0.4% | 0.0% |
+| UTI | ✓ | 2.8% | <2.0% |
+| Catheter Left in Bladder | ✓ | 1.6% | <1.0% |
+| Ability to Move Independently Worsened | ✓ | 20.1% | <15.0% |
+| Falls with Major Injury | ✓ | 3.2% | <2.5% |
+| Depressive Symptoms | ✓ | 4.3% | <3.0% |
+| Received Flu Vaccine | Higher better | 86.5% | >95% |
+
+### Short-Stay Measures (Residents ≤100 Days)
+
+| Measure | Lower is Better | National Avg | Cascadia Target |
+|---------|-----------------|--------------|-----------------|
+| Rehospitalization | ✓ | 21.8% | <18.0% |
+| ED Visit | ✓ | 11.2% | <9.0% |
+| New or Worse Pressure Ulcers | ✓ | 1.8% | <1.0% |
+| Function Improved | Higher better | 72.1% | >80.0% |
+| Discharged to Community | Higher better | 53.8% | >60.0% |
+| Successful Return to Home | Higher better | 48.2% | >55.0% |
+
+### Cascadia Priority Measures
+
+Based on our portfolio performance, focus improvement efforts on:
+
+**#1 Priority: Antipsychotic Medication Use**
+- Most scrutinized measure by families and surveyors
+- Target: <10% (compared to national 14.2%)
+- Action: GDR protocols, behavioral interventions, psychiatry consults
+
+**#2 Priority: Pressure Ulcer Prevention**
+- Directly reflects nursing care quality
+- Target: <3% high-risk (national 5.8%)
+- Action: WOCN protocols, turning schedules, Braden risk tools
+
+**#3 Priority: Falls with Major Injury**
+- High liability and family concern
+- Target: <2.5% (national 3.2%)
+- Action: Fall prevention committees, individualized interventions
+
+### MDS Accuracy: The QM Foundation
+
+Every quality measure is calculated from MDS data. Inaccurate MDS = Inaccurate QM scores.
+
+**Common MDS Errors That Hurt QM Scores:**
+
+1. **Pressure Ulcer Staging Errors**
+   - Unstageable ulcers coded incorrectly
+   - Deep tissue injuries misclassified
+
+2. **Antipsychotic Documentation Gaps**
+   - Missing diagnosis of schizophrenia/Tourette's (exclusions)
+   - PRN not captured correctly
+
+3. **Functional Assessment Issues**
+   - Not reflecting true self-performance
+   - Therapy assessments not integrated
+
+**Cascadia MDS Accuracy Protocol:**
+- Weekly MDS review meetings
+- 100% OBRA assessments reviewed by DON
+- Monthly interrater reliability checks
+- Quarterly external MDS audits
+        `,
+        keyPoints: [
+          'Quality Measures = 15% of overall star rating',
+          'Percentile ranking determines your QM star level',
+          'Focus on antipsychotics, pressure ulcers, and falls first',
+          'MDS accuracy directly impacts QM scores',
+          'Short-stay measures matter for rehab facilities',
+        ],
+        checklist: [
+          'Review current facility QM scores on Care Compare',
+          'Compare each measure to Cascadia targets',
+          'Identify top 3 measures needing improvement',
+          'Audit recent MDS assessments for accuracy',
+          'Establish QM review committee meeting schedule',
+          'Create action plans for priority measures',
+        ],
+      },
+      {
+        id: 'qm-102',
+        title: 'Antipsychotic Reduction: From Compliance to Excellence',
+        duration: 90,
+        difficulty: 'advanced',
+        type: 'course',
+        objectives: [
+          'Implement a successful antipsychotic reduction program',
+          'Ensure proper diagnosis documentation for exclusions',
+          'Develop non-pharmacological behavior interventions',
+          'Achieve Cascadia target of <10% antipsychotic use',
+        ],
+        content: `
+## Antipsychotic Reduction: A Cascadia Healthcare Guide
+
+Antipsychotic medication use is the most publicly visible quality measure. Families check this measure before admission, and surveyors scrutinize your reduction efforts.
+
+### Understanding the Measure
+
+**What CMS Counts:**
+- Long-stay residents (101+ days) receiving antipsychotics
+- Excludes: Schizophrenia, Huntington's, Tourette's
+
+**Current Performance:**
+| Benchmark | Rate |
+|-----------|------|
+| National Average | 14.2% |
+| 5-Star Threshold | <9.0% |
+| Cascadia Target | <10.0% |
+
+### The Cascadia Antipsychotic Reduction Program (CARP)
+
+**Phase 1: Assessment (Week 1-2)**
+
+1. Generate current antipsychotic roster
+2. Review each resident for:
+   - Original indication for medication
+   - Current behaviors documented
+   - Exclusion diagnosis potential
+   - GDR attempt history
+
+**Phase 2: Documentation Optimization (Week 2-4)**
+
+Many residents have legitimate exclusion diagnoses that aren't properly coded:
+
+| Exclusion Diagnosis | ICD-10 | Documentation Required |
+|---------------------|--------|------------------------|
+| Schizophrenia | F20.xx | Psychiatric consult note |
+| Huntington's Disease | G10 | Neurology/genetic confirmation |
+| Tourette's Syndrome | F95.2 | Documented since childhood |
+
+**Phase 3: GDR Implementation (Ongoing)**
+
+Gradual Dose Reduction Requirements:
+- Attempt GDR within first 90 days
+- If GDR attempted and failed, document specific behaviors that returned
+- Re-attempt GDR at least annually
+- Document all non-pharmacological interventions tried
+
+**GDR Protocol:**
+1. Reduce dose by 25%
+2. Monitor for 2 weeks
+3. If no behavior return, reduce another 25%
+4. Continue until discontinued or behaviors return
+5. Document specific behaviors triggering reinstatement
+
+### Non-Pharmacological Interventions
+
+Before starting or continuing antipsychotics, document these interventions:
+
+**Environmental Modifications:**
+- Reduce noise and stimulation
+- Improve lighting (especially for sundowning)
+- Create calm spaces for agitation
+- Consistent routine and caregivers
+
+**Activity-Based Interventions:**
+- Music therapy (personalized playlists)
+- Pet therapy visits
+- Sensory stimulation activities
+- Meaningful engagement programs
+
+**Clinical Interventions:**
+- Pain assessment and management
+- UTI screening (delirium cause)
+- Constipation treatment
+- Medication review for drug-induced behaviors
+
+**Dementia-Specific:**
+- Validation therapy
+- Reminiscence therapy
+- Montessori-based activities
+- Doll therapy where appropriate
+
+### Behavior Documentation Requirements
+
+Every behavior incident must document:
+
+1. **Antecedent:** What happened before the behavior?
+2. **Behavior:** Specific description (not "agitated")
+3. **Consequence:** How did staff respond?
+4. **Pattern Analysis:** Time of day, triggers, duration
+
+**Acceptable Documentation:**
+"Resident struck CNA on left arm with closed fist during AM care when attempting to remove nightgown. Lasted approximately 30 seconds. Resident calmed after staff stopped care attempt and played Frank Sinatra music."
+
+**Unacceptable Documentation:**
+"Resident agitated this morning. PRN medication given."
+
+### QAPI Integration
+
+Antipsychotic reduction should be an ongoing QAPI focus:
+
+- Monthly psychotropic medication review committee
+- Quarterly trending of facility antipsychotic rate
+- Root cause analysis for new antipsychotic starts
+- Pharmacy consultant review of all antipsychotic orders
+        `,
+        keyPoints: [
+          'National average is 14.2%; Cascadia target is <10%',
+          'Proper diagnosis coding creates legitimate exclusions',
+          'GDR must be attempted within 90 days and annually',
+          'Non-pharmacological interventions must be documented first',
+          'Behavior documentation requires ABC format with specifics',
+        ],
+        checklist: [
+          'Generate roster of all residents on antipsychotics',
+          'Review each for exclusion diagnosis documentation',
+          'Audit GDR documentation for compliance',
+          'Implement behavior tracking with ABC format',
+          'Create non-pharmacological intervention menu',
+          'Schedule monthly psychotropic review meetings',
+          'Train all staff on non-pharmacological approaches',
+          'Establish pharmacist review process',
+        ],
+      },
+    ],
+  },
+
+  // HEALTH INSPECTION TRACK
+  healthInspection: {
+    trackName: 'Survey Readiness',
+    trackIcon: '📋',
+    trackColor: 'blue',
+    description: 'Prepare for and excel in state health inspections',
+    modules: [
+      {
+        id: 'hi-101',
+        title: 'Understanding the Survey Process: Know What Surveyors See',
+        duration: 60,
+        difficulty: 'beginner',
+        type: 'course',
+        objectives: [
+          'Understand the standard survey process and timeline',
+          'Know what surveyors evaluate on Day 1',
+          'Prepare for resident and family interviews',
+          'Recognize high-priority survey focus areas',
+        ],
+        content: `
+## The Survey Process: A Cascadia Guide
+
+Health inspections account for **53% of your overall star rating**—making this the most impactful category. Understanding the survey process is the first step to excelling.
+
+### Survey Types and Frequency
+
+| Survey Type | Frequency | Duration | Announced |
+|-------------|-----------|----------|-----------|
+| Standard Survey | Every 9-15 months | 3-5 days | NO |
+| Complaint Survey | As complaints received | 1-3 days | NO |
+| Revisit Survey | Post-deficiency | 1 day | Sometimes |
+| Life Safety Code | With standard | 1-2 days | NO |
+
+### The Standard Survey Timeline
+
+**Day 1: Arrival and Initial Review**
+
+*Morning (Unannounced Arrival):*
+- Surveyors arrive, usually between 7-9 AM
+- Request to not announce arrival to staff
+- Immediate kitchen observation
+- Breakfast meal observation
+
+*Initial Data Collection:*
+- Request roster and census
+- Review facility assessment
+- Identify resident sample
+
+**Day 2-3: In-Depth Review**
+
+- Resident observations and interviews
+- Family interviews (phone and in-person)
+- Staff interviews
+- Medical record review
+- Policy and procedure review
+- Medication pass observation
+
+**Day 4-5: Completion**
+
+- Additional follow-up as needed
+- Exit conference with Administrator and DON
+- Draft Statement of Deficiencies
+
+### The Resident Sample Selection
+
+Surveyors select residents to review based on:
+
+1. **Quality Measure Triggers:**
+   - Antipsychotic use
+   - Pressure ulcers
+   - Weight loss
+   - Falls with injury
+
+2. **Complaint Allegations:**
+   - Specific residents named in complaints
+
+3. **Observation Concerns:**
+   - Residents observed during initial tour
+   - Dining room observations
+
+4. **Random Selection:**
+   - To evaluate general care
+
+### What Surveyors Look for Day 1
+
+**During the Tour:**
+- Odors (urine, feces, chemicals)
+- Resident appearance (grooming, clothing, positioning)
+- Call light response time
+- Staff interactions with residents
+- Environmental cleanliness
+- Emergency preparedness posting
+
+**In the Kitchen:**
+- Food temperatures (hot foods >140°F, cold <41°F)
+- Staff handwashing
+- Hairnets and glove use
+- Sanitizer concentrations
+- Food storage and dating
+- Cleanliness of equipment
+
+**During Meals:**
+- Assistance provided appropriately
+- Positioning and feeding techniques
+- Meal substitutes offered
+- Resident preferences honored
+- Dining atmosphere
+
+### High-Priority Focus Areas (Current)
+
+CMS and state agencies have specific focus areas that change periodically:
+
+**Current Hot Topics:**
+1. Infection Prevention and Control
+2. Abuse Prevention and Reporting
+3. Sufficient Staffing
+4. Person-Centered Care
+5. Medication Management
+6. Quality of Life
+
+### Cascadia Survey Response Protocol
+
+**When Surveyors Arrive:**
+
+1. Administrator or designee greets surveyors
+2. Provide requested documents promptly
+3. Notify DON, ADON, and department heads
+4. Do NOT announce over intercom or page
+5. Continue normal operations—do not change routines
+6. Designate survey coordinator as single point of contact
+        `,
+        keyPoints: [
+          'Health inspections = 53% of overall star rating',
+          'Standard surveys occur every 9-15 months unannounced',
+          'Day 1 observations are critical first impressions',
+          'Resident sample is selected based on QM triggers and observations',
+          'Know current CMS focus areas',
+        ],
+        checklist: [
+          'Verify daily survey readiness checklist is in use',
+          'Confirm kitchen meets all temperature and sanitation standards',
+          'Audit call light response times weekly',
+          'Review current CMS focus area guidance',
+          'Ensure survey response protocol is known by all leaders',
+          'Practice mock survey scenarios quarterly',
+        ],
+      },
+      {
+        id: 'hi-102',
+        title: 'F-Tag Deep Dive: The Tags That Sink Ratings',
+        duration: 120,
+        difficulty: 'advanced',
+        type: 'course',
+        objectives: [
+          'Understand the most commonly cited F-Tags',
+          'Learn prevention strategies for high-risk citations',
+          'Know how scope and severity affect your rating',
+          'Implement systems to prevent repeat deficiencies',
+        ],
+        content: `
+## F-Tags: Understanding What Surveyors Cite
+
+F-Tags are the regulatory requirements surveyors use to cite deficiencies. Some F-Tags are cited far more frequently and carry more weight in your star calculation.
+
+### How Deficiencies Affect Your Rating
+
+The health inspection rating uses a point system based on:
+1. **Number of deficiencies**
+2. **Scope and severity of each deficiency**
+3. **Comparison to state/national averages**
+
+**Scope and Severity Grid:**
+
+| Severity ↓ / Scope → | Isolated | Pattern | Widespread |
+|----------------------|----------|---------|------------|
+| Potential for minimal harm | A (1pt) | B (2pts) | C (3pts) |
+| Minimal harm or potential for actual harm | D (4pts) | E (6pts) | F (8pts) |
+| Actual harm | G (20pts) | H (35pts) | I (45pts) |
+| Immediate jeopardy | J (50pts) | K (100pts) | L (150pts) |
+
+### Top 10 Most Cited F-Tags (Cascadia Focus)
+
+**#1: F880 - Infection Prevention & Control Program**
+*National Citation Rate: 65%*
+
+Requirements:
+- Infection Preventionist designated
+- Antibiotic stewardship program
+- COVID-19 protocols maintained
+- Hand hygiene monitoring
+- Surveillance data collection
+
+Prevention:
+- Weekly hand hygiene audits
+- Monthly infection control rounds
+- Current policies on all pathogens
+- Staff competency verification
+
+---
+
+**#2: F689 - Free of Accident Hazards/Supervision**
+*National Citation Rate: 42%*
+
+Requirements:
+- Assess and mitigate accident risks
+- Provide adequate supervision
+- Implement fall prevention programs
+- Maintain safe environment
+
+Prevention:
+- Fall risk assessment on admission
+- Care plans address identified risks
+- Fall huddles after every fall
+- Environmental safety rounds
+
+---
+
+**#3: F684 - Quality of Care**
+*National Citation Rate: 38%*
+
+Requirements:
+- Provide care based on comprehensive assessment
+- Attain highest practicable well-being
+- Prevent decline unless unavoidable
+
+Prevention:
+- Accurate and timely MDS assessments
+- Care plans reflect current needs
+- Care plan conferences include resident/family
+- Regular progress documentation
+
+---
+
+**#4: F686 - Treatment/Services for Pressure Ulcers**
+*National Citation Rate: 32%*
+
+Requirements:
+- Prevent development of pressure ulcers
+- Provide treatment if present
+- Document prevention efforts
+
+Prevention:
+- Braden assessment on admission
+- Turning and repositioning schedules
+- Pressure-reducing devices ordered
+- Weekly skin assessments documented
+
+---
+
+**#5: F758 - Free from Unnecessary Psychotropic Meds**
+*National Citation Rate: 28%*
+
+Requirements:
+- Use only with specific diagnosis and behaviors
+- Monitor for side effects
+- Attempt dose reduction
+
+Prevention:
+- GDR attempts documented
+- PRN usage reviewed
+- Non-pharmacological interventions tried
+- Informed consent obtained
+
+### Immediate Jeopardy: The Rating Killer
+
+Immediate Jeopardy (IJ) citations devastate your rating:
+
+**IJ Categories:**
+- Abuse (physical, sexual, psychological)
+- Neglect causing harm
+- Elopement with harm
+- Medication errors causing harm
+- Failure to report
+
+**Cascadia Zero-Tolerance Areas:**
+- Any allegation of abuse investigated within 24 hours
+- Elopement drill monthly
+- High-risk medication double verification
+- Mandatory reporting training annually
+
+### After the Survey: Corrective Action
+
+**For Each Deficiency:**
+
+1. **Immediate Correction:** Fix the problem now
+2. **Root Cause Analysis:** Why did this happen?
+3. **Systemic Correction:** Prevent recurrence
+4. **Monitoring Plan:** How will you verify ongoing compliance?
+
+**Plan of Correction Template:**
+
+| Element | Requirement |
+|---------|-------------|
+| What happened | Describe the deficiency |
+| Immediate action | What was done right away |
+| How others were reviewed | Audit of other residents/systems |
+| What will prevent recurrence | New process/policy/training |
+| Who is responsible | Name and title |
+| Monitoring plan | Audits, frequency, duration |
+| Completion date | Must be within 60 days |
+        `,
+        keyPoints: [
+          'F880 (Infection Control) is most commonly cited',
+          'Scope and severity determine point impact on rating',
+          'Immediate Jeopardy can destroy your rating instantly',
+          'POCs must address systemic root causes, not just symptoms',
+          'Monthly mock surveys prevent citation accumulation',
+        ],
+        checklist: [
+          'Review last survey Statement of Deficiencies',
+          'Verify POC monitoring is ongoing for previous deficiencies',
+          'Conduct infection control compliance audit',
+          'Audit fall prevention program effectiveness',
+          'Review psychotropic medication protocols',
+          'Verify abuse prevention training is current',
+          'Schedule quarterly mock survey',
+        ],
+      },
+    ],
+  },
+
+  // LEADERSHIP TRACK
+  leadership: {
+    trackName: 'Leadership Excellence',
+    trackIcon: '👔',
+    trackColor: 'amber',
+    description: 'Management training for DONs and Administrators',
+    modules: [
+      {
+        id: 'lead-101',
+        title: 'The 5-Star Administrator: Leading for Excellence',
+        duration: 90,
+        difficulty: 'advanced',
+        type: 'course',
+        objectives: [
+          'Align facility operations with 5-star achievement',
+          'Build accountability systems for all departments',
+          'Create a culture of quality and compliance',
+          'Communicate effectively with corporate and ownership',
+        ],
+        content: `
+## The 5-Star Administrator: A Cascadia Leadership Guide
+
+As an Administrator, you are the CEO of your facility. Your leadership directly determines whether your building achieves 5-star status.
+
+### The Administrator's Role in Star Achievement
+
+**Your Three Domains:**
+
+1. **Regulatory Compliance (Health Inspection - 53%)**
+   - Ensure survey readiness daily
+   - Lead POC development and monitoring
+   - Set expectations for clinical excellence
+
+2. **Workforce Management (Staffing - 32%)**
+   - Maintain adequate staffing levels
+   - Reduce turnover through culture building
+   - Hold Staffing Coordinator accountable for HPRD
+
+3. **Clinical Outcomes (Quality Measures - 15%)**
+   - Partner with DON on quality initiatives
+   - Resource QM improvement projects
+   - Ensure MDS accuracy through oversight
+
+### Cascadia Administrator Expectations
+
+| Metric | Expectation | Frequency |
+|--------|-------------|-----------|
+| Overall Star Rating | ≥4 stars | Maintained continuously |
+| Staffing HPRD | ≥4.0 total, ≥0.70 RN | Daily monitoring |
+| Turnover Rate | <40% annually | Quarterly trending |
+| Survey Deficiencies | <10 on standard survey | Per survey |
+| QAPI Meeting | Led by Administrator | Monthly |
+| Mock Survey | Conducted | Quarterly |
+
+### Building Your Leadership Team
+
+**Your Key Partners:**
+
+1. **Director of Nursing**
+   - Clinical operations lead
+   - Quality measure accountability
+   - Staffing plan execution
+
+2. **Business Office Manager**
+   - Financial performance
+   - Census development
+   - AR management
+
+3. **MDS Coordinator**
+   - Reimbursement optimization
+   - Quality measure accuracy
+   - Care plan coordination
+
+4. **Staffing Coordinator**
+   - Daily staffing management
+   - PBJ accuracy
+   - Schedule optimization
+
+### The Daily Stand-Up: Cascadia's Required Meeting
+
+Every Cascadia facility holds a 15-minute morning stand-up:
+
+**Participants:** Administrator, DON, charge nurses, department heads
+
+**Agenda:**
+1. Census update (admissions, discharges, hospital transfers)
+2. Staffing status (current HPRD, call-offs, coverage)
+3. Clinical concerns (new orders, changes in condition)
+4. Maintenance/safety issues
+5. Survey readiness check
+
+### QAPI: The Administrator's Strategic Tool
+
+Quality Assurance and Performance Improvement is your mechanism for systematic improvement:
+
+**Monthly QAPI Meeting (Administrator-Led):**
+- Review quality dashboard
+- Analyze trends in incidents, infections, falls
+- Assess staffing metrics
+- Select Performance Improvement Projects (PIPs)
+- Track PIP progress
+
+**PIP Selection Criteria:**
+- Data shows performance below target
+- Issue is within facility's control
+- Improvement will impact star rating or resident outcomes
+- Resources available for implementation
+
+### Communicating with Corporate
+
+Your Regional and Corporate leadership need:
+
+1. **Weekly Flash Report:**
+   - Census and financial summary
+   - Staffing HPRD for the week
+   - Any significant clinical events
+   - Survey or complaint activity
+
+2. **Monthly Operating Report:**
+   - Full P&L review
+   - Quality dashboard trending
+   - Staffing analysis
+   - Action plans for underperforming areas
+
+3. **Immediate Notification:**
+   - Abuse allegations
+   - Serious injuries or deaths
+   - Survey citations (any visit)
+   - Media or legal inquiries
+        `,
+        keyPoints: [
+          'Administrators are the CEO of their facility',
+          'Three domains: Compliance, Workforce, Clinical Outcomes',
+          'Daily stand-ups ensure operational awareness',
+          'QAPI is the strategic improvement mechanism',
+          'Regular corporate communication prevents surprises',
+        ],
+        checklist: [
+          'Implement daily morning stand-up meetings',
+          'Review quality dashboard weekly',
+          'Lead monthly QAPI meeting personally',
+          'Schedule quarterly mock surveys',
+          'Submit weekly flash reports to Regional',
+          'Conduct monthly one-on-ones with leadership team',
+          'Review turnover data and retention strategies quarterly',
+        ],
+      },
+    ],
+  },
+};
+
+// Legacy training content (kept for API compatibility)
 const trainingContent: Record<string, { content: string; checklist?: string[]; keyPoints?: string[] }> = {
   '1': {
     content: `Hours Per Resident Day (HPRD) is the primary staffing metric used by CMS to calculate your staffing rating.
@@ -2087,42 +3268,35 @@ HPRD = Total Staff Hours Worked / Total Resident Days
 
 // Training View
 function TrainingView({ onBack }: { onBack: () => void }) {
-  const [resources, setResources] = useState<TrainingResource[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedResource, setSelectedResource] = useState<TrainingResource | null>(null);
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [selectedTrack, setSelectedTrack] = useState<string | null>(null);
+  const [selectedModule, setSelectedModule] = useState<any | null>(null);
+  const [completedModules, setCompletedModules] = useState<string[]>([]);
+  const [checklistStates, setChecklistStates] = useState<Record<string, boolean>>({});
 
+  // Load completed modules from localStorage
   useEffect(() => {
-    async function fetchResources() {
-      try {
-        const response = await fetch('/api/training');
-        const data = await response.json();
-        setResources(data.resources || []);
-      } catch (error) {
-        console.error('Failed to fetch training resources:', error);
-      } finally {
-        setLoading(false);
-      }
+    const saved = localStorage.getItem('cascadia_completed_modules');
+    if (saved) {
+      setCompletedModules(JSON.parse(saved));
     }
-    fetchResources();
   }, []);
 
-  const categories = [
-    { id: 'staffing', title: 'Staffing Optimization', icon: <UserCheck className="w-5 h-5" />, color: 'cyan' },
-    { id: 'quality_measures', title: 'Quality Improvement', icon: <Heart className="w-5 h-5" />, color: 'purple' },
-    { id: 'health_inspection', title: 'Health Inspection', icon: <ClipboardCheck className="w-5 h-5" />, color: 'blue' },
-    { id: 'general', title: 'General Training', icon: <GraduationCap className="w-5 h-5" />, color: 'green' },
-  ];
-
-  const getContentTypeIcon = (type: string) => {
-    switch (type) {
-      case 'video': return '🎥';
-      case 'guide': return '📖';
-      case 'course': return '📚';
-      case 'checklist': return '✅';
-      default: return '📄';
-    }
+  const markModuleComplete = (moduleId: string) => {
+    const updated = [...completedModules, moduleId];
+    setCompletedModules(updated);
+    localStorage.setItem('cascadia_completed_modules', JSON.stringify(updated));
   };
+
+  const toggleChecklist = (key: string) => {
+    setChecklistStates(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const tracks = [
+    { id: 'staffing', data: cascadiaTrainingModules.staffing },
+    { id: 'quality', data: cascadiaTrainingModules.quality },
+    { id: 'healthInspection', data: cascadiaTrainingModules.healthInspection },
+    { id: 'leadership', data: cascadiaTrainingModules.leadership },
+  ];
 
   const getDifficultyColor = (level: string) => {
     switch (level) {
@@ -2133,106 +3307,260 @@ function TrainingView({ onBack }: { onBack: () => void }) {
     }
   };
 
-  // Course detail view
-  if (selectedResource) {
-    const content = trainingContent[selectedResource.id];
+  const getTrackColor = (color: string) => {
+    switch (color) {
+      case 'cyan': return 'from-cyan-500 to-blue-600';
+      case 'purple': return 'from-purple-500 to-indigo-600';
+      case 'blue': return 'from-blue-500 to-blue-700';
+      case 'amber': return 'from-amber-500 to-orange-600';
+      default: return 'from-gray-500 to-gray-600';
+    }
+  };
+
+  // Module Detail View
+  if (selectedModule) {
     return (
       <div className="space-y-6 animate-slide-up">
         <button
-          onClick={() => setSelectedResource(null)}
+          onClick={() => setSelectedModule(null)}
           className="btn-neumorphic px-4 py-2 flex items-center gap-2"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back to Training
+          Back to Track
         </button>
 
-        <div className="card-neumorphic p-8">
-          <div className="flex items-start justify-between mb-6">
+        {/* Module Header */}
+        <div className="card-neumorphic p-6 bg-gradient-to-r from-cyan-50 to-blue-50 dark:from-cyan-900/20 dark:to-blue-900/20">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-4">
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-2xl">{getContentTypeIcon(selectedResource.content_type)}</span>
-                <span className={`px-2 py-0.5 rounded-full text-xs ${getDifficultyColor(selectedResource.difficulty_level)}`}>
-                  {selectedResource.difficulty_level}
+                <span className={`px-3 py-1 rounded-full text-xs font-medium ${getDifficultyColor(selectedModule.difficulty)}`}>
+                  {selectedModule.difficulty.toUpperCase()}
                 </span>
-                <span className="text-sm text-[var(--foreground-muted)]">
-                  {selectedResource.duration_minutes} min
+                <span className="text-sm text-[var(--foreground-muted)] flex items-center gap-1">
+                  <Clock className="w-4 h-4" /> {selectedModule.duration} minutes
                 </span>
+                {completedModules.includes(selectedModule.id) && (
+                  <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" /> Completed
+                  </span>
+                )}
               </div>
-              <h2 className="text-2xl font-bold text-[var(--foreground)]">{selectedResource.title}</h2>
-              <p className="text-[var(--foreground-muted)] mt-2">{selectedResource.description}</p>
+              <h1 className="text-2xl lg:text-3xl font-bold">{selectedModule.title}</h1>
             </div>
+            <img src="/cascadia-logo.png" alt="Cascadia Healthcare" className="h-12 opacity-50 hidden lg:block" onError={(e) => e.currentTarget.style.display = 'none'} />
           </div>
 
-          {content ? (
-            <div className="space-y-6">
-              <div className="card-neumorphic-inset p-6">
-                <div className="prose dark:prose-invert max-w-none">
-                  {content.content.split('\n\n').map((paragraph, idx) => (
-                    <div key={idx} className="mb-4">
-                      {paragraph.startsWith('**') ? (
-                        <h3 className="font-semibold text-lg text-[var(--foreground)] mb-2">
-                          {paragraph.replace(/\*\*/g, '')}
-                        </h3>
-                      ) : paragraph.startsWith('-') || paragraph.startsWith('1.') ? (
-                        <ul className="list-disc list-inside space-y-1 text-[var(--foreground-muted)]">
-                          {paragraph.split('\n').map((item, i) => (
-                            <li key={i}>{item.replace(/^[-\d.]\s*/, '')}</li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="text-[var(--foreground-muted)]">{paragraph}</p>
-                      )}
+          {/* Learning Objectives */}
+          <div className="mt-4">
+            <h3 className="font-semibold mb-2 text-sm uppercase tracking-wide text-[var(--foreground-muted)]">Learning Objectives</h3>
+            <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {selectedModule.objectives.map((obj: string, idx: number) => (
+                <li key={idx} className="flex items-start gap-2 text-sm">
+                  <Target className="w-4 h-4 text-cyan-600 mt-0.5 flex-shrink-0" />
+                  <span>{obj}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        {/* Module Content */}
+        <div className="card-neumorphic p-6 lg:p-8">
+          <div className="prose dark:prose-invert max-w-none">
+            {selectedModule.content.split('\n').map((line: string, idx: number) => {
+              if (line.startsWith('## ')) {
+                return <h2 key={idx} className="text-2xl font-bold mt-8 mb-4 text-[var(--foreground)] border-b-2 border-cyan-200 dark:border-cyan-800 pb-2">{line.replace('## ', '')}</h2>;
+              } else if (line.startsWith('### ')) {
+                return <h3 key={idx} className="text-xl font-semibold mt-6 mb-3 text-[var(--foreground)]">{line.replace('### ', '')}</h3>;
+              } else if (line.startsWith('**') && line.endsWith('**')) {
+                return <p key={idx} className="font-bold text-[var(--foreground)] mt-4 mb-2">{line.replace(/\*\*/g, '')}</p>;
+              } else if (line.startsWith('| ')) {
+                // Table handling - group consecutive table rows
+                return null; // Tables are handled separately below
+              } else if (line.startsWith('- ') || line.startsWith('* ')) {
+                return <li key={idx} className="ml-4 text-[var(--foreground-muted)] mb-1">{line.replace(/^[-*] /, '')}</li>;
+              } else if (line.startsWith('1. ') || line.startsWith('2. ') || line.startsWith('3. ')) {
+                return <li key={idx} className="ml-4 text-[var(--foreground-muted)] mb-1 list-decimal">{line.replace(/^\d+\. /, '')}</li>;
+              } else if (line.startsWith('✅') || line.startsWith('❌')) {
+                return <p key={idx} className="text-[var(--foreground-muted)] mb-1 ml-4">{line}</p>;
+              } else if (line.trim() === '') {
+                return <div key={idx} className="h-2" />;
+              } else if (line.startsWith('```')) {
+                return null; // Skip code block markers
+              } else {
+                return <p key={idx} className="text-[var(--foreground-muted)] mb-3 leading-relaxed">{line}</p>;
+              }
+            })}
+          </div>
+        </div>
+
+        {/* Key Points */}
+        {selectedModule.keyPoints && (
+          <div className="card-neumorphic p-6 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20">
+            <h3 className="font-bold mb-4 flex items-center gap-2">
+              <Lightbulb className="w-5 h-5 text-amber-500" />
+              Key Takeaways
+            </h3>
+            <ul className="space-y-3">
+              {selectedModule.keyPoints.map((point: string, idx: number) => (
+                <li key={idx} className="flex items-start gap-3 p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg">
+                  <Star className="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" />
+                  <span className="font-medium">{point}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Actionable Checklist */}
+        {selectedModule.checklist && (
+          <div className="card-neumorphic p-6">
+            <h3 className="font-bold mb-4 flex items-center gap-2">
+              <ClipboardCheck className="w-5 h-5 text-green-500" />
+              Action Checklist
+            </h3>
+            <p className="text-sm text-[var(--foreground-muted)] mb-4">Complete these actions to apply what you&apos;ve learned:</p>
+            <ul className="space-y-2">
+              {selectedModule.checklist.map((item: string, idx: number) => {
+                const key = `${selectedModule.id}-${idx}`;
+                return (
+                  <li
+                    key={idx}
+                    onClick={() => toggleChecklist(key)}
+                    className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${
+                      checklistStates[key]
+                        ? 'bg-green-50 dark:bg-green-900/20 line-through text-[var(--foreground-muted)]'
+                        : 'bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                      checklistStates[key] ? 'border-green-500 bg-green-500' : 'border-gray-300'
+                    }`}>
+                      {checklistStates[key] && <CheckCircle2 className="w-4 h-4 text-white" />}
                     </div>
-                  ))}
+                    <span>{item}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+
+        {/* Complete Module Button */}
+        {!completedModules.includes(selectedModule.id) && (
+          <div className="card-neumorphic p-6 text-center">
+            <button
+              onClick={() => markModuleComplete(selectedModule.id)}
+              className="btn-neumorphic-primary px-8 py-3 text-lg flex items-center gap-2 mx-auto"
+            >
+              <Award className="w-5 h-5" />
+              Mark Module as Complete
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Track Detail View
+  if (selectedTrack) {
+    const track = tracks.find(t => t.id === selectedTrack)?.data;
+    if (!track) return null;
+
+    const completedInTrack = track.modules.filter((m: any) => completedModules.includes(m.id)).length;
+    const progressPercent = (completedInTrack / track.modules.length) * 100;
+
+    return (
+      <div className="space-y-6 animate-slide-up">
+        <button
+          onClick={() => setSelectedTrack(null)}
+          className="btn-neumorphic px-4 py-2 flex items-center gap-2"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to All Tracks
+        </button>
+
+        {/* Track Header */}
+        <div className={`card-neumorphic p-6 bg-gradient-to-r ${getTrackColor(track.trackColor)} text-white`}>
+          <div className="flex items-center gap-4 mb-4">
+            <span className="text-4xl">{track.trackIcon}</span>
+            <div>
+              <h2 className="text-2xl font-bold">{track.trackName}</h2>
+              <p className="opacity-90">{track.description}</p>
+            </div>
+          </div>
+          <div className="mt-4">
+            <div className="flex items-center justify-between text-sm mb-2">
+              <span>{completedInTrack} of {track.modules.length} modules completed</span>
+              <span>{progressPercent.toFixed(0)}%</span>
+            </div>
+            <div className="h-2 bg-white/30 rounded-full overflow-hidden">
+              <div className="h-full bg-white rounded-full transition-all" style={{ width: `${progressPercent}%` }} />
+            </div>
+          </div>
+        </div>
+
+        {/* Cascadia Branding */}
+        <div className="card-neumorphic p-4 flex items-center gap-4 bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900/50 dark:to-gray-900/50">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-600 to-blue-700 flex items-center justify-center">
+            <Building2 className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <div className="font-bold text-cyan-700 dark:text-cyan-400">Cascadia Healthcare Training Academy</div>
+            <div className="text-sm text-[var(--foreground-muted)]">Excellence in Skilled Nursing Education</div>
+          </div>
+        </div>
+
+        {/* Module List */}
+        <div className="space-y-4">
+          {track.modules.map((module: any, idx: number) => (
+            <div
+              key={module.id}
+              onClick={() => setSelectedModule(module)}
+              className={`card-neumorphic p-6 cursor-pointer hover:scale-[1.01] transition-all ${
+                completedModules.includes(module.id) ? 'border-l-4 border-green-500' : ''
+              }`}
+            >
+              <div className="flex items-start gap-4">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                  completedModules.includes(module.id)
+                    ? 'bg-green-500 text-white'
+                    : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                }`}>
+                  {completedModules.includes(module.id) ? <CheckCircle2 className="w-5 h-5" /> : <span className="font-bold">{idx + 1}</span>}
                 </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getDifficultyColor(module.difficulty)}`}>
+                      {module.difficulty}
+                    </span>
+                    <span className="text-xs text-[var(--foreground-muted)] flex items-center gap-1">
+                      <Clock className="w-3 h-3" /> {module.duration} min
+                    </span>
+                  </div>
+                  <h3 className="font-bold text-lg mb-1">{module.title}</h3>
+                  <ul className="text-sm text-[var(--foreground-muted)]">
+                    {module.objectives.slice(0, 2).map((obj: string, i: number) => (
+                      <li key={i} className="flex items-center gap-1">
+                        <ChevronRight className="w-3 h-3 text-cyan-500" /> {obj}
+                      </li>
+                    ))}
+                    {module.objectives.length > 2 && (
+                      <li className="text-cyan-600 dark:text-cyan-400">+{module.objectives.length - 2} more objectives</li>
+                    )}
+                  </ul>
+                </div>
+                <ChevronRight className="w-6 h-6 text-[var(--foreground-muted)]" />
               </div>
-
-              {content.keyPoints && (
-                <div className="card-neumorphic p-6">
-                  <h3 className="font-semibold mb-4 flex items-center gap-2">
-                    <Star className="w-5 h-5 text-yellow-500" />
-                    Key Points
-                  </h3>
-                  <ul className="space-y-2">
-                    {content.keyPoints.map((point, idx) => (
-                      <li key={idx} className="flex items-start gap-2">
-                        <span className="text-cyan-500 mt-1">•</span>
-                        <span className="text-[var(--foreground-muted)]">{point}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {content.checklist && (
-                <div className="card-neumorphic p-6">
-                  <h3 className="font-semibold mb-4 flex items-center gap-2">
-                    <ClipboardCheck className="w-5 h-5 text-green-500" />
-                    Checklist
-                  </h3>
-                  <ul className="space-y-2">
-                    {content.checklist.map((item, idx) => (
-                      <li key={idx} className="flex items-center gap-3 p-2 rounded-lg hover:bg-cyan-50 dark:hover:bg-cyan-900/20">
-                        <input type="checkbox" className="w-5 h-5 rounded border-gray-300" />
-                        <span className="text-[var(--foreground-muted)]">{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
             </div>
-          ) : (
-            <div className="card-neumorphic-inset p-8 text-center">
-              <p className="text-[var(--foreground-muted)]">
-                Course content is being developed. Check back soon!
-              </p>
-            </div>
-          )}
+          ))}
         </div>
       </div>
     );
   }
 
+  // Main Training Dashboard
   return (
     <div className="space-y-6 animate-slide-up">
       <button onClick={onBack} className="btn-neumorphic px-4 py-2 flex items-center gap-2">
@@ -2240,71 +3568,150 @@ function TrainingView({ onBack }: { onBack: () => void }) {
         Back to Search
       </button>
 
-      <div className="text-center py-8">
-        <h2 className="text-3xl font-bold text-gradient-primary mb-4">Training Resources</h2>
-        <p className="text-[var(--foreground-muted)]">
-          Access courses and guides to improve your facility&apos;s 5-star rating
-        </p>
-      </div>
-
-      {/* Category Filter */}
-      <div className="flex flex-wrap gap-2 justify-center">
-        <button
-          onClick={() => setActiveCategory(null)}
-          className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-            activeCategory === null ? 'btn-neumorphic-primary text-white' : 'btn-neumorphic'
-          }`}
-        >
-          All
-        </button>
-        {categories.map((cat) => (
-          <button
-            key={cat.id}
-            onClick={() => setActiveCategory(cat.id)}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all flex items-center gap-2 ${
-              activeCategory === cat.id ? 'btn-neumorphic-primary text-white' : 'btn-neumorphic'
-            }`}
-          >
-            {cat.icon}
-            <span className="hidden sm:inline">{cat.title}</span>
-          </button>
-        ))}
-      </div>
-
-      {loading ? (
-        <div className="card-neumorphic p-8 text-center">
-          <div className="animate-spin w-8 h-8 border-4 border-cyan-500 border-t-transparent rounded-full mx-auto mb-4" />
-          <p className="text-[var(--foreground-muted)]">Loading training resources...</p>
+      {/* Cascadia Training Academy Header */}
+      <div className="card-neumorphic p-8 bg-gradient-to-r from-cyan-600 to-blue-700 text-white text-center">
+        <div className="flex items-center justify-center gap-3 mb-4">
+          <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center">
+            <GraduationCap className="w-10 h-10" />
+          </div>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {resources
-            .filter(r => !activeCategory || r.category === activeCategory)
-            .map((resource) => (
-            <div
-              key={resource.id}
-              onClick={() => setSelectedResource(resource)}
-              className="card-neumorphic p-6 cursor-pointer hover:scale-[1.02] transition-transform"
-            >
-              <div className="flex items-start justify-between mb-3">
-                <span className="text-2xl">{getContentTypeIcon(resource.content_type)}</span>
-                <span className={`px-2 py-0.5 rounded-full text-xs ${getDifficultyColor(resource.difficulty_level)}`}>
-                  {resource.difficulty_level}
-                </span>
+        <h1 className="text-3xl lg:text-4xl font-bold mb-2">Cascadia Healthcare</h1>
+        <h2 className="text-xl lg:text-2xl font-semibold mb-2 opacity-90">Training Academy</h2>
+        <p className="opacity-80 max-w-2xl mx-auto">
+          Comprehensive training programs designed specifically for Cascadia Healthcare facilities.
+          Master the skills needed to achieve and maintain 5-star excellence.
+        </p>
+        <div className="mt-6 flex items-center justify-center gap-4 text-sm">
+          <div className="flex items-center gap-2">
+            <FileText className="w-5 h-5" />
+            <span>4 Learning Tracks</span>
+          </div>
+          <div className="w-px h-4 bg-white/30" />
+          <div className="flex items-center gap-2">
+            <BookOpen className="w-5 h-5" />
+            <span>8+ In-Depth Modules</span>
+          </div>
+          <div className="w-px h-4 bg-white/30" />
+          <div className="flex items-center gap-2">
+            <Clock className="w-5 h-5" />
+            <span>10+ Hours of Content</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Progress Overview */}
+      <div className="card-neumorphic p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-bold flex items-center gap-2">
+            <Award className="w-5 h-5 text-amber-500" />
+            Your Progress
+          </h3>
+          <span className="text-sm text-[var(--foreground-muted)]">
+            {completedModules.length} modules completed
+          </span>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {tracks.map(({ id, data }) => {
+            const completed = data.modules.filter((m: any) => completedModules.includes(m.id)).length;
+            const total = data.modules.length;
+            const pct = (completed / total) * 100;
+            return (
+              <div key={id} className="text-center">
+                <div className={`w-16 h-16 mx-auto rounded-full bg-gradient-to-br ${getTrackColor(data.trackColor)} flex items-center justify-center text-white text-2xl mb-2`}>
+                  {data.trackIcon}
+                </div>
+                <p className="text-sm font-medium">{data.trackName}</p>
+                <p className="text-xs text-[var(--foreground-muted)]">{completed}/{total} complete</p>
+                <div className="h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full mt-2 overflow-hidden">
+                  <div className={`h-full rounded-full bg-gradient-to-r ${getTrackColor(data.trackColor)}`} style={{ width: `${pct}%` }} />
+                </div>
               </div>
-              <h3 className="font-semibold text-[var(--foreground)] mb-2">{resource.title}</h3>
-              <p className="text-sm text-[var(--foreground-muted)] mb-4 line-clamp-2">{resource.description}</p>
-              <div className="flex items-center justify-between text-xs text-[var(--foreground-muted)]">
-                <span className="flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  {resource.duration_minutes} min
-                </span>
-                <span className="text-cyan-600 dark:text-cyan-400 font-medium">Start →</span>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Learning Tracks */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {tracks.map(({ id, data }) => {
+          const completed = data.modules.filter((m: any) => completedModules.includes(m.id)).length;
+          return (
+            <div
+              key={id}
+              onClick={() => setSelectedTrack(id)}
+              className="card-neumorphic p-6 cursor-pointer hover:scale-[1.02] transition-all"
+            >
+              <div className="flex items-start gap-4">
+                <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${getTrackColor(data.trackColor)} flex items-center justify-center text-white text-2xl flex-shrink-0`}>
+                  {data.trackIcon}
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-lg">{data.trackName}</h3>
+                  <p className="text-sm text-[var(--foreground-muted)] mb-3">{data.description}</p>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-[var(--foreground-muted)]">{data.modules.length} modules</span>
+                    <span className={`font-medium ${completed === data.modules.length ? 'text-green-600' : 'text-cyan-600'}`}>
+                      {completed === data.modules.length ? '✓ Complete' : `${completed}/${data.modules.length} done`}
+                    </span>
+                  </div>
+                </div>
+                <ChevronRight className="w-6 h-6 text-[var(--foreground-muted)]" />
               </div>
             </div>
-          ))}
+          );
+        })}
+      </div>
+
+      {/* Featured Module */}
+      <div className="card-neumorphic p-6 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20">
+        <div className="flex items-center gap-2 mb-3">
+          <Sparkles className="w-5 h-5 text-purple-500" />
+          <span className="text-sm font-semibold text-purple-600 dark:text-purple-400">RECOMMENDED</span>
         </div>
-      )}
+        <h3 className="font-bold text-xl mb-2">Start with HPRD Fundamentals</h3>
+        <p className="text-[var(--foreground-muted)] mb-4">
+          Understanding Hours Per Resident Day is the foundation of staffing excellence. This 45-minute module covers
+          everything from basic calculations to Cascadia&apos;s corporate standards.
+        </p>
+        <button
+          onClick={() => {
+            setSelectedTrack('staffing');
+            setSelectedModule(cascadiaTrainingModules.staffing.modules[0]);
+          }}
+          className="btn-neumorphic-primary px-6 py-2 flex items-center gap-2"
+        >
+          <Play className="w-4 h-4" />
+          Start Learning
+        </button>
+      </div>
+
+      {/* Resources Footer */}
+      <div className="card-neumorphic p-6">
+        <h3 className="font-bold mb-4">Additional Resources</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <a href="#" className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800">
+            <FileText className="w-8 h-8 text-blue-500" />
+            <div>
+              <div className="font-medium">Policy Manual</div>
+              <div className="text-sm text-[var(--foreground-muted)]">Cascadia corporate policies</div>
+            </div>
+          </a>
+          <a href="#" className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800">
+            <Download className="w-8 h-8 text-green-500" />
+            <div>
+              <div className="font-medium">Printable Checklists</div>
+              <div className="text-sm text-[var(--foreground-muted)]">Daily and weekly tools</div>
+            </div>
+          </a>
+          <a href="#" className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800">
+            <MessageCircle className="w-8 h-8 text-purple-500" />
+            <div>
+              <div className="font-medium">Ask 5 Star Phil</div>
+              <div className="text-sm text-[var(--foreground-muted)]">AI-powered guidance</div>
+            </div>
+          </a>
+        </div>
+      </div>
     </div>
   );
 }
@@ -5019,10 +6426,13 @@ function PlanPreviewView({
 function BenchmarkingView({
   providerNumber,
   onBack,
+  onSelectFacility,
 }: {
   providerNumber: string | null;
   onBack: () => void;
+  onSelectFacility?: (ccn: string) => void;
 }) {
+  const [selectedCCN, setSelectedCCN] = useState(providerNumber || '');
   const [facility, setFacility] = useState<Facility | null>(null);
   const [competitors, setCompetitors] = useState<Array<{
     federalProviderNumber: string;
@@ -5036,7 +6446,7 @@ function BenchmarkingView({
     distance?: number;
     beds?: number;
   }>>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [radius, setRadius] = useState(25);
   const [stateAverages, setStateAverages] = useState<{
     avgOverall: number;
@@ -5047,15 +6457,23 @@ function BenchmarkingView({
   } | null>(null);
   const [percentileRank, setPercentileRank] = useState<number | null>(null);
 
+  // Update selectedCCN when providerNumber changes
+  useEffect(() => {
+    if (providerNumber) {
+      setSelectedCCN(providerNumber);
+    }
+  }, [providerNumber]);
+
   useEffect(() => {
     async function fetchData() {
-      if (!providerNumber) {
+      if (!selectedCCN) {
         setLoading(false);
         return;
       }
+      setLoading(true);
       try {
         // Use the new competitors API
-        const competitorRes = await fetch(`/api/competitors?ccn=${providerNumber}&limit=15`);
+        const competitorRes = await fetch(`/api/competitors?ccn=${selectedCCN}&limit=15`);
         const competitorData = await competitorRes.json();
 
         if (competitorData.targetFacility) {
@@ -5103,7 +6521,7 @@ function BenchmarkingView({
       }
     }
     fetchData();
-  }, [providerNumber, radius]);
+  }, [selectedCCN, radius]);
 
   const avgCompetitorRating = competitors.length > 0
     ? competitors.reduce((sum, c) => sum + (c.overallRating || 0), 0) / competitors.length
@@ -5139,34 +6557,79 @@ function BenchmarkingView({
           <div className="p-3 rounded-xl bg-gradient-to-br from-indigo-400 to-indigo-600">
             <Scale className="w-6 h-6 text-white" />
           </div>
-          <div>
+          <div className="flex-1">
             <h2 className="text-2xl font-bold">Competitor Benchmarking</h2>
             <p className="text-[var(--foreground-muted)]">
-              {facility?.providerName || 'Market Analysis'}
+              Compare your facility against local competitors and state averages
             </p>
           </div>
         </div>
 
-        {/* Radius Selector */}
-        <div className="flex items-center gap-4">
-          <span className="text-sm font-medium">Search Radius:</span>
-          <div className="flex gap-2">
-            {[10, 25, 50, 100].map((r) => (
-              <button
-                key={r}
-                onClick={() => setRadius(r)}
-                className={`px-3 py-1 rounded-lg text-sm ${
-                  radius === r ? 'bg-indigo-500 text-white' : 'btn-neumorphic'
-                }`}
-              >
-                {r} mi
-              </button>
+        {/* Facility Selector */}
+        <div className="mb-4 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-xl">
+          <label className="block text-sm font-medium mb-2">Select Facility to Benchmark</label>
+          <select
+            value={selectedCCN}
+            onChange={(e) => {
+              setSelectedCCN(e.target.value);
+              if (onSelectFacility && e.target.value) {
+                onSelectFacility(e.target.value);
+              }
+            }}
+            className="w-full input-neumorphic"
+          >
+            <option value="">Choose a facility...</option>
+            {Object.entries(
+              Object.entries(CASCADIA_FACILITIES).reduce((acc, [, info]) => {
+                if (!acc[info.company]) acc[info.company] = [];
+                acc[info.company].push(info);
+                return acc;
+              }, {} as Record<string, Array<{ ccn: string; shortName: string; company: string }>>)
+            ).map(([company, facilities]) => (
+              <optgroup key={company} label={company}>
+                {facilities.map((f) => (
+                  <option key={f.ccn} value={f.ccn}>{f.shortName}</option>
+                ))}
+              </optgroup>
             ))}
-          </div>
+          </select>
         </div>
+
+        {/* Radius Selector */}
+        {selectedCCN && (
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-medium">Search Radius:</span>
+            <div className="flex gap-2">
+              {[10, 25, 50, 100].map((r) => (
+                <button
+                  key={r}
+                  onClick={() => setRadius(r)}
+                  className={`px-3 py-1 rounded-lg text-sm ${
+                    radius === r ? 'bg-indigo-500 text-white' : 'btn-neumorphic'
+                  }`}
+                >
+                  {r} mi
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Market Position Summary */}
+      {/* Show message if no facility selected */}
+      {!selectedCCN && (
+        <div className="card-neumorphic p-8 text-center">
+          <Scale className="w-16 h-16 mx-auto mb-4 text-indigo-300" />
+          <h3 className="text-xl font-bold mb-2">Select a Facility to Begin</h3>
+          <p className="text-[var(--foreground-muted)] max-w-md mx-auto">
+            Choose a facility above to see how it compares against competitors in the same geographic area and state averages.
+          </p>
+        </div>
+      )}
+
+      {/* Market Position Summary - only show when facility is loaded */}
+      {selectedCCN && facility && (
+        <>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="card-neumorphic p-4 text-center">
           <Trophy className="w-8 h-8 mx-auto mb-2 text-amber-500" />
@@ -5325,89 +6788,485 @@ function BenchmarkingView({
           </div>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }
 
-// 2. Board Reports View
+// 2. Board Reports View - Professional Level Reports with Narratives & Charts
 function BoardReportsView({ onBack }: { onBack: () => void }) {
   const [generating, setGenerating] = useState(false);
   const [reportType, setReportType] = useState<'executive' | 'detailed' | 'compliance'>('executive');
+  const [facilities, setFacilities] = useState<Array<any>>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const ccnList = Object.keys(CASCADIA_FACILITIES);
+        const response = await fetch(`/api/facilities/search?ccns=${ccnList.join(',')}&limit=100`);
+        const data = await response.json();
+        const enriched = (data.results || []).map((f: any) => ({
+          ...f,
+          company: CASCADIA_FACILITIES[f.federalProviderNumber]?.company || 'Other',
+          shortName: CASCADIA_FACILITIES[f.federalProviderNumber]?.shortName || f.providerName,
+        }));
+        setFacilities(enriched);
+      } catch (error) {
+        console.error('Failed to fetch facilities:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
+
+  // Calculate portfolio metrics
+  const totalFacilities = facilities.length;
+  const avgRating = facilities.length > 0
+    ? (facilities.reduce((sum, f) => sum + (f.overallRating || 0), 0) / facilities.length).toFixed(2)
+    : '0.00';
+  const fiveStarCount = facilities.filter(f => f.overallRating === 5).length;
+  const fourStarCount = facilities.filter(f => f.overallRating === 4).length;
+  const threeStarCount = facilities.filter(f => f.overallRating === 3).length;
+  const twoStarCount = facilities.filter(f => f.overallRating === 2).length;
+  const oneStarCount = facilities.filter(f => f.overallRating === 1).length;
+  const atRiskCount = twoStarCount + oneStarCount;
+  const highPerformers = fiveStarCount + fourStarCount;
+
+  // Company breakdown
+  const byCompany = facilities.reduce((acc, f) => {
+    const company = f.company || 'Other';
+    if (!acc[company]) acc[company] = { count: 0, totalRating: 0, facilities: [] };
+    acc[company].count++;
+    acc[company].totalRating += f.overallRating || 0;
+    acc[company].facilities.push(f);
+    return acc;
+  }, {} as Record<string, { count: number; totalRating: number; facilities: any[] }>);
+
+  const generateExecutiveReport = () => {
+    const reportDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const quarterLabel = `Q${Math.ceil((new Date().getMonth() + 1) / 3)} ${new Date().getFullYear()}`;
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Executive Portfolio Report - ${quarterLabel}</title>
+        <style>
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 50px; max-width: 900px; margin: 0 auto; line-height: 1.6; color: #1e293b; background: #fff; }
+          .header { border-bottom: 4px solid #0891b2; padding-bottom: 20px; margin-bottom: 30px; }
+          .header h1 { color: #0891b2; font-size: 28px; margin-bottom: 5px; }
+          .header .subtitle { color: #64748b; font-size: 14px; }
+          .header .logo { float: right; font-weight: bold; color: #0891b2; }
+          h2 { color: #0f172a; font-size: 20px; margin: 30px 0 15px 0; border-left: 4px solid #0891b2; padding-left: 15px; }
+          h3 { color: #334155; font-size: 16px; margin: 20px 0 10px 0; }
+          .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin: 20px 0; }
+          .metric-card { background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 12px; padding: 20px; text-align: center; border: 1px solid #bae6fd; }
+          .metric-card.success { background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-color: #86efac; }
+          .metric-card.warning { background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border-color: #fcd34d; }
+          .metric-card.danger { background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); border-color: #fca5a5; }
+          .metric-value { font-size: 36px; font-weight: 700; color: #0891b2; }
+          .metric-card.success .metric-value { color: #16a34a; }
+          .metric-card.warning .metric-value { color: #d97706; }
+          .metric-card.danger .metric-value { color: #dc2626; }
+          .metric-label { font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 5px; }
+          .narrative { background: #f8fafc; border-radius: 12px; padding: 25px; margin: 25px 0; border-left: 4px solid #0891b2; }
+          .narrative p { text-align: justify; margin-bottom: 15px; font-size: 14px; }
+          .narrative p:last-child { margin-bottom: 0; }
+          .chart-container { margin: 25px 0; }
+          .bar-chart { display: flex; align-items: end; height: 200px; gap: 20px; padding: 20px; background: #f8fafc; border-radius: 12px; }
+          .bar-wrapper { flex: 1; display: flex; flex-direction: column; align-items: center; }
+          .bar { width: 60px; background: linear-gradient(180deg, #0891b2 0%, #0e7490 100%); border-radius: 6px 6px 0 0; transition: height 0.3s; }
+          .bar.star-5 { background: linear-gradient(180deg, #16a34a 0%, #15803d 100%); }
+          .bar.star-4 { background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%); }
+          .bar.star-3 { background: linear-gradient(180deg, #eab308 0%, #ca8a04 100%); }
+          .bar.star-2 { background: linear-gradient(180deg, #f97316 0%, #ea580c 100%); }
+          .bar.star-1 { background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%); }
+          .bar-label { font-size: 14px; font-weight: 600; margin-top: 10px; color: #334155; }
+          .bar-value { font-size: 12px; color: #64748b; }
+          table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 13px; }
+          th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+          th { background: #f1f5f9; font-weight: 600; color: #475569; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
+          tr:hover { background: #f8fafc; }
+          .rating-badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-weight: 600; font-size: 12px; }
+          .rating-5 { background: #dcfce7; color: #16a34a; }
+          .rating-4 { background: #d1fae5; color: #059669; }
+          .rating-3 { background: #fef3c7; color: #d97706; }
+          .rating-2 { background: #fed7aa; color: #ea580c; }
+          .rating-1 { background: #fee2e2; color: #dc2626; }
+          .recommendations { background: #eff6ff; border-radius: 12px; padding: 25px; margin: 25px 0; }
+          .recommendations ul { margin-left: 20px; }
+          .recommendations li { margin: 10px 0; }
+          .footer { margin-top: 50px; padding-top: 20px; border-top: 2px solid #e2e8f0; font-size: 11px; color: #94a3b8; text-align: center; }
+          .page-break { page-break-after: always; }
+          @media print {
+            body { padding: 30px; }
+            .no-print { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="logo">my5STARreport.com</div>
+          <h1>Executive Portfolio Summary</h1>
+          <div class="subtitle">Confidential Board Report | ${quarterLabel} | Generated ${reportDate}</div>
+        </div>
+
+        <h2>Portfolio Performance Overview</h2>
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-value">${totalFacilities}</div>
+            <div class="metric-label">Total Facilities</div>
+          </div>
+          <div class="metric-card ${parseFloat(avgRating) >= 3.5 ? 'success' : parseFloat(avgRating) >= 2.5 ? 'warning' : 'danger'}">
+            <div class="metric-value">${avgRating}★</div>
+            <div class="metric-label">Portfolio Average</div>
+          </div>
+          <div class="metric-card success">
+            <div class="metric-value">${highPerformers}</div>
+            <div class="metric-label">High Performers (4-5★)</div>
+          </div>
+          <div class="metric-card ${atRiskCount > 5 ? 'danger' : atRiskCount > 0 ? 'warning' : 'success'}">
+            <div class="metric-value">${atRiskCount}</div>
+            <div class="metric-label">At Risk (1-2★)</div>
+          </div>
+        </div>
+
+        <div class="narrative">
+          <h3>Executive Summary</h3>
+          <p>This quarterly report presents a comprehensive analysis of our skilled nursing portfolio's performance under the CMS Five-Star Quality Rating System. As of ${reportDate}, our organization operates ${totalFacilities} certified facilities with a weighted portfolio average rating of ${avgRating} stars. This positions us ${parseFloat(avgRating) >= 3.0 ? 'above' : 'at or near'} the national average of 2.96 stars, demonstrating our commitment to quality care delivery.</p>
+
+          <p>Our portfolio composition reflects a strategic focus on operational excellence: ${fiveStarCount} facilities (${((fiveStarCount/totalFacilities)*100).toFixed(0)}%) have achieved the highest five-star distinction, while ${fourStarCount} facilities (${((fourStarCount/totalFacilities)*100).toFixed(0)}%) maintain strong four-star ratings. The majority of our facilities—${threeStarCount + fourStarCount + fiveStarCount} of ${totalFacilities}—demonstrate above-average or exceptional performance. However, ${atRiskCount} facilities require immediate attention and targeted intervention strategies to improve their ratings and mitigate reimbursement and reputational risks.</p>
+
+          <p>Key performance drivers this quarter include staffing consistency, with particular attention to weekend HPRD metrics and RN coverage requirements. Health inspection outcomes continue to improve following our enhanced survey readiness protocols, while quality measure performance shows positive trends in pressure ulcer prevention and antipsychotic medication reduction initiatives. The financial implications of our rating distribution are significant: facilities rated 4-5 stars command an estimated 8-12% premium in private pay census and Medicare Advantage contract negotiations, while 1-2 star facilities face increased scrutiny from referral sources and potential exclusion from preferred provider networks.</p>
+
+          <p>Strategic priorities for the upcoming quarter focus on (1) intensive support for at-risk facilities through dedicated regional resources, (2) staffing optimization to meet CMS minimum requirements taking effect in 2024-2027, and (3) expansion of quality measure improvement programs across the portfolio. Board oversight and resource allocation will be critical to achieving our target of a 3.5-star portfolio average by fiscal year end.</p>
+        </div>
+
+        <h2>Rating Distribution Analysis</h2>
+        <div class="chart-container">
+          <div class="bar-chart">
+            <div class="bar-wrapper">
+              <div class="bar star-5" style="height: ${Math.max((fiveStarCount/totalFacilities)*180, 20)}px;"></div>
+              <div class="bar-label">5★</div>
+              <div class="bar-value">${fiveStarCount} (${((fiveStarCount/totalFacilities)*100).toFixed(0)}%)</div>
+            </div>
+            <div class="bar-wrapper">
+              <div class="bar star-4" style="height: ${Math.max((fourStarCount/totalFacilities)*180, 20)}px;"></div>
+              <div class="bar-label">4★</div>
+              <div class="bar-value">${fourStarCount} (${((fourStarCount/totalFacilities)*100).toFixed(0)}%)</div>
+            </div>
+            <div class="bar-wrapper">
+              <div class="bar star-3" style="height: ${Math.max((threeStarCount/totalFacilities)*180, 20)}px;"></div>
+              <div class="bar-label">3★</div>
+              <div class="bar-value">${threeStarCount} (${((threeStarCount/totalFacilities)*100).toFixed(0)}%)</div>
+            </div>
+            <div class="bar-wrapper">
+              <div class="bar star-2" style="height: ${Math.max((twoStarCount/totalFacilities)*180, 20)}px;"></div>
+              <div class="bar-label">2★</div>
+              <div class="bar-value">${twoStarCount} (${((twoStarCount/totalFacilities)*100).toFixed(0)}%)</div>
+            </div>
+            <div class="bar-wrapper">
+              <div class="bar star-1" style="height: ${Math.max((oneStarCount/totalFacilities)*180, 20)}px;"></div>
+              <div class="bar-label">1★</div>
+              <div class="bar-value">${oneStarCount} (${((oneStarCount/totalFacilities)*100).toFixed(0)}%)</div>
+            </div>
+          </div>
+        </div>
+
+        <h2>Performance by Operating Company</h2>
+        <table>
+          <tr>
+            <th>Operating Company</th>
+            <th>Facilities</th>
+            <th>Avg Rating</th>
+            <th>5-Star</th>
+            <th>At Risk</th>
+            <th>Trend</th>
+          </tr>
+          ${Object.entries(byCompany).map(([company, data]: [string, any]) => `
+            <tr>
+              <td><strong>${company}</strong></td>
+              <td>${data.count}</td>
+              <td><span class="rating-badge rating-${Math.round(data.totalRating/data.count)}">${(data.totalRating/data.count).toFixed(1)}★</span></td>
+              <td>${data.facilities.filter((f: any) => f.overallRating === 5).length}</td>
+              <td>${data.facilities.filter((f: any) => (f.overallRating || 0) <= 2).length}</td>
+              <td>${(data.totalRating/data.count) >= 3.5 ? '↑ Improving' : (data.totalRating/data.count) >= 2.5 ? '→ Stable' : '↓ Needs Focus'}</td>
+            </tr>
+          `).join('')}
+        </table>
+
+        <h2>Strategic Recommendations</h2>
+        <div class="recommendations">
+          <ul>
+            <li><strong>Immediate Priority:</strong> Deploy dedicated improvement teams to ${atRiskCount} at-risk facilities (1-2 star ratings) with focus on survey readiness and staffing optimization.</li>
+            <li><strong>Staffing Initiative:</strong> Ensure all facilities meet the upcoming CMS minimum staffing requirements of 3.48 total nursing HPRD and 0.55 RN HPRD with 24/7 RN coverage.</li>
+            <li><strong>Quality Measures:</strong> Implement portfolio-wide antipsychotic reduction program targeting facilities above the 15% threshold.</li>
+            <li><strong>Financial Protection:</strong> Estimated annual revenue at risk from low ratings: $${(atRiskCount * 180000).toLocaleString()}. Investment in improvement programs recommended.</li>
+            <li><strong>Competitive Positioning:</strong> Leverage high-performing facilities for marketing and referral source development in their markets.</li>
+          </ul>
+        </div>
+
+        <div class="footer">
+          <p><strong>CONFIDENTIAL</strong> - This report contains proprietary information intended solely for board members and authorized executives.</p>
+          <p>Data Source: CMS Care Compare (Medicare.gov) | Report Generated by my5STARreport.com | ${reportDate}</p>
+        </div>
+
+        <script>window.print();</script>
+      </body>
+      </html>
+    `;
+  };
+
+  const generateDetailedReport = () => {
+    const reportDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Detailed Portfolio Analysis Report</title>
+        <style>
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; max-width: 1000px; margin: 0 auto; line-height: 1.5; color: #1e293b; font-size: 12px; }
+          .header { border-bottom: 3px solid #0891b2; padding-bottom: 15px; margin-bottom: 25px; }
+          .header h1 { color: #0891b2; font-size: 24px; }
+          h2 { color: #0f172a; font-size: 16px; margin: 25px 0 12px 0; border-left: 3px solid #0891b2; padding-left: 12px; }
+          .narrative { background: #f8fafc; padding: 20px; margin: 20px 0; border-left: 3px solid #0891b2; font-size: 13px; }
+          .narrative p { margin-bottom: 12px; text-align: justify; }
+          table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 11px; }
+          th, td { padding: 8px 10px; text-align: left; border: 1px solid #e2e8f0; }
+          th { background: #f1f5f9; font-weight: 600; }
+          .rating-5 { background: #dcfce7; }
+          .rating-4 { background: #d1fae5; }
+          .rating-3 { background: #fef3c7; }
+          .rating-2 { background: #fed7aa; }
+          .rating-1 { background: #fee2e2; }
+          .footer { margin-top: 30px; padding-top: 15px; border-top: 1px solid #e2e8f0; font-size: 10px; color: #94a3b8; text-align: center; }
+          @media print { body { padding: 20px; font-size: 10px; } table { font-size: 9px; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>Detailed Portfolio Analysis Report</h1>
+          <div>Generated ${reportDate} | my5STARreport.com</div>
+        </div>
+
+        <h2>Methodology & Data Sources</h2>
+        <div class="narrative">
+          <p>This comprehensive analysis utilizes data from the Centers for Medicare & Medicaid Services (CMS) Five-Star Quality Rating System, which evaluates nursing homes based on three distinct domains: Health Inspections (weighted at 53% of the overall rating), Staffing levels from Payroll-Based Journal data (32%), and Quality Measures derived from MDS assessments (15%). The rating methodology applies percentile-based cutoffs that vary by state for health inspections and uses absolute thresholds for staffing and quality measures.</p>
+          <p>Each facility in our portfolio has been analyzed against current CMS benchmarks, state-specific performance percentiles, and internal operational standards. The data presented reflects the most recent CMS data release and incorporates historical trend analysis where applicable. This report should be used in conjunction with operational dashboards and regional performance reviews for comprehensive portfolio management.</p>
+        </div>
+
+        <h2>Complete Facility Listing</h2>
+        <table>
+          <tr>
+            <th>Facility</th>
+            <th>Company</th>
+            <th>Location</th>
+            <th>Overall</th>
+            <th>Health</th>
+            <th>Staffing</th>
+            <th>QM</th>
+            <th>Beds</th>
+          </tr>
+          ${facilities.sort((a, b) => (b.overallRating || 0) - (a.overallRating || 0)).map(f => `
+            <tr class="rating-${f.overallRating || 1}">
+              <td><strong>${f.shortName || f.providerName}</strong><br/><small>${f.federalProviderNumber}</small></td>
+              <td>${f.company}</td>
+              <td>${f.cityTown}, ${f.state}</td>
+              <td><strong>${f.overallRating || '-'}★</strong></td>
+              <td>${f.healthInspectionRating || '-'}★</td>
+              <td>${f.staffingRating || '-'}★</td>
+              <td>${f.qualityMeasureRating || '-'}★</td>
+              <td>${f.numberOfCertifiedBeds || '-'}</td>
+            </tr>
+          `).join('')}
+        </table>
+
+        <h2>Rating Component Analysis</h2>
+        <div class="narrative">
+          <p><strong>Health Inspections (53% weight):</strong> Health inspection ratings are determined by a facility's performance during standard and complaint surveys over the past three years, with more recent surveys weighted more heavily. Our portfolio shows ${facilities.filter(f => (f.healthInspectionRating || 0) >= 4).length} facilities with strong health inspection ratings (4-5 stars), while ${facilities.filter(f => (f.healthInspectionRating || 0) <= 2).length} facilities require focused survey preparation and compliance remediation.</p>
+          <p><strong>Staffing (32% weight):</strong> CMS staffing ratings evaluate total nursing hours per resident day (HPRD), RN hours, and weekend staffing consistency. The upcoming federal minimum staffing rule will require 3.48 total HPRD and 0.55 RN HPRD. Currently, ${facilities.filter(f => (f.staffingRating || 0) >= 4).length} of our facilities meet or exceed optimal staffing levels. Strategic workforce planning and scheduling optimization remain critical priorities.</p>
+          <p><strong>Quality Measures (15% weight):</strong> Quality measures assess clinical outcomes including pressure ulcers, falls, infections, and antipsychotic medication use. Performance on these measures directly impacts resident outcomes and family satisfaction scores. ${facilities.filter(f => (f.qualityMeasureRating || 0) >= 4).length} facilities demonstrate excellence in quality measure performance.</p>
+        </div>
+
+        <div class="footer">
+          <p>CONFIDENTIAL - For Internal Use Only | Data Source: CMS Care Compare | Generated by my5STARreport.com</p>
+        </div>
+        <script>window.print();</script>
+      </body>
+      </html>
+    `;
+  };
+
+  const generateComplianceReport = () => {
+    const reportDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Regulatory Compliance Status Report</title>
+        <style>
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; max-width: 900px; margin: 0 auto; line-height: 1.6; color: #1e293b; }
+          .header { border-bottom: 3px solid #dc2626; padding-bottom: 15px; margin-bottom: 25px; }
+          .header h1 { color: #dc2626; font-size: 24px; }
+          h2 { color: #0f172a; font-size: 18px; margin: 25px 0 15px 0; }
+          .compliance-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 20px 0; }
+          .compliance-card { padding: 20px; border-radius: 10px; text-align: center; }
+          .compliance-card.good { background: #dcfce7; border: 2px solid #16a34a; }
+          .compliance-card.warning { background: #fef3c7; border: 2px solid #d97706; }
+          .compliance-card.critical { background: #fee2e2; border: 2px solid #dc2626; }
+          .compliance-value { font-size: 28px; font-weight: 700; }
+          .compliance-card.good .compliance-value { color: #16a34a; }
+          .compliance-card.warning .compliance-value { color: #d97706; }
+          .compliance-card.critical .compliance-value { color: #dc2626; }
+          .narrative { background: #fef2f2; padding: 20px; margin: 20px 0; border-left: 4px solid #dc2626; }
+          .narrative p { margin-bottom: 12px; text-align: justify; }
+          .checklist { background: #f8fafc; padding: 20px; margin: 20px 0; border-radius: 10px; }
+          .checklist-item { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #e2e8f0; }
+          .checklist-item:last-child { border-bottom: none; }
+          .check-icon { width: 24px; height: 24px; border-radius: 50%; margin-right: 12px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; }
+          .check-icon.pass { background: #16a34a; }
+          .check-icon.fail { background: #dc2626; }
+          .check-icon.warn { background: #d97706; }
+          table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 13px; }
+          th, td { padding: 10px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+          th { background: #fee2e2; font-weight: 600; }
+          .footer { margin-top: 30px; padding-top: 15px; border-top: 1px solid #e2e8f0; font-size: 11px; color: #94a3b8; text-align: center; }
+          @media print { body { padding: 25px; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>⚠️ Regulatory Compliance Status Report</h1>
+          <div>Portfolio Risk Assessment | Generated ${reportDate}</div>
+        </div>
+
+        <h2>Compliance Dashboard</h2>
+        <div class="compliance-grid">
+          <div class="compliance-card ${atRiskCount === 0 ? 'good' : atRiskCount <= 3 ? 'warning' : 'critical'}">
+            <div class="compliance-value">${atRiskCount}</div>
+            <div>Facilities At Risk</div>
+            <small>(1-2 Star Rating)</small>
+          </div>
+          <div class="compliance-card ${oneStarCount === 0 ? 'good' : 'critical'}">
+            <div class="compliance-value">${oneStarCount}</div>
+            <div>Special Focus Candidates</div>
+            <small>(1-Star Rating)</small>
+          </div>
+          <div class="compliance-card ${highPerformers >= totalFacilities * 0.5 ? 'good' : 'warning'}">
+            <div class="compliance-value">${((highPerformers/totalFacilities)*100).toFixed(0)}%</div>
+            <div>Above Average</div>
+            <small>(4-5 Star Rating)</small>
+          </div>
+        </div>
+
+        <div class="narrative">
+          <h3>Compliance Risk Assessment</h3>
+          <p>This compliance report provides a detailed assessment of regulatory risk exposure across our skilled nursing portfolio. The CMS Five-Star Rating System serves as the primary regulatory quality benchmark, with facilities rated 1-2 stars facing increased survey scrutiny, potential Special Focus Facility (SFF) designation, and heightened reputational and financial risks. As of ${reportDate}, our portfolio includes ${atRiskCount} facilities requiring immediate compliance attention.</p>
+          <p>Facilities with persistent low ratings may be subject to enhanced oversight including: more frequent state surveys, mandatory directed in-service training, civil monetary penalties, denial of payment for new admissions, and in severe cases, termination from Medicare/Medicaid programs. The estimated financial exposure for our at-risk facilities is approximately $${(atRiskCount * 200000).toLocaleString()} annually in potential penalties, lost revenue from reduced referrals, and compliance remediation costs.</p>
+          <p>Additionally, CMS's new minimum staffing rule (finalized September 2023) will require all facilities to maintain 3.48 total nursing hours per resident day and 0.55 RN hours per resident day, with 24/7 RN coverage. Implementation is phased: urban facilities must comply by May 2026, rural facilities by May 2027, with certain rural exemptions available. Non-compliance will result in civil monetary penalties and potential certification actions.</p>
+        </div>
+
+        <h2>Regulatory Compliance Checklist</h2>
+        <div class="checklist">
+          <div class="checklist-item">
+            <div class="check-icon ${atRiskCount === 0 ? 'pass' : 'fail'}">✓</div>
+            <div><strong>All facilities maintain 3+ star rating</strong> - ${atRiskCount === 0 ? 'COMPLIANT' : `${atRiskCount} FACILITIES NON-COMPLIANT`}</div>
+          </div>
+          <div class="checklist-item">
+            <div class="check-icon ${oneStarCount === 0 ? 'pass' : 'fail'}">✓</div>
+            <div><strong>No Special Focus Facility candidates</strong> - ${oneStarCount === 0 ? 'COMPLIANT' : `${oneStarCount} AT RISK FOR SFF DESIGNATION`}</div>
+          </div>
+          <div class="checklist-item">
+            <div class="check-icon warn">!</div>
+            <div><strong>CMS Minimum Staffing Rule Readiness</strong> - ASSESSMENT REQUIRED (Deadline: May 2026)</div>
+          </div>
+          <div class="checklist-item">
+            <div class="check-icon ${fiveStarCount >= 3 ? 'pass' : 'warn'}">✓</div>
+            <div><strong>Quality excellence representation</strong> - ${fiveStarCount} five-star facilities (${fiveStarCount >= 3 ? 'MEETS BENCHMARK' : 'BELOW TARGET'})</div>
+          </div>
+        </div>
+
+        <h2>At-Risk Facility Detail</h2>
+        ${atRiskCount > 0 ? `
+        <table>
+          <tr>
+            <th>Facility</th>
+            <th>Rating</th>
+            <th>Location</th>
+            <th>Primary Risk Factor</th>
+            <th>Recommended Action</th>
+          </tr>
+          ${facilities.filter(f => (f.overallRating || 0) <= 2).map(f => `
+            <tr>
+              <td><strong>${f.shortName || f.providerName}</strong></td>
+              <td style="color: ${f.overallRating === 1 ? '#dc2626' : '#d97706'}; font-weight: bold;">${f.overallRating}★</td>
+              <td>${f.cityTown}, ${f.state}</td>
+              <td>${f.healthInspectionRating <= 2 ? 'Health Inspection' : f.staffingRating <= 2 ? 'Staffing' : 'Quality Measures'}</td>
+              <td>${f.overallRating === 1 ? 'Immediate intervention required' : 'Enhanced monitoring'}</td>
+            </tr>
+          `).join('')}
+        </table>
+        ` : '<p style="background: #dcfce7; padding: 20px; border-radius: 10px; text-align: center; color: #16a34a;"><strong>✓ No facilities currently at risk (1-2 star rating)</strong></p>'}
+
+        <div class="footer">
+          <p><strong>CONFIDENTIAL - REGULATORY COMPLIANCE DOCUMENT</strong></p>
+          <p>For internal compliance and legal review only | Generated by my5STARreport.com | ${reportDate}</p>
+        </div>
+        <script>window.print();</script>
+      </body>
+      </html>
+    `;
+  };
 
   const handleGenerateReport = () => {
     setGenerating(true);
     setTimeout(() => {
       setGenerating(false);
-      // Open print dialog or generate PDF
       const reportWindow = window.open('', '_blank');
       if (reportWindow) {
-        reportWindow.document.write(`
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <title>Executive Summary - my5STARreport</title>
-            <style>
-              body { font-family: Arial, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; }
-              h1 { color: #0891b2; border-bottom: 3px solid #fbbf24; padding-bottom: 10px; }
-              h2 { color: #1e293b; margin-top: 30px; }
-              .metric { display: inline-block; margin: 10px 20px 10px 0; padding: 15px 25px; background: #f0f9ff; border-radius: 10px; }
-              .metric-value { font-size: 32px; font-weight: bold; color: #0891b2; }
-              .metric-label { font-size: 12px; color: #64748b; }
-              table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-              th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e2e8f0; }
-              th { background: #f8fafc; font-weight: 600; }
-              .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #94a3b8; }
-              @media print { body { padding: 20px; } }
-            </style>
-          </head>
-          <body>
-            <h1>📊 Executive Portfolio Summary</h1>
-            <p style="color: #64748b;">Generated ${new Date().toLocaleDateString()} | my5STARreport.com</p>
-
-            <h2>Portfolio Overview</h2>
-            <div class="metric"><div class="metric-value">46</div><div class="metric-label">Total Facilities</div></div>
-            <div class="metric"><div class="metric-value">3.3★</div><div class="metric-label">Avg Rating</div></div>
-            <div class="metric"><div class="metric-value">9</div><div class="metric-label">5-Star Facilities</div></div>
-            <div class="metric"><div class="metric-value">11</div><div class="metric-label">At Risk (1-2★)</div></div>
-
-            <h2>Rating Distribution</h2>
-            <table>
-              <tr><th>Rating</th><th>Count</th><th>Percentage</th></tr>
-              <tr><td>5 Stars</td><td>9</td><td>20%</td></tr>
-              <tr><td>4 Stars</td><td>16</td><td>35%</td></tr>
-              <tr><td>3 Stars</td><td>9</td><td>20%</td></tr>
-              <tr><td>2 Stars</td><td>3</td><td>7%</td></tr>
-              <tr><td>1 Star</td><td>8</td><td>17%</td></tr>
-            </table>
-
-            <h2>Key Focus Areas</h2>
-            <ul>
-              <li>Antipsychotic reduction program across portfolio</li>
-              <li>Weekend staffing consistency improvements</li>
-              <li>Pressure ulcer prevention initiatives</li>
-            </ul>
-
-            <h2>Financial Impact</h2>
-            <p>Estimated annual revenue at risk from low ratings: <strong>$2.4M</strong></p>
-            <p>Potential revenue gain from rating improvements: <strong>$1.8M</strong></p>
-
-            <div class="footer">
-              <p>This report is confidential and intended for internal use only.</p>
-              <p>Data sourced from CMS Care Compare | my5STARreport.com</p>
-            </div>
-
-            <script>window.print();</script>
-          </body>
-          </html>
-        `);
+        let reportContent = '';
+        switch (reportType) {
+          case 'executive':
+            reportContent = generateExecutiveReport();
+            break;
+          case 'detailed':
+            reportContent = generateDetailedReport();
+            break;
+          case 'compliance':
+            reportContent = generateComplianceReport();
+            break;
+        }
+        reportWindow.document.write(reportContent);
       }
     }, 2000);
   };
 
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-slide-up">
+        <button onClick={onBack} className="btn-neumorphic px-4 py-2 flex items-center gap-2">
+          <ArrowLeft className="w-4 h-4" /> Back
+        </button>
+        <div className="card-neumorphic p-8 text-center">
+          <div className="animate-spin w-8 h-8 border-4 border-violet-500 border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-[var(--foreground-muted)]">Loading portfolio data...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 animate-slide-up">
       <button onClick={onBack} className="btn-neumorphic px-4 py-2 flex items-center gap-2">
-        <ArrowLeft className="w-4 h-4" /> Back to Dashboard
+        <ArrowLeft className="w-4 h-4" /> Back
       </button>
 
       <div className="card-neumorphic p-6">
@@ -5417,16 +7276,16 @@ function BoardReportsView({ onBack }: { onBack: () => void }) {
           </div>
           <div>
             <h2 className="text-2xl font-bold">Board & Investor Reports</h2>
-            <p className="text-[var(--foreground-muted)]">Generate professional reports for stakeholders</p>
+            <p className="text-[var(--foreground-muted)]">Generate professional-grade reports with detailed narratives, charts, and analysis</p>
           </div>
         </div>
 
         {/* Report Type Selection */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           {[
-            { id: 'executive', title: 'Executive Summary', desc: 'High-level KPIs and trends', icon: Crown },
-            { id: 'detailed', title: 'Detailed Analysis', desc: 'Full portfolio breakdown', icon: FileSpreadsheet },
-            { id: 'compliance', title: 'Compliance Report', desc: 'Regulatory status overview', icon: Shield },
+            { id: 'executive', title: 'Executive Summary', desc: '350+ word narrative with KPIs, charts, and strategic recommendations', icon: Crown },
+            { id: 'detailed', title: 'Detailed Analysis', desc: 'Complete facility-by-facility breakdown with rating components', icon: FileSpreadsheet },
+            { id: 'compliance', title: 'Compliance Report', desc: 'Risk assessment, regulatory checklist, and at-risk facility detail', icon: Shield },
           ].map((type) => (
             <button
               key={type.id}
@@ -5444,26 +7303,58 @@ function BoardReportsView({ onBack }: { onBack: () => void }) {
           ))}
         </div>
 
-        {/* Report Preview */}
+        {/* Report Contents Preview */}
         <div className="card-neumorphic-inset p-6 mb-6">
-          <h3 className="font-semibold mb-4">Report Preview</h3>
-          <div className="space-y-3 text-sm">
-            <div className="flex justify-between py-2 border-b border-[var(--border-color)]">
-              <span>Report Period</span>
-              <span className="font-medium">Q4 2024</span>
-            </div>
-            <div className="flex justify-between py-2 border-b border-[var(--border-color)]">
-              <span>Facilities Included</span>
-              <span className="font-medium">46 facilities</span>
-            </div>
-            <div className="flex justify-between py-2 border-b border-[var(--border-color)]">
-              <span>Data As Of</span>
-              <span className="font-medium">{new Date().toLocaleDateString()}</span>
-            </div>
-            <div className="flex justify-between py-2">
-              <span>Format</span>
-              <span className="font-medium">PDF (Print-Ready)</span>
-            </div>
+          <h3 className="font-semibold mb-4 flex items-center gap-2">
+            <Eye className="w-5 h-5 text-violet-500" />
+            Report Contents
+          </h3>
+          {reportType === 'executive' && (
+            <ul className="space-y-2 text-sm">
+              <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-green-500" /> Portfolio performance overview with key metrics</li>
+              <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-green-500" /> 350+ word executive narrative summary</li>
+              <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-green-500" /> Visual rating distribution bar chart</li>
+              <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-green-500" /> Performance breakdown by operating company</li>
+              <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-green-500" /> Strategic recommendations for board action</li>
+            </ul>
+          )}
+          {reportType === 'detailed' && (
+            <ul className="space-y-2 text-sm">
+              <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-green-500" /> Methodology and data source documentation</li>
+              <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-green-500" /> Complete facility listing with all rating components</li>
+              <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-green-500" /> Health inspection, staffing, and QM analysis</li>
+              <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-green-500" /> Facility-by-facility performance details</li>
+              <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-green-500" /> Sorted rankings for easy comparison</li>
+            </ul>
+          )}
+          {reportType === 'compliance' && (
+            <ul className="space-y-2 text-sm">
+              <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-green-500" /> Compliance risk dashboard</li>
+              <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-green-500" /> Regulatory risk assessment narrative</li>
+              <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-green-500" /> CMS minimum staffing rule readiness</li>
+              <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-green-500" /> At-risk facility detail with action items</li>
+              <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-green-500" /> Compliance checklist with pass/fail status</li>
+            </ul>
+          )}
+        </div>
+
+        {/* Portfolio Stats Preview */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="text-center p-3 bg-cyan-50 dark:bg-cyan-900/20 rounded-lg">
+            <p className="text-2xl font-bold text-cyan-600">{totalFacilities}</p>
+            <p className="text-xs text-[var(--foreground-muted)]">Total Facilities</p>
+          </div>
+          <div className="text-center p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+            <p className="text-2xl font-bold text-purple-600">{avgRating}★</p>
+            <p className="text-xs text-[var(--foreground-muted)]">Portfolio Average</p>
+          </div>
+          <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+            <p className="text-2xl font-bold text-green-600">{highPerformers}</p>
+            <p className="text-xs text-[var(--foreground-muted)]">High Performers (4-5★)</p>
+          </div>
+          <div className={`text-center p-3 rounded-lg ${atRiskCount > 0 ? 'bg-red-50 dark:bg-red-900/20' : 'bg-green-50 dark:bg-green-900/20'}`}>
+            <p className={`text-2xl font-bold ${atRiskCount > 0 ? 'text-red-600' : 'text-green-600'}`}>{atRiskCount}</p>
+            <p className="text-xs text-[var(--foreground-muted)]">At Risk (1-2★)</p>
           </div>
         </div>
 
@@ -5471,40 +7362,23 @@ function BoardReportsView({ onBack }: { onBack: () => void }) {
         <button
           onClick={handleGenerateReport}
           disabled={generating}
-          className="w-full btn-neumorphic-primary py-4 flex items-center justify-center gap-2"
+          className="w-full btn-neumorphic-primary py-4 flex items-center justify-center gap-2 text-lg"
         >
           {generating ? (
             <>
               <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full" />
-              Generating Report...
+              Generating Professional Report...
             </>
           ) : (
             <>
               <Download className="w-5 h-5" />
-              Generate {reportType === 'executive' ? 'Executive Summary' : reportType === 'detailed' ? 'Detailed Report' : 'Compliance Report'}
+              Generate {reportType === 'executive' ? 'Executive Summary' : reportType === 'detailed' ? 'Detailed Analysis' : 'Compliance Report'}
             </>
           )}
         </button>
-      </div>
-
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="card-neumorphic p-4 text-center">
-          <p className="text-2xl font-bold text-green-600">↑ 12%</p>
-          <p className="text-xs text-[var(--foreground-muted)]">Rating Improvement YTD</p>
-        </div>
-        <div className="card-neumorphic p-4 text-center">
-          <p className="text-2xl font-bold text-blue-600">94%</p>
-          <p className="text-xs text-[var(--foreground-muted)]">Survey Compliance</p>
-        </div>
-        <div className="card-neumorphic p-4 text-center">
-          <p className="text-2xl font-bold text-purple-600">$1.2M</p>
-          <p className="text-xs text-[var(--foreground-muted)]">Revenue Protected</p>
-        </div>
-        <div className="card-neumorphic p-4 text-center">
-          <p className="text-2xl font-bold text-amber-600">3</p>
-          <p className="text-xs text-[var(--foreground-muted)]">Facilities Improved</p>
-        </div>
+        <p className="text-xs text-center text-[var(--foreground-muted)] mt-2">
+          Report will open in a new window ready for printing or saving as PDF
+        </p>
       </div>
     </div>
   );
@@ -6581,21 +8455,93 @@ function RegulatoryTrackerView({ onBack }: { onBack: () => void }) {
         <ArrowLeft className="w-4 h-4" /> Back
       </button>
 
-      {/* Header */}
+      {/* Header with Explanation */}
       <div className="card-neumorphic p-6">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 mb-4">
           <div className="p-3 rounded-xl bg-gradient-to-br from-slate-400 to-slate-600">
             <Gavel className="w-6 h-6 text-white" />
           </div>
           <div>
             <h2 className="text-2xl font-bold">Regulatory Change Tracker</h2>
-            <p className="text-[var(--foreground-muted)]">Stay informed on CMS rules affecting 5-star ratings</p>
+            <p className="text-[var(--foreground-muted)]">Monitor CMS regulations that directly impact your 5-star ratings</p>
+          </div>
+        </div>
+
+        {/* What This Tool Does - Explanation Section */}
+        <div className="p-4 bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900/30 dark:to-gray-900/30 rounded-xl">
+          <h3 className="font-semibold text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-2">
+            <Info className="w-5 h-5" />
+            What This Tool Does
+          </h3>
+          <p className="text-sm text-[var(--foreground-muted)] mb-3">
+            The Regulatory Change Tracker monitors and analyzes CMS (Centers for Medicare & Medicaid Services) rule changes,
+            guidance updates, and policy modifications that directly affect how nursing home quality ratings are calculated.
+            This tool helps you stay ahead of regulatory changes before they impact your facility&apos;s star rating.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+            <div className="flex items-start gap-2">
+              <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
+              <span><strong>Rating Methodology:</strong> Changes to how stars are calculated</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
+              <span><strong>Staffing Rules:</strong> New HPRD thresholds and requirements</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
+              <span><strong>Survey Focus:</strong> Priority areas for health inspections</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* Impact Summary */}
+      <div className="card-neumorphic p-4">
+        <h3 className="font-semibold mb-3 text-sm uppercase tracking-wide text-[var(--foreground-muted)]">Impact Summary</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="text-center p-3 bg-red-50 dark:bg-red-900/20 rounded-xl border-l-4 border-red-500">
+            <p className="text-2xl font-bold text-red-600">1</p>
+            <p className="text-xs text-red-600/70">Critical - Immediate Action</p>
+          </div>
+          <div className="text-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded-xl border-l-4 border-orange-500">
+            <p className="text-2xl font-bold text-orange-600">2</p>
+            <p className="text-xs text-orange-600/70">High Impact</p>
+          </div>
+          <div className="text-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl border-l-4 border-yellow-500">
+            <p className="text-2xl font-bold text-yellow-600">2</p>
+            <p className="text-xs text-yellow-600/70">Medium Impact</p>
+          </div>
+          <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl border-l-4 border-blue-500">
+            <p className="text-2xl font-bold text-blue-600">3</p>
+            <p className="text-xs text-blue-600/70">Upcoming Deadlines</p>
+          </div>
+        </div>
+      </div>
+
+      {/* How Changes Affect Your Rating */}
+      <div className="card-neumorphic p-6 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20">
+        <h3 className="font-bold mb-3 flex items-center gap-2">
+          <AlertCircle className="w-5 h-5 text-indigo-600" />
+          How Regulatory Changes Affect Your Rating
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+          <div className="p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg">
+            <div className="font-semibold text-indigo-700 dark:text-indigo-300 mb-1">Health Inspections (53%)</div>
+            <p className="text-[var(--foreground-muted)]">Survey focus areas change based on CMS priorities. New F-tags or increased scrutiny can shift your health rating.</p>
+          </div>
+          <div className="p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg">
+            <div className="font-semibold text-purple-700 dark:text-purple-300 mb-1">Staffing (32%)</div>
+            <p className="text-[var(--foreground-muted)]">HPRD thresholds and RN requirements directly determine your staffing star. The 2024 minimum staffing rule will significantly impact ratings.</p>
+          </div>
+          <div className="p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg">
+            <div className="font-semibold text-pink-700 dark:text-pink-300 mb-1">Quality Measures (15%)</div>
+            <p className="text-[var(--foreground-muted)]">MDS item scoring changes and benchmark updates affect which percentile your facility falls into for each measure.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Summary - original stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 hidden">
         <div className="card-neumorphic p-4 text-center border-l-4 border-red-500">
           <p className="text-2xl font-bold text-red-600">1</p>
           <p className="text-xs text-[var(--foreground-muted)]">Critical Updates</p>
@@ -6665,6 +8611,456 @@ function RegulatoryTrackerView({ onBack }: { onBack: () => void }) {
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// SIDE-BY-SIDE FACILITY COMPARISON VIEW
+// Compare two facilities with detailed metric breakdowns
+// ============================================================================
+function SideBySideComparison({
+  onBack,
+  onSelectFacility,
+}: {
+  onBack: () => void;
+  onSelectFacility: (ccn: string) => void;
+}) {
+  const [facilityA, setFacilityA] = useState<string>('');
+  const [facilityB, setFacilityB] = useState<string>('');
+  const [dataA, setDataA] = useState<any>(null);
+  const [dataB, setDataB] = useState<any>(null);
+  const [loadingA, setLoadingA] = useState(false);
+  const [loadingB, setLoadingB] = useState(false);
+
+  // Fetch facility data
+  const fetchFacility = async (ccn: string, setData: (d: any) => void, setLoading: (l: boolean) => void) => {
+    if (!ccn) {
+      setData(null);
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/facilities/${ccn}`);
+      const data = await res.json();
+      setData(data);
+    } catch (error) {
+      console.error('Failed to fetch facility:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchFacility(facilityA, setDataA, setLoadingA);
+  }, [facilityA]);
+
+  useEffect(() => {
+    fetchFacility(facilityB, setDataB, setLoadingB);
+  }, [facilityB]);
+
+  // Get comparison indicator
+  const getComparisonIndicator = (valA: number | null, valB: number | null, higherIsBetter = true) => {
+    if (valA === null || valB === null) return null;
+    if (valA === valB) return <span className="text-gray-400">=</span>;
+    const aWins = higherIsBetter ? valA > valB : valA < valB;
+    if (aWins) {
+      return <span className="text-green-500 font-bold">▲</span>;
+    }
+    return <span className="text-red-500 font-bold">▼</span>;
+  };
+
+  // Render star rating with color
+  const renderStars = (rating: number | null, highlight = false) => {
+    if (rating === null) return <span className="text-gray-400">-</span>;
+    const color = rating >= 4 ? 'text-green-500' : rating >= 3 ? 'text-yellow-500' : 'text-red-500';
+    return (
+      <span className={`font-bold text-2xl ${color} ${highlight ? 'ring-2 ring-offset-2 ring-green-400 rounded px-2' : ''}`}>
+        {rating}★
+      </span>
+    );
+  };
+
+  // Render metric comparison row
+  const MetricRow = ({ label, valueA, valueB, unit = '', higherIsBetter = true, format = (v: any) => v }: {
+    label: string;
+    valueA: any;
+    valueB: any;
+    unit?: string;
+    higherIsBetter?: boolean;
+    format?: (v: any) => string;
+  }) => {
+    const formattedA = valueA !== null && valueA !== undefined ? format(valueA) : '-';
+    const formattedB = valueB !== null && valueB !== undefined ? format(valueB) : '-';
+    const indicatorA = getComparisonIndicator(valueA, valueB, higherIsBetter);
+    const indicatorB = getComparisonIndicator(valueB, valueA, higherIsBetter);
+
+    return (
+      <div className="grid grid-cols-3 gap-4 py-2 border-b border-[var(--border-color)] last:border-0">
+        <div className="text-center">
+          <span className={`font-medium ${indicatorA && valueA > valueB === higherIsBetter ? 'text-green-600' : ''}`}>
+            {formattedA}{unit} {indicatorA}
+          </span>
+        </div>
+        <div className="text-center text-sm text-[var(--foreground-muted)]">{label}</div>
+        <div className="text-center">
+          <span className={`font-medium ${indicatorB && valueB > valueA === higherIsBetter ? 'text-green-600' : ''}`}>
+            {indicatorB} {formattedB}{unit}
+          </span>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-6 animate-slide-up">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <button onClick={onBack} className="btn-neumorphic px-4 py-2 flex items-center gap-2">
+          <ArrowLeft className="w-4 h-4" />
+          Back
+        </button>
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gradient-primary flex items-center gap-2">
+            <GitCompare className="w-7 h-7 text-purple-500" />
+            Side-by-Side Comparison
+          </h1>
+          <p className="text-sm text-[var(--foreground-muted)]">Compare two facilities head-to-head</p>
+        </div>
+        <div className="w-24" />
+      </div>
+
+      {/* Facility Selectors */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Facility A Selector */}
+        <div className="card-neumorphic p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 rounded-full bg-cyan-500 text-white flex items-center justify-center font-bold">A</div>
+            <span className="font-medium">First Facility</span>
+          </div>
+          <select
+            value={facilityA}
+            onChange={(e) => setFacilityA(e.target.value)}
+            className="w-full input-neumorphic"
+          >
+            <option value="">Select facility A...</option>
+            {Object.entries(
+              Object.entries(CASCADIA_FACILITIES).reduce((acc, [, info]) => {
+                if (!acc[info.company]) acc[info.company] = [];
+                acc[info.company].push(info);
+                return acc;
+              }, {} as Record<string, Array<{ ccn: string; shortName: string; company: string }>>)
+            ).map(([company, facilities]) => (
+              <optgroup key={company} label={company}>
+                {facilities.map((f) => (
+                  <option key={f.ccn} value={f.ccn} disabled={f.ccn === facilityB}>{f.shortName}</option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+          {loadingA && <p className="text-sm text-cyan-500 mt-2">Loading...</p>}
+        </div>
+
+        {/* Facility B Selector */}
+        <div className="card-neumorphic p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 rounded-full bg-purple-500 text-white flex items-center justify-center font-bold">B</div>
+            <span className="font-medium">Second Facility</span>
+          </div>
+          <select
+            value={facilityB}
+            onChange={(e) => setFacilityB(e.target.value)}
+            className="w-full input-neumorphic"
+          >
+            <option value="">Select facility B...</option>
+            {Object.entries(
+              Object.entries(CASCADIA_FACILITIES).reduce((acc, [, info]) => {
+                if (!acc[info.company]) acc[info.company] = [];
+                acc[info.company].push(info);
+                return acc;
+              }, {} as Record<string, Array<{ ccn: string; shortName: string; company: string }>>)
+            ).map(([company, facilities]) => (
+              <optgroup key={company} label={company}>
+                {facilities.map((f) => (
+                  <option key={f.ccn} value={f.ccn} disabled={f.ccn === facilityA}>{f.shortName}</option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+          {loadingB && <p className="text-sm text-purple-500 mt-2">Loading...</p>}
+        </div>
+      </div>
+
+      {/* Comparison Content */}
+      {(dataA || dataB) && (
+        <>
+          {/* Facility Headers */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Facility A Header */}
+            <div className={`card-neumorphic p-6 ${dataA ? 'border-l-4 border-cyan-500' : 'opacity-50'}`}>
+              {dataA?.facility ? (
+                <div className="text-center">
+                  <h3 className="font-bold text-lg text-cyan-700 dark:text-cyan-300">{dataA.facility.providerName}</h3>
+                  <p className="text-sm text-[var(--foreground-muted)]">{dataA.facility.cityTown}, {dataA.facility.state}</p>
+                  <div className="mt-4 flex justify-center gap-4">
+                    <div className="text-center">
+                      {renderStars(dataA.facility.overallRating)}
+                      <p className="text-xs text-[var(--foreground-muted)]">Overall</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => onSelectFacility(facilityA)}
+                    className="mt-4 text-xs text-cyan-600 hover:underline"
+                  >
+                    View Full Details →
+                  </button>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-[var(--foreground-muted)]">
+                  Select Facility A
+                </div>
+              )}
+            </div>
+
+            {/* Facility B Header */}
+            <div className={`card-neumorphic p-6 ${dataB ? 'border-l-4 border-purple-500' : 'opacity-50'}`}>
+              {dataB?.facility ? (
+                <div className="text-center">
+                  <h3 className="font-bold text-lg text-purple-700 dark:text-purple-300">{dataB.facility.providerName}</h3>
+                  <p className="text-sm text-[var(--foreground-muted)]">{dataB.facility.cityTown}, {dataB.facility.state}</p>
+                  <div className="mt-4 flex justify-center gap-4">
+                    <div className="text-center">
+                      {renderStars(dataB.facility.overallRating)}
+                      <p className="text-xs text-[var(--foreground-muted)]">Overall</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => onSelectFacility(facilityB)}
+                    className="mt-4 text-xs text-purple-600 hover:underline"
+                  >
+                    View Full Details →
+                  </button>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-[var(--foreground-muted)]">
+                  Select Facility B
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Star Ratings Comparison */}
+          <div className="card-neumorphic p-6">
+            <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+              <Star className="w-5 h-5 text-yellow-500" />
+              Star Ratings Comparison
+            </h3>
+            <div className="grid grid-cols-3 gap-4 mb-4 pb-2 border-b-2 border-[var(--border-color)]">
+              <div className="text-center font-bold text-cyan-600">Facility A</div>
+              <div className="text-center font-bold text-[var(--foreground-muted)]">Metric</div>
+              <div className="text-center font-bold text-purple-600">Facility B</div>
+            </div>
+            <MetricRow
+              label="Overall Rating"
+              valueA={dataA?.facility?.overallRating}
+              valueB={dataB?.facility?.overallRating}
+              unit="★"
+            />
+            <MetricRow
+              label="Health Inspection"
+              valueA={dataA?.facility?.healthInspectionRating}
+              valueB={dataB?.facility?.healthInspectionRating}
+              unit="★"
+            />
+            <MetricRow
+              label="Staffing"
+              valueA={dataA?.facility?.staffingRating}
+              valueB={dataB?.facility?.staffingRating}
+              unit="★"
+            />
+            <MetricRow
+              label="Quality Measures"
+              valueA={dataA?.facility?.qualityMeasureRating}
+              valueB={dataB?.facility?.qualityMeasureRating}
+              unit="★"
+            />
+          </div>
+
+          {/* Staffing Comparison */}
+          <div className="card-neumorphic p-6">
+            <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+              <UserCheck className="w-5 h-5 text-green-500" />
+              Staffing Metrics
+            </h3>
+            <div className="grid grid-cols-3 gap-4 mb-4 pb-2 border-b-2 border-[var(--border-color)]">
+              <div className="text-center font-bold text-cyan-600">Facility A</div>
+              <div className="text-center font-bold text-[var(--foreground-muted)]">Metric</div>
+              <div className="text-center font-bold text-purple-600">Facility B</div>
+            </div>
+            <MetricRow
+              label="Total Nursing HPRD"
+              valueA={dataA?.staffing?.totalNurseHPRD}
+              valueB={dataB?.staffing?.totalNurseHPRD}
+              format={(v) => v?.toFixed(2)}
+            />
+            <MetricRow
+              label="RN HPRD"
+              valueA={dataA?.staffing?.rnHPRD}
+              valueB={dataB?.staffing?.rnHPRD}
+              format={(v) => v?.toFixed(2)}
+            />
+            <MetricRow
+              label="CNA HPRD"
+              valueA={dataA?.staffing?.cnaHPRD}
+              valueB={dataB?.staffing?.cnaHPRD}
+              format={(v) => v?.toFixed(2)}
+            />
+            <MetricRow
+              label="RN Turnover"
+              valueA={dataA?.staffing?.rnTurnoverRate}
+              valueB={dataB?.staffing?.rnTurnoverRate}
+              unit="%"
+              higherIsBetter={false}
+            />
+          </div>
+
+          {/* Facility Info Comparison */}
+          <div className="card-neumorphic p-6">
+            <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-blue-500" />
+              Facility Information
+            </h3>
+            <div className="grid grid-cols-3 gap-4 mb-4 pb-2 border-b-2 border-[var(--border-color)]">
+              <div className="text-center font-bold text-cyan-600">Facility A</div>
+              <div className="text-center font-bold text-[var(--foreground-muted)]">Metric</div>
+              <div className="text-center font-bold text-purple-600">Facility B</div>
+            </div>
+            <MetricRow
+              label="Certified Beds"
+              valueA={dataA?.facility?.numberOfCertifiedBeds}
+              valueB={dataB?.facility?.numberOfCertifiedBeds}
+            />
+            <MetricRow
+              label="Residents"
+              valueA={dataA?.facility?.numberOfResidents}
+              valueB={dataB?.facility?.numberOfResidents}
+            />
+            <MetricRow
+              label="Total Fines"
+              valueA={dataA?.facility?.totalFines}
+              valueB={dataB?.facility?.totalFines}
+              unit=""
+              higherIsBetter={false}
+              format={(v) => v ? `$${v.toLocaleString()}` : '$0'}
+            />
+            <MetricRow
+              label="Penalties"
+              valueA={dataA?.facility?.penaltyCount}
+              valueB={dataB?.facility?.penaltyCount}
+              higherIsBetter={false}
+            />
+          </div>
+
+          {/* Quality Measures Comparison */}
+          {(dataA?.qualityMeasures || dataB?.qualityMeasures) && (
+            <div className="card-neumorphic p-6">
+              <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+                <Heart className="w-5 h-5 text-red-500" />
+                Quality Measures (Long-Stay)
+              </h3>
+              <div className="grid grid-cols-3 gap-4 mb-4 pb-2 border-b-2 border-[var(--border-color)]">
+                <div className="text-center font-bold text-cyan-600">Facility A</div>
+                <div className="text-center font-bold text-[var(--foreground-muted)]">Metric</div>
+                <div className="text-center font-bold text-purple-600">Facility B</div>
+              </div>
+              <MetricRow
+                label="Falls w/ Major Injury"
+                valueA={dataA?.qualityMeasures?.longStay?.percentWithFalls}
+                valueB={dataB?.qualityMeasures?.longStay?.percentWithFalls}
+                unit="%"
+                higherIsBetter={false}
+                format={(v) => v?.toFixed(1)}
+              />
+              <MetricRow
+                label="Antipsychotic Use"
+                valueA={dataA?.qualityMeasures?.longStay?.percentAntipsychoticMeds}
+                valueB={dataB?.qualityMeasures?.longStay?.percentAntipsychoticMeds}
+                unit="%"
+                higherIsBetter={false}
+                format={(v) => v?.toFixed(1)}
+              />
+              <MetricRow
+                label="Pressure Ulcers"
+                valueA={dataA?.qualityMeasures?.longStay?.percentWithPressureUlcers}
+                valueB={dataB?.qualityMeasures?.longStay?.percentWithPressureUlcers}
+                unit="%"
+                higherIsBetter={false}
+                format={(v) => v?.toFixed(1)}
+              />
+              <MetricRow
+                label="UTI Rate"
+                valueA={dataA?.qualityMeasures?.longStay?.percentWithUrinaryInfection}
+                valueB={dataB?.qualityMeasures?.longStay?.percentWithUrinaryInfection}
+                unit="%"
+                higherIsBetter={false}
+                format={(v) => v?.toFixed(1)}
+              />
+            </div>
+          )}
+
+          {/* Winner Summary */}
+          {dataA && dataB && (
+            <div className="card-neumorphic p-6 bg-gradient-to-r from-cyan-50 to-purple-50 dark:from-cyan-900/20 dark:to-purple-900/20">
+              <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+                <Trophy className="w-5 h-5 text-amber-500" />
+                Comparison Summary
+              </h3>
+              <div className="grid grid-cols-2 gap-6">
+                <div className={`p-4 rounded-xl text-center ${
+                  (dataA.facility?.overallRating || 0) >= (dataB.facility?.overallRating || 0)
+                    ? 'bg-green-100 dark:bg-green-900/30 ring-2 ring-green-400'
+                    : 'bg-gray-100 dark:bg-gray-800'
+                }`}>
+                  <div className="font-bold text-cyan-700 dark:text-cyan-300">{dataA.facility?.providerName}</div>
+                  <div className="text-3xl font-bold my-2">{dataA.facility?.overallRating}★</div>
+                  {(dataA.facility?.overallRating || 0) > (dataB.facility?.overallRating || 0) && (
+                    <span className="text-xs bg-green-500 text-white px-2 py-1 rounded-full">HIGHER RATED</span>
+                  )}
+                </div>
+                <div className={`p-4 rounded-xl text-center ${
+                  (dataB.facility?.overallRating || 0) >= (dataA.facility?.overallRating || 0)
+                    ? 'bg-green-100 dark:bg-green-900/30 ring-2 ring-green-400'
+                    : 'bg-gray-100 dark:bg-gray-800'
+                }`}>
+                  <div className="font-bold text-purple-700 dark:text-purple-300">{dataB.facility?.providerName}</div>
+                  <div className="text-3xl font-bold my-2">{dataB.facility?.overallRating}★</div>
+                  {(dataB.facility?.overallRating || 0) > (dataA.facility?.overallRating || 0) && (
+                    <span className="text-xs bg-green-500 text-white px-2 py-1 rounded-full">HIGHER RATED</span>
+                  )}
+                </div>
+              </div>
+              <p className="text-center text-sm text-[var(--foreground-muted)] mt-4">
+                {(dataA.facility?.overallRating || 0) === (dataB.facility?.overallRating || 0)
+                  ? 'Both facilities have the same overall rating'
+                  : `${(dataA.facility?.overallRating || 0) > (dataB.facility?.overallRating || 0) ? dataA.facility?.providerName : dataB.facility?.providerName} has a higher overall rating by ${Math.abs((dataA.facility?.overallRating || 0) - (dataB.facility?.overallRating || 0))} star(s)`
+                }
+              </p>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Empty State */}
+      {!dataA && !dataB && (
+        <div className="card-neumorphic p-12 text-center">
+          <GitCompare className="w-16 h-16 mx-auto text-[var(--foreground-muted)] mb-4" />
+          <h3 className="text-xl font-bold mb-2">Select Two Facilities to Compare</h3>
+          <p className="text-[var(--foreground-muted)]">
+            Choose Facility A and Facility B above to see a detailed side-by-side comparison
+            of ratings, staffing metrics, quality measures, and more.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -7883,6 +10279,83 @@ function TinkerStarView({
             </div>
           </div>
         </div>
+      </div>
+
+      {/* CMS Weighting Breakdown - Shows how each component affects overall */}
+      <div className="card-neumorphic p-6">
+        <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+          <PieChart className="w-5 h-5 text-indigo-500" />
+          <HelpTooltip
+            term="CMS Weighting Formula"
+            definition="CMS calculates overall rating using Health Inspection (53% weight), Staffing (32% weight), and Quality Measures (15% weight). This shows exactly how each component contributes to your predicted overall rating."
+          >
+            CMS Weighting Breakdown
+          </HelpTooltip>
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {/* Health - 53% */}
+          <div className="p-4 rounded-xl bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 border border-red-200 dark:border-red-800">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-red-800 dark:text-red-300">Health Inspection</span>
+              <span className="text-xs bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 px-2 py-0.5 rounded-full font-bold">53%</span>
+            </div>
+            <div className="text-3xl font-bold text-red-600 mb-1">{predictedRatings.health}★</div>
+            <div className="text-xs text-red-600/80">
+              Contribution: <strong>{(predictedRatings.health * 0.53).toFixed(2)}</strong> pts
+            </div>
+            <div className="mt-2 w-full h-2 bg-red-200 dark:bg-red-900/50 rounded-full overflow-hidden">
+              <div className="h-full bg-red-500 rounded-full" style={{ width: '53%' }} />
+            </div>
+          </div>
+
+          {/* Staffing - 32% */}
+          <div className="p-4 rounded-xl bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border border-purple-200 dark:border-purple-800">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-purple-800 dark:text-purple-300">Staffing</span>
+              <span className="text-xs bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-full font-bold">32%</span>
+            </div>
+            <div className="text-3xl font-bold text-purple-600 mb-1">{predictedRatings.staffing}★</div>
+            <div className="text-xs text-purple-600/80">
+              Contribution: <strong>{(predictedRatings.staffing * 0.32).toFixed(2)}</strong> pts
+            </div>
+            <div className="mt-2 w-full h-2 bg-purple-200 dark:bg-purple-900/50 rounded-full overflow-hidden">
+              <div className="h-full bg-purple-500 rounded-full" style={{ width: '32%' }} />
+            </div>
+          </div>
+
+          {/* QM - 15% */}
+          <div className="p-4 rounded-xl bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-green-800 dark:text-green-300">Quality Measures</span>
+              <span className="text-xs bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 px-2 py-0.5 rounded-full font-bold">15%</span>
+            </div>
+            <div className="text-3xl font-bold text-green-600 mb-1">{predictedRatings.qm}★</div>
+            <div className="text-xs text-green-600/80">
+              Contribution: <strong>{(predictedRatings.qm * 0.15).toFixed(2)}</strong> pts
+            </div>
+            <div className="mt-2 w-full h-2 bg-green-200 dark:bg-green-900/50 rounded-full overflow-hidden">
+              <div className="h-full bg-green-500 rounded-full" style={{ width: '15%' }} />
+            </div>
+          </div>
+
+          {/* Overall Calculation */}
+          <div className="p-4 rounded-xl bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-cyan-900/20 dark:to-blue-900/20 border-2 border-cyan-400 dark:border-cyan-600">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-cyan-800 dark:text-cyan-300">Weighted Total</span>
+              <span className="text-xs bg-cyan-500 text-white px-2 py-0.5 rounded-full font-bold">100%</span>
+            </div>
+            <div className="text-3xl font-bold text-cyan-600 mb-1">{predictedRatings.overall}★</div>
+            <div className="text-xs text-cyan-600/80">
+              = {(predictedRatings.health * 0.53).toFixed(2)} + {(predictedRatings.staffing * 0.32).toFixed(2)} + {(predictedRatings.qm * 0.15).toFixed(2)}
+            </div>
+            <div className="mt-2 text-xs text-cyan-700 dark:text-cyan-300 font-medium">
+              Raw: {((predictedRatings.health * 0.53 + predictedRatings.staffing * 0.32 + predictedRatings.qm * 0.15)).toFixed(2)} → Rounded: {predictedRatings.overall}
+            </div>
+          </div>
+        </div>
+        <p className="text-xs text-[var(--foreground-muted)] mt-3 text-center">
+          CMS uses a weighted average: (Health × 53%) + (Staffing × 32%) + (QM × 15%), then rounds to nearest star
+        </p>
       </div>
 
       {/* Gap Analysis - Impact Ranking */}
@@ -11985,6 +14458,423 @@ function RatesAndCostsView({
       {/* Detail Modal */}
       {selectedRatePeriod && (
         <RateDetailModal ratePeriod={selectedRatePeriod} rates={data?.medicaidRates || []} onClose={() => setSelectedRatePeriod(null)} />
+      )}
+    </div>
+  );
+}
+
+// ==========================================
+// ADMIN PANEL
+// ==========================================
+function AdminPanel({
+  onBack,
+  onLogout,
+}: {
+  onBack: () => void;
+  onLogout: () => void;
+}) {
+  const [activeTab, setActiveTab] = useState<'overview' | 'facilities' | 'users' | 'data' | 'settings'>('overview');
+  const [facilities, setFacilities] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<any>(null);
+  const [editingFacility, setEditingFacility] = useState<string | null>(null);
+  const [editValues, setEditValues] = useState<Record<string, any>>({});
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        // Fetch facilities
+        const ccnList = Object.keys(CASCADIA_FACILITIES);
+        const facResponse = await fetch(`/api/facilities/search?ccns=${ccnList.join(',')}&limit=100`);
+        const facData = await facResponse.json();
+        const enriched = (facData.results || []).map((f: any) => ({
+          ...f,
+          company: CASCADIA_FACILITIES[f.federalProviderNumber]?.company || 'Other',
+          shortName: CASCADIA_FACILITIES[f.federalProviderNumber]?.shortName || f.providerName,
+        }));
+        setFacilities(enriched);
+
+        // Fetch stats
+        const statsResponse = await fetch('/api/stats');
+        const statsData = await statsResponse.json();
+        setStats(statsData);
+      } catch (error) {
+        console.error('Admin fetch error:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
+
+  const handleSaveEdit = (ccn: string) => {
+    // In a real app, this would save to the database
+    console.log('Saving edits for', ccn, editValues);
+    setEditingFacility(null);
+    setEditValues({});
+    alert('Changes saved! (Demo mode - changes not persisted to database)');
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-slide-up">
+        <button onClick={onBack} className="btn-neumorphic px-4 py-2 flex items-center gap-2">
+          <ArrowLeft className="w-4 h-4" /> Back
+        </button>
+        <div className="card-neumorphic p-8 text-center">
+          <div className="animate-spin w-8 h-8 border-4 border-red-500 border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-[var(--foreground-muted)]">Loading admin panel...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 animate-slide-up">
+      <div className="flex items-center justify-between">
+        <button onClick={onBack} className="btn-neumorphic px-4 py-2 flex items-center gap-2">
+          <ArrowLeft className="w-4 h-4" /> Back
+        </button>
+        <button onClick={onLogout} className="btn-neumorphic px-4 py-2 flex items-center gap-2 text-red-600">
+          <X className="w-4 h-4" /> Logout Admin
+        </button>
+      </div>
+
+      {/* Admin Header */}
+      <div className="card-neumorphic p-6 bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 border-l-4 border-red-500">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-3 rounded-xl bg-gradient-to-br from-red-500 to-orange-500">
+            <Settings className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold">Admin Control Panel</h2>
+            <p className="text-[var(--foreground-muted)]">Manage facilities, users, and system settings</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 text-sm">
+          <div className="px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-full font-medium">
+            Admin Mode Active
+          </div>
+          <div className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full">
+            Full Access
+          </div>
+        </div>
+      </div>
+
+      {/* Admin Tabs */}
+      <div className="card-neumorphic p-2">
+        <div className="flex flex-wrap gap-2">
+          {[
+            { id: 'overview', label: 'Overview', icon: BarChart2 },
+            { id: 'facilities', label: 'Facilities', icon: Building2 },
+            { id: 'users', label: 'Users', icon: Users },
+            { id: 'data', label: 'Data Management', icon: Database },
+            { id: 'settings', label: 'Settings', icon: Settings },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as typeof activeTab)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                activeTab === tab.id
+                  ? 'bg-red-500 text-white'
+                  : 'hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <tab.icon className="w-4 h-4" />
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Overview Tab */}
+      {activeTab === 'overview' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="card-neumorphic p-4 text-center">
+              <Building2 className="w-8 h-8 mx-auto mb-2 text-cyan-500" />
+              <p className="text-3xl font-bold">{stats?.totals?.facilities || facilities.length}</p>
+              <p className="text-sm text-[var(--foreground-muted)]">Total Facilities</p>
+            </div>
+            <div className="card-neumorphic p-4 text-center">
+              <Users className="w-8 h-8 mx-auto mb-2 text-purple-500" />
+              <p className="text-3xl font-bold">{stats?.totals?.quality_measures || '0'}</p>
+              <p className="text-sm text-[var(--foreground-muted)]">Quality Measures</p>
+            </div>
+            <div className="card-neumorphic p-4 text-center">
+              <FileText className="w-8 h-8 mx-auto mb-2 text-green-500" />
+              <p className="text-3xl font-bold">{stats?.totals?.surveys || '0'}</p>
+              <p className="text-sm text-[var(--foreground-muted)]">Surveys</p>
+            </div>
+            <div className="card-neumorphic p-4 text-center">
+              <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-amber-500" />
+              <p className="text-3xl font-bold">{stats?.totals?.penalties || '0'}</p>
+              <p className="text-sm text-[var(--foreground-muted)]">Penalties</p>
+            </div>
+          </div>
+
+          <div className="card-neumorphic p-6">
+            <h3 className="font-bold mb-4">Recent Activity Log</h3>
+            <div className="space-y-3">
+              {[
+                { action: 'Data sync completed', time: '2 minutes ago', type: 'success' },
+                { action: 'Admin login detected', time: 'Just now', type: 'info' },
+                { action: 'CMS data updated', time: '1 hour ago', type: 'success' },
+                { action: 'Report generated', time: '3 hours ago', type: 'info' },
+              ].map((log, i) => (
+                <div key={i} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-2 h-2 rounded-full ${log.type === 'success' ? 'bg-green-500' : 'bg-blue-500'}`} />
+                    <span>{log.action}</span>
+                  </div>
+                  <span className="text-sm text-[var(--foreground-muted)]">{log.time}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Facilities Tab */}
+      {activeTab === 'facilities' && (
+        <div className="card-neumorphic overflow-hidden">
+          <div className="p-4 border-b border-[var(--border-color)] bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between">
+            <h3 className="font-bold">Manage Facilities ({facilities.length})</h3>
+            <button className="btn-neumorphic px-4 py-2 text-sm flex items-center gap-2">
+              <Plus className="w-4 h-4" /> Add Facility
+            </button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-100 dark:bg-slate-800">
+                  <th className="text-left p-3">CCN</th>
+                  <th className="text-left p-3">Facility Name</th>
+                  <th className="text-left p-3">Company</th>
+                  <th className="text-center p-3">Rating</th>
+                  <th className="text-center p-3">Health</th>
+                  <th className="text-center p-3">Staffing</th>
+                  <th className="text-center p-3">QM</th>
+                  <th className="text-center p-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {facilities.map((f) => (
+                  <tr key={f.federalProviderNumber} className="border-b border-[var(--border-color)] hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                    <td className="p-3 font-mono text-xs">{f.federalProviderNumber}</td>
+                    <td className="p-3">
+                      {editingFacility === f.federalProviderNumber ? (
+                        <input
+                          type="text"
+                          defaultValue={f.shortName || f.providerName}
+                          onChange={(e) => setEditValues({ ...editValues, name: e.target.value })}
+                          className="input-neumorphic py-1 px-2 text-sm w-full"
+                        />
+                      ) : (
+                        <span className="font-medium">{f.shortName || f.providerName}</span>
+                      )}
+                    </td>
+                    <td className="p-3 text-[var(--foreground-muted)]">{f.company}</td>
+                    <td className="text-center p-3">
+                      {editingFacility === f.federalProviderNumber ? (
+                        <select
+                          defaultValue={f.overallRating || 0}
+                          onChange={(e) => setEditValues({ ...editValues, rating: e.target.value })}
+                          className="input-neumorphic py-1 px-2 text-sm w-16"
+                        >
+                          {[1, 2, 3, 4, 5].map((r) => (
+                            <option key={r} value={r}>{r}★</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className={`font-bold ${(f.overallRating || 0) >= 4 ? 'text-green-600' : (f.overallRating || 0) >= 3 ? 'text-yellow-600' : 'text-red-600'}`}>
+                          {f.overallRating || '-'}★
+                        </span>
+                      )}
+                    </td>
+                    <td className="text-center p-3">{f.healthInspectionRating || '-'}★</td>
+                    <td className="text-center p-3">{f.staffingRating || '-'}★</td>
+                    <td className="text-center p-3">{f.qualityMeasureRating || '-'}★</td>
+                    <td className="text-center p-3">
+                      {editingFacility === f.federalProviderNumber ? (
+                        <div className="flex items-center justify-center gap-1">
+                          <button onClick={() => handleSaveEdit(f.federalProviderNumber)} className="p-1 hover:bg-green-100 rounded text-green-600">
+                            <CheckCircle2 className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => { setEditingFacility(null); setEditValues({}); }} className="p-1 hover:bg-red-100 rounded text-red-600">
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center gap-1">
+                          <button onClick={() => setEditingFacility(f.federalProviderNumber)} className="p-1 hover:bg-blue-100 rounded text-blue-600" title="Edit">
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+                          <button className="p-1 hover:bg-red-100 rounded text-red-600" title="Delete">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Users Tab */}
+      {activeTab === 'users' && (
+        <div className="space-y-6">
+          <div className="card-neumorphic p-6">
+            <h3 className="font-bold mb-4">User Management</h3>
+            <p className="text-[var(--foreground-muted)] mb-4">Manage user accounts and permissions.</p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-100 dark:bg-slate-800">
+                    <th className="text-left p-3">Email</th>
+                    <th className="text-left p-3">Name</th>
+                    <th className="text-left p-3">Company</th>
+                    <th className="text-center p-3">Role</th>
+                    <th className="text-center p-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-[var(--border-color)]">
+                    <td className="p-3">hammy@example.com</td>
+                    <td className="p-3">Hammy Admin</td>
+                    <td className="p-3">Cascadia Healthcare</td>
+                    <td className="text-center p-3"><span className="px-2 py-1 bg-red-100 text-red-700 rounded-full text-xs">Admin</span></td>
+                    <td className="text-center p-3">
+                      <button className="p-1 hover:bg-blue-100 rounded text-blue-600"><Edit3 className="w-4 h-4" /></button>
+                    </td>
+                  </tr>
+                  <tr className="border-b border-[var(--border-color)]">
+                    <td className="p-3" colSpan={5}>
+                      <button className="flex items-center gap-2 text-cyan-600 hover:text-cyan-700">
+                        <Plus className="w-4 h-4" /> Add New User
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Data Management Tab */}
+      {activeTab === 'data' && (
+        <div className="space-y-6">
+          <div className="card-neumorphic p-6">
+            <h3 className="font-bold mb-4">Data Synchronization</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="font-medium">CMS Data Sync</span>
+                  <span className="text-green-600 text-sm flex items-center gap-1">
+                    <CheckCircle2 className="w-4 h-4" /> Up to date
+                  </span>
+                </div>
+                <p className="text-sm text-[var(--foreground-muted)] mb-3">Last synced: {new Date().toLocaleString()}</p>
+                <button className="btn-neumorphic px-4 py-2 text-sm w-full flex items-center justify-center gap-2">
+                  <RefreshCw className="w-4 h-4" /> Force Sync Now
+                </button>
+              </div>
+              <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="font-medium">Database Backup</span>
+                  <span className="text-blue-600 text-sm">Automatic</span>
+                </div>
+                <p className="text-sm text-[var(--foreground-muted)] mb-3">Daily backups at 2:00 AM UTC</p>
+                <button className="btn-neumorphic px-4 py-2 text-sm w-full flex items-center justify-center gap-2">
+                  <Download className="w-4 h-4" /> Download Backup
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="card-neumorphic p-6">
+            <h3 className="font-bold mb-4">Import/Export</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <button className="p-4 bg-green-50 dark:bg-green-900/20 rounded-xl hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors text-left">
+                <Upload className="w-8 h-8 text-green-600 mb-2" />
+                <h4 className="font-medium">Import Data</h4>
+                <p className="text-sm text-[var(--foreground-muted)]">Upload CSV or JSON files</p>
+              </button>
+              <button className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors text-left">
+                <Download className="w-8 h-8 text-blue-600 mb-2" />
+                <h4 className="font-medium">Export Data</h4>
+                <p className="text-sm text-[var(--foreground-muted)]">Download facility data</p>
+              </button>
+              <button className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-xl hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors text-left">
+                <FileSpreadsheet className="w-8 h-8 text-purple-600 mb-2" />
+                <h4 className="font-medium">Generate Reports</h4>
+                <p className="text-sm text-[var(--foreground-muted)]">Create custom reports</p>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Settings Tab */}
+      {activeTab === 'settings' && (
+        <div className="space-y-6">
+          <div className="card-neumorphic p-6">
+            <h3 className="font-bold mb-4">System Settings</h3>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+                <div>
+                  <h4 className="font-medium">Auto-sync CMS Data</h4>
+                  <p className="text-sm text-[var(--foreground-muted)]">Automatically fetch updates from CMS</p>
+                </div>
+                <button className="w-12 h-6 bg-green-500 rounded-full relative">
+                  <div className="w-5 h-5 bg-white rounded-full absolute right-0.5 top-0.5 shadow" />
+                </button>
+              </div>
+              <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+                <div>
+                  <h4 className="font-medium">Email Notifications</h4>
+                  <p className="text-sm text-[var(--foreground-muted)]">Send alerts on rating changes</p>
+                </div>
+                <button className="w-12 h-6 bg-green-500 rounded-full relative">
+                  <div className="w-5 h-5 bg-white rounded-full absolute right-0.5 top-0.5 shadow" />
+                </button>
+              </div>
+              <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+                <div>
+                  <h4 className="font-medium">Public API Access</h4>
+                  <p className="text-sm text-[var(--foreground-muted)]">Allow external API requests</p>
+                </div>
+                <button className="w-12 h-6 bg-slate-300 rounded-full relative">
+                  <div className="w-5 h-5 bg-white rounded-full absolute left-0.5 top-0.5 shadow" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="card-neumorphic p-6 border-red-200 dark:border-red-800 border">
+            <h3 className="font-bold mb-4 text-red-600">Danger Zone</h3>
+            <div className="space-y-3">
+              <button className="w-full p-3 bg-red-50 dark:bg-red-900/20 text-red-600 rounded-xl hover:bg-red-100 dark:hover:bg-red-900/30 text-left flex items-center gap-3">
+                <Trash2 className="w-5 h-5" />
+                <div>
+                  <span className="font-medium">Clear Cache</span>
+                  <p className="text-sm opacity-75">Remove all cached data</p>
+                </div>
+              </button>
+              <button className="w-full p-3 bg-red-50 dark:bg-red-900/20 text-red-600 rounded-xl hover:bg-red-100 dark:hover:bg-red-900/30 text-left flex items-center gap-3">
+                <AlertTriangle className="w-5 h-5" />
+                <div>
+                  <span className="font-medium">Reset Database</span>
+                  <p className="text-sm opacity-75">Restore to default state (irreversible)</p>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -259,6 +259,15 @@ export interface FacilitySearchResult {
   numberOfBeds: number;
 }
 
+// Rating history entry for tracking changes over time
+export interface RatingHistoryEntry {
+  ratingDate: string;
+  overallRating: number;
+  healthRating: number;
+  staffingRating: number;
+  qmRating: number;
+}
+
 // Full facility analysis combining all data
 export interface FacilityAnalysis {
   facility: Facility;
@@ -269,6 +278,7 @@ export interface FacilityAnalysis {
   penalties: Penalty[];
   complaints: Complaint[];
   recommendations: ImprovementRecommendation[];
+  ratingHistory?: RatingHistoryEntry[];
 }
 
 // ==========================================
