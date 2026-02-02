@@ -6615,7 +6615,7 @@ function PlanPreviewView({
                 { name: 'Action Plan Template', desc: 'Structured improvement action tracker with SMART goals', icon: CheckCircle2 },
                 { name: 'Root Cause Analysis', desc: 'Five Whys and fishbone diagram templates for systematic analysis', icon: Search },
                 { name: 'Staff Training Log', desc: 'Track education, competency, and annual requirements', icon: BookOpen },
-                { name: 'Mock Survey Checklist', desc: 'Comprehensive survey readiness self-assessment tool', icon: ClipboardList },
+                { name: 'Mock Survey Checklist', desc: 'Comprehensive survey readiness self-assessment tool', icon: ListChecks },
                 { name: 'Plan of Correction Template', desc: 'POC template meeting CMS format requirements', icon: FileText },
               ].map((template) => (
                 <button key={template.name} className="btn-neumorphic p-4 text-left flex items-start gap-3">
