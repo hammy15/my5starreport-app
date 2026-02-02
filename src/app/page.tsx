@@ -1122,56 +1122,28 @@ export default function HomePage() {
                 title="Health Inspections"
                 description="Survey analysis & deficiency tracking"
                 color="blue"
-                tooltip="Health inspections account for 53% of your overall star rating—the largest component. CMS evaluates your last 3 years of standard surveys and complaint investigations, weighting recent results more heavily."
-                valueProps={[
-                  "View complete survey history with deficiency details",
-                  "Understand F-tag severity levels and scope",
-                  "Track improvement trends over time",
-                  "Identify patterns to prepare for future surveys",
-                  "Compare your performance to state and national averages"
-                ]}
+                tooltip="53% of your star rating. View survey history, F-tags, and deficiency trends."
               />
               <FeatureCard
                 icon={<UserCheck className="w-6 h-6" />}
                 title="Staffing Analysis"
                 description="PBJ data & HPRD optimization"
                 color="cyan"
-                tooltip="Staffing represents 32% of your star rating. CMS uses Payroll-Based Journal (PBJ) data to calculate your Hours Per Resident Day (HPRD) for total nursing staff and RNs specifically, including weekend consistency adjustments."
-                valueProps={[
-                  "Calculate exact HPRD thresholds needed for each star level",
-                  "Identify staffing gaps before CMS does",
-                  "Prepare for 2026-2027 minimum staffing requirements",
-                  "Optimize scheduling to meet weekend staffing benchmarks",
-                  "Benchmark against top-performing facilities in your state"
-                ]}
+                tooltip="32% of your star rating. Track HPRD levels and weekend staffing compliance."
               />
               <FeatureCard
                 icon={<TrendingUp className="w-6 h-6" />}
                 title="Quality Measures"
                 description="Clinical outcomes & benchmarks"
                 color="purple"
-                tooltip="Quality Measures (15% of your rating) are clinical outcome indicators derived from MDS assessments. CMS tracks 15+ measures for long-stay residents and 7+ for short-stay residents, including falls, pressure ulcers, and antipsychotic use."
-                valueProps={[
-                  "Monitor all short-stay and long-stay quality measures",
-                  "Identify measures dragging down your QM rating",
-                  "Get actionable improvement recommendations",
-                  "Track antipsychotic reduction progress",
-                  "Compare clinical outcomes to state benchmarks"
-                ]}
+                tooltip="15% of your star rating. Monitor clinical outcomes from MDS assessments."
               />
               <FeatureCard
                 icon={<GraduationCap className="w-6 h-6" />}
                 title="Training"
                 description="Resources to improve ratings"
                 color="green"
-                tooltip="Access comprehensive training modules designed specifically for skilled nursing professionals. Learn the CMS methodology, understand exactly how your ratings are calculated, and implement proven strategies to improve performance."
-                valueProps={[
-                  "Learn from industry-expert 5 Star Phil",
-                  "Master PBJ reporting and HPRD calculations",
-                  "Understand F-tags and survey preparation",
-                  "Access CMS resources and official guidance",
-                  "Get practical tools and checklists for improvement"
-                ]}
+                tooltip="Expert-led training on CMS methodology, PBJ reporting, and survey prep."
               />
             </div>
 
@@ -1555,14 +1527,12 @@ function FeatureCard({
   description,
   color,
   tooltip,
-  valueProps,
 }: {
   icon: React.ReactNode;
   title: string;
   description: string;
   color: 'blue' | 'cyan' | 'purple' | 'green';
   tooltip?: string;
-  valueProps?: string[];
 }) {
   const [showTooltip, setShowTooltip] = useState(false);
 
@@ -1573,11 +1543,11 @@ function FeatureCard({
     green: 'from-green-400 to-green-600',
   };
 
-  const borderColors = {
-    blue: 'border-blue-400',
-    cyan: 'border-cyan-400',
-    purple: 'border-purple-400',
-    green: 'border-green-400',
+  const bgColors = {
+    blue: 'bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-700',
+    cyan: 'bg-cyan-50 dark:bg-cyan-900/30 border-cyan-200 dark:border-cyan-700',
+    purple: 'bg-purple-50 dark:bg-purple-900/30 border-purple-200 dark:border-purple-700',
+    green: 'bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-700',
   };
 
   return (
@@ -1592,25 +1562,11 @@ function FeatureCard({
       <h3 className="font-semibold text-[var(--foreground)] mb-2">{title}</h3>
       <p className="text-sm text-[var(--foreground-muted)]">{description}</p>
 
-      {/* Hover Tooltip */}
-      {(tooltip || valueProps) && showTooltip && (
-        <div className={`absolute left-0 right-0 top-full mt-2 z-50 p-4 rounded-xl bg-white dark:bg-slate-800 shadow-2xl border-2 ${borderColors[color]} animate-fade-in`}>
-          {tooltip && (
-            <p className="text-sm text-[var(--foreground-muted)] mb-3">{tooltip}</p>
-          )}
-          {valueProps && valueProps.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-[var(--foreground)] uppercase tracking-wide">Value Delivered:</p>
-              <ul className="space-y-1">
-                {valueProps.map((prop, idx) => (
-                  <li key={idx} className="text-xs text-[var(--foreground-muted)] flex items-start gap-2">
-                    <CheckCircle2 className={`w-3 h-3 mt-0.5 flex-shrink-0 ${color === 'blue' ? 'text-blue-500' : color === 'cyan' ? 'text-cyan-500' : color === 'purple' ? 'text-purple-500' : 'text-green-500'}`} />
-                    <span>{prop}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+      {/* Brief Hover Tooltip */}
+      {tooltip && showTooltip && (
+        <div className={`absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-50 px-3 py-2 rounded-lg ${bgColors[color]} border shadow-lg animate-fade-in max-w-[280px] text-center`}>
+          <p className="text-xs text-[var(--foreground-muted)]">{tooltip}</p>
+          <div className={`absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-transparent ${color === 'blue' ? 'border-t-blue-200 dark:border-t-blue-700' : color === 'cyan' ? 'border-t-cyan-200 dark:border-t-cyan-700' : color === 'purple' ? 'border-t-purple-200 dark:border-t-purple-700' : 'border-t-green-200 dark:border-t-green-700'}`} />
         </div>
       )}
     </div>
