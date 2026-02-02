@@ -1122,24 +1122,56 @@ export default function HomePage() {
                 title="Health Inspections"
                 description="Survey analysis & deficiency tracking"
                 color="blue"
+                tooltip="Health inspections account for 53% of your overall star rating—the largest component. CMS evaluates your last 3 years of standard surveys and complaint investigations, weighting recent results more heavily."
+                valueProps={[
+                  "View complete survey history with deficiency details",
+                  "Understand F-tag severity levels and scope",
+                  "Track improvement trends over time",
+                  "Identify patterns to prepare for future surveys",
+                  "Compare your performance to state and national averages"
+                ]}
               />
               <FeatureCard
                 icon={<UserCheck className="w-6 h-6" />}
                 title="Staffing Analysis"
                 description="PBJ data & HPRD optimization"
                 color="cyan"
+                tooltip="Staffing represents 32% of your star rating. CMS uses Payroll-Based Journal (PBJ) data to calculate your Hours Per Resident Day (HPRD) for total nursing staff and RNs specifically, including weekend consistency adjustments."
+                valueProps={[
+                  "Calculate exact HPRD thresholds needed for each star level",
+                  "Identify staffing gaps before CMS does",
+                  "Prepare for 2026-2027 minimum staffing requirements",
+                  "Optimize scheduling to meet weekend staffing benchmarks",
+                  "Benchmark against top-performing facilities in your state"
+                ]}
               />
               <FeatureCard
                 icon={<TrendingUp className="w-6 h-6" />}
                 title="Quality Measures"
                 description="Clinical outcomes & benchmarks"
                 color="purple"
+                tooltip="Quality Measures (15% of your rating) are clinical outcome indicators derived from MDS assessments. CMS tracks 15+ measures for long-stay residents and 7+ for short-stay residents, including falls, pressure ulcers, and antipsychotic use."
+                valueProps={[
+                  "Monitor all short-stay and long-stay quality measures",
+                  "Identify measures dragging down your QM rating",
+                  "Get actionable improvement recommendations",
+                  "Track antipsychotic reduction progress",
+                  "Compare clinical outcomes to state benchmarks"
+                ]}
               />
               <FeatureCard
                 icon={<GraduationCap className="w-6 h-6" />}
                 title="Training"
                 description="Resources to improve ratings"
                 color="green"
+                tooltip="Access comprehensive training modules designed specifically for skilled nursing professionals. Learn the CMS methodology, understand exactly how your ratings are calculated, and implement proven strategies to improve performance."
+                valueProps={[
+                  "Learn from industry-expert 5 Star Phil",
+                  "Master PBJ reporting and HPRD calculations",
+                  "Understand F-tags and survey preparation",
+                  "Access CMS resources and official guidance",
+                  "Get practical tools and checklists for improvement"
+                ]}
               />
             </div>
 
@@ -1443,10 +1475,10 @@ export default function HomePage() {
             <div>
               <h4 className="font-semibold mb-3 text-sm">Resources</h4>
               <ul className="space-y-2 text-sm text-[var(--foreground-muted)]">
-                <li><a href="#" className="hover:text-cyan-500 transition-colors">How Ratings Work</a></li>
-                <li><a href="#" className="hover:text-cyan-500 transition-colors">HPRD Calculator</a></li>
-                <li><a href="#" className="hover:text-cyan-500 transition-colors">QM Definitions</a></li>
-                <li><a href="#" className="hover:text-cyan-500 transition-colors">F-Tag Reference</a></li>
+                <li><a href="https://www.cms.gov/medicare/health-safety-standards/certification-compliance/nursing-homes/five-star-quality-rating-system" target="_blank" rel="noopener noreferrer" className="hover:text-cyan-500 transition-colors">How Ratings Work</a></li>
+                <li><a href="https://www.cms.gov/medicare/quality/nursing-home-improvement/staffing-data-submission-pbj" target="_blank" rel="noopener noreferrer" className="hover:text-cyan-500 transition-colors">PBJ & HPRD Guide</a></li>
+                <li><a href="https://www.cms.gov/medicare/quality/nursing-home-improvement/quality-measures" target="_blank" rel="noopener noreferrer" className="hover:text-cyan-500 transition-colors">QM Specifications</a></li>
+                <li><a href="https://www.cms.gov/regulations-and-guidance/guidance/manuals/downloads/som107ap_pp_guidelines_ltcf.pdf" target="_blank" rel="noopener noreferrer" className="hover:text-cyan-500 transition-colors">F-Tag Reference (SOM)</a></li>
               </ul>
             </div>
 
@@ -1454,10 +1486,10 @@ export default function HomePage() {
             <div>
               <h4 className="font-semibold mb-3 text-sm">Support</h4>
               <ul className="space-y-2 text-sm text-[var(--foreground-muted)]">
-                <li><a href="#" className="hover:text-cyan-500 transition-colors">Help Center</a></li>
-                <li><a href="#" className="hover:text-cyan-500 transition-colors">Contact Us</a></li>
-                <li><a href="#" className="hover:text-cyan-500 transition-colors">Privacy Policy</a></li>
-                <li><a href="#" className="hover:text-cyan-500 transition-colors">Terms of Service</a></li>
+                <li><a href="https://www.medicare.gov/care-compare/" target="_blank" rel="noopener noreferrer" className="hover:text-cyan-500 transition-colors">CMS Care Compare</a></li>
+                <li><a href="mailto:support@my5starreport.com" className="hover:text-cyan-500 transition-colors">Contact Us</a></li>
+                <li><a href="https://www.cms.gov/medicare/health-safety-standards/quality-safety-oversight-guidance-information" target="_blank" rel="noopener noreferrer" className="hover:text-cyan-500 transition-colors">QSO Memos</a></li>
+                <li><a href="https://www.cms.gov/About-CMS/Agency-Information/Aboutwebsite/Privacy-Policy" target="_blank" rel="noopener noreferrer" className="hover:text-cyan-500 transition-colors">Privacy Policy</a></li>
               </ul>
             </div>
           </div>
@@ -1516,18 +1548,24 @@ function NavButton({
   );
 }
 
-// Feature card with neumorphic style
+// Feature card with neumorphic style and hover tooltip
 function FeatureCard({
   icon,
   title,
   description,
   color,
+  tooltip,
+  valueProps,
 }: {
   icon: React.ReactNode;
   title: string;
   description: string;
   color: 'blue' | 'cyan' | 'purple' | 'green';
+  tooltip?: string;
+  valueProps?: string[];
 }) {
+  const [showTooltip, setShowTooltip] = useState(false);
+
   const colorClasses = {
     blue: 'from-blue-400 to-blue-600',
     cyan: 'from-cyan-400 to-cyan-600',
@@ -1535,13 +1573,46 @@ function FeatureCard({
     green: 'from-green-400 to-green-600',
   };
 
+  const borderColors = {
+    blue: 'border-blue-400',
+    cyan: 'border-cyan-400',
+    purple: 'border-purple-400',
+    green: 'border-green-400',
+  };
+
   return (
-    <div className="card-neumorphic p-6 hover:scale-[1.02] transition-transform cursor-pointer">
+    <div
+      className="card-neumorphic p-6 hover:scale-[1.02] transition-all cursor-pointer relative group"
+      onMouseEnter={() => setShowTooltip(true)}
+      onMouseLeave={() => setShowTooltip(false)}
+    >
       <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${colorClasses[color]} flex items-center justify-center mb-4 shadow-lg`}>
         <div className="text-white">{icon}</div>
       </div>
       <h3 className="font-semibold text-[var(--foreground)] mb-2">{title}</h3>
       <p className="text-sm text-[var(--foreground-muted)]">{description}</p>
+
+      {/* Hover Tooltip */}
+      {(tooltip || valueProps) && showTooltip && (
+        <div className={`absolute left-0 right-0 top-full mt-2 z-50 p-4 rounded-xl bg-white dark:bg-slate-800 shadow-2xl border-2 ${borderColors[color]} animate-fade-in`}>
+          {tooltip && (
+            <p className="text-sm text-[var(--foreground-muted)] mb-3">{tooltip}</p>
+          )}
+          {valueProps && valueProps.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-[var(--foreground)] uppercase tracking-wide">Value Delivered:</p>
+              <ul className="space-y-1">
+                {valueProps.map((prop, idx) => (
+                  <li key={idx} className="text-xs text-[var(--foreground-muted)] flex items-start gap-2">
+                    <CheckCircle2 className={`w-3 h-3 mt-0.5 flex-shrink-0 ${color === 'blue' ? 'text-blue-500' : color === 'cyan' ? 'text-cyan-500' : color === 'purple' ? 'text-purple-500' : 'text-green-500'}`} />
+                    <span>{prop}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -6265,18 +6336,287 @@ function PlanPreviewView({
       {/* Resources Tab */}
       {activeTab === 'resources' && (
         <div className="space-y-6">
-          {/* Templates */}
+          {/* Five-Star Rating System Overview */}
           <div className="card-neumorphic p-6">
             <h3 className="font-semibold mb-4 flex items-center gap-2">
-              <FileText className="w-5 h-5 text-blue-500" />
-              Plan Templates
+              <Star className="w-5 h-5 text-yellow-500" />
+              CMS Five-Star Quality Rating System
+            </h3>
+            <div className="prose prose-sm dark:prose-invert max-w-none">
+              <p className="text-[var(--foreground-muted)] mb-4">
+                The Five-Star Quality Rating System was created by the Centers for Medicare & Medicaid Services (CMS) to help consumers, families, and caregivers compare nursing homes more easily. The overall rating is based on three component ratings, each weighted differently.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div className="p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+                  <div className="text-2xl font-bold text-red-600 dark:text-red-400">53%</div>
+                  <div className="font-semibold">Health Inspections</div>
+                  <p className="text-xs text-[var(--foreground-muted)] mt-1">Based on the 3 most recent annual surveys and complaint investigations. More recent surveys weighted more heavily.</p>
+                </div>
+                <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                  <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">32%</div>
+                  <div className="font-semibold">Staffing</div>
+                  <p className="text-xs text-[var(--foreground-muted)] mt-1">Based on RN hours per resident day and total nursing hours from Payroll-Based Journal (PBJ) data.</p>
+                </div>
+                <div className="p-4 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+                  <div className="text-2xl font-bold text-green-600 dark:text-green-400">15%</div>
+                  <div className="font-semibold">Quality Measures</div>
+                  <p className="text-xs text-[var(--foreground-muted)] mt-1">Based on physical and clinical measures from MDS assessments for short-stay and long-stay residents.</p>
+                </div>
+              </div>
+              <div className="text-xs text-[var(--foreground-muted)] italic">
+                Source: CMS Five-Star Quality Rating System Technical Users' Guide (October 2024)
+              </div>
+            </div>
+          </div>
+
+          {/* Key Definitions & Terminology */}
+          <div className="card-neumorphic p-6">
+            <h3 className="font-semibold mb-4 flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-cyan-500" />
+              Key Definitions & Terminology
+            </h3>
+            <div className="space-y-4">
+              <details className="group">
+                <summary className="cursor-pointer p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 font-medium flex items-center justify-between">
+                  <span>HPRD (Hours Per Resident Day)</span>
+                  <ChevronDown className="w-4 h-4 group-open:rotate-180 transition-transform" />
+                </summary>
+                <div className="mt-2 p-4 text-sm text-[var(--foreground-muted)] border-l-2 border-cyan-500 ml-4">
+                  <p className="mb-2"><strong>Definition:</strong> HPRD measures the total amount of nursing staff time available for each resident over a 24-hour period. It is calculated by dividing total nursing staff hours worked by the facility's census.</p>
+                  <p className="mb-2"><strong>Formula:</strong> HPRD = Total Nursing Hours ÷ Total Resident Days</p>
+                  <p className="mb-2"><strong>Categories:</strong> CMS tracks Total Nursing HPRD (all nursing staff) and RN HPRD (registered nurses only) separately.</p>
+                  <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                    <strong>CMS Minimum Staffing Rule (Effective 2026-2027):</strong>
+                    <ul className="list-disc ml-4 mt-1">
+                      <li>Total nursing HPRD: 3.48 minimum</li>
+                      <li>RN HPRD: 0.55 minimum</li>
+                      <li>24/7 on-site RN coverage required</li>
+                    </ul>
+                  </div>
+                </div>
+              </details>
+
+              <details className="group">
+                <summary className="cursor-pointer p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 font-medium flex items-center justify-between">
+                  <span>PBJ (Payroll-Based Journal)</span>
+                  <ChevronDown className="w-4 h-4 group-open:rotate-180 transition-transform" />
+                </summary>
+                <div className="mt-2 p-4 text-sm text-[var(--foreground-muted)] border-l-2 border-cyan-500 ml-4">
+                  <p className="mb-2"><strong>Definition:</strong> PBJ is the mandatory electronic staffing data submission system that nursing facilities use to report staffing information to CMS. Data is submitted quarterly.</p>
+                  <p className="mb-2"><strong>Required Data:</strong> Hours worked by employee category, job titles, employee IDs, pay period information, and census data.</p>
+                  <p className="mb-2"><strong>Submission Deadlines:</strong> Data must be submitted within 45 days after the end of each quarter (Q1: May 15, Q2: Aug 14, Q3: Nov 14, Q4: Feb 14).</p>
+                  <p className="mb-2"><strong>Source:</strong> Section 6106 of the Affordable Care Act mandated PBJ reporting beginning in 2016.</p>
+                </div>
+              </details>
+
+              <details className="group">
+                <summary className="cursor-pointer p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 font-medium flex items-center justify-between">
+                  <span>MDS (Minimum Data Set)</span>
+                  <ChevronDown className="w-4 h-4 group-open:rotate-180 transition-transform" />
+                </summary>
+                <div className="mt-2 p-4 text-sm text-[var(--foreground-muted)] border-l-2 border-cyan-500 ml-4">
+                  <p className="mb-2"><strong>Definition:</strong> MDS is a standardized, comprehensive assessment tool used for all residents of Medicare/Medicaid certified nursing homes. It forms the foundation of clinical assessment and care planning.</p>
+                  <p className="mb-2"><strong>Current Version:</strong> MDS 3.0 (implemented October 2010)</p>
+                  <p className="mb-2"><strong>Assessment Types:</strong></p>
+                  <ul className="list-disc ml-4">
+                    <li>Admission Assessment (within 14 days)</li>
+                    <li>Quarterly Review (every 92 days)</li>
+                    <li>Annual Assessment (within 366 days of last comprehensive)</li>
+                    <li>Significant Change in Status Assessment (SCSA)</li>
+                    <li>Discharge Assessment</li>
+                  </ul>
+                  <p className="mt-2"><strong>Purpose:</strong> MDS data drives quality measures, care planning, reimbursement (RUG/PDPM), and quality reporting.</p>
+                </div>
+              </details>
+
+              <details className="group">
+                <summary className="cursor-pointer p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 font-medium flex items-center justify-between">
+                  <span>F-Tags (Federal Tags)</span>
+                  <ChevronDown className="w-4 h-4 group-open:rotate-180 transition-transform" />
+                </summary>
+                <div className="mt-2 p-4 text-sm text-[var(--foreground-muted)] border-l-2 border-cyan-500 ml-4">
+                  <p className="mb-2"><strong>Definition:</strong> F-Tags are regulatory citations issued during nursing home surveys when facilities fail to meet federal requirements. Each F-Tag corresponds to a specific regulatory requirement in 42 CFR Part 483.</p>
+                  <p className="mb-2"><strong>Severity Levels (Scope/Severity Grid):</strong></p>
+                  <div className="grid grid-cols-4 gap-1 text-xs mt-2 mb-3">
+                    <div className="p-1 bg-green-100 dark:bg-green-900/30 text-center">A-C: No harm</div>
+                    <div className="p-1 bg-yellow-100 dark:bg-yellow-900/30 text-center">D-F: Potential harm</div>
+                    <div className="p-1 bg-orange-100 dark:bg-orange-900/30 text-center">G-I: Actual harm</div>
+                    <div className="p-1 bg-red-100 dark:bg-red-900/30 text-center">J-L: Immediate jeopardy</div>
+                  </div>
+                  <p><strong>Common High-Impact F-Tags:</strong></p>
+                  <ul className="list-disc ml-4 mt-1">
+                    <li>F880 - Infection Prevention and Control</li>
+                    <li>F684 - Quality of Care</li>
+                    <li>F686 - Treatment/Services to Prevent Pressure Ulcers</li>
+                    <li>F689 - Free of Accident Hazards/Supervision/Devices</li>
+                    <li>F758 - Free from Unnecessary Psychotropic Medications</li>
+                  </ul>
+                </div>
+              </details>
+
+              <details className="group">
+                <summary className="cursor-pointer p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 font-medium flex items-center justify-between">
+                  <span>Quality Measures (QMs)</span>
+                  <ChevronDown className="w-4 h-4 group-open:rotate-180 transition-transform" />
+                </summary>
+                <div className="mt-2 p-4 text-sm text-[var(--foreground-muted)] border-l-2 border-cyan-500 ml-4">
+                  <p className="mb-2"><strong>Definition:</strong> Quality Measures are objective, data-driven indicators of care quality derived from MDS assessments and Medicare claims data.</p>
+                  <p className="mb-2"><strong>Long-Stay Measures (residents 101+ days):</strong></p>
+                  <ul className="list-disc ml-4 mb-2">
+                    <li>Percentage of residents with pressure ulcers (high risk)</li>
+                    <li>Percentage of residents who received antipsychotic medication</li>
+                    <li>Percentage of residents experiencing falls with major injury</li>
+                    <li>Percentage of residents with UTI</li>
+                    <li>Percentage of residents with increased need for ADL assistance</li>
+                    <li>Percentage of residents who lose too much weight</li>
+                    <li>Percentage of residents with catheter inserted and left in bladder</li>
+                    <li>Percentage of residents physically restrained</li>
+                  </ul>
+                  <p className="mb-2"><strong>Short-Stay Measures (residents ≤100 days):</strong></p>
+                  <ul className="list-disc ml-4">
+                    <li>Percentage of residents with pressure ulcers that are new or worsened</li>
+                    <li>Percentage of residents who were rehospitalized</li>
+                    <li>Percentage of residents who made improvements in function</li>
+                    <li>Percentage of residents who were successfully discharged to community</li>
+                    <li>Percentage of residents who received antipsychotic medication</li>
+                  </ul>
+                </div>
+              </details>
+
+              <details className="group">
+                <summary className="cursor-pointer p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 font-medium flex items-center justify-between">
+                  <span>SFF (Special Focus Facility)</span>
+                  <ChevronDown className="w-4 h-4 group-open:rotate-180 transition-transform" />
+                </summary>
+                <div className="mt-2 p-4 text-sm text-[var(--foreground-muted)] border-l-2 border-cyan-500 ml-4">
+                  <p className="mb-2"><strong>Definition:</strong> SFF is a CMS program that identifies nursing homes with a history of serious quality issues for enhanced oversight. These facilities receive surveys approximately twice per year.</p>
+                  <p className="mb-2"><strong>Selection Criteria:</strong> Facilities are selected based on a scoring system that considers:</p>
+                  <ul className="list-disc ml-4 mb-2">
+                    <li>Number and severity of deficiencies over 3 years</li>
+                    <li>Substantiated complaints</li>
+                    <li>Citations for actual harm or immediate jeopardy</li>
+                  </ul>
+                  <p className="mb-2"><strong>Consequences:</strong> SFF facilities face progressive enforcement actions if they don't improve, potentially including termination from Medicare/Medicaid.</p>
+                  <p><strong>SFF Candidates:</strong> Facilities on the "candidate list" are being considered for SFF designation and should take immediate corrective action.</p>
+                </div>
+              </details>
+
+              <details className="group">
+                <summary className="cursor-pointer p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 font-medium flex items-center justify-between">
+                  <span>QAPI (Quality Assurance & Performance Improvement)</span>
+                  <ChevronDown className="w-4 h-4 group-open:rotate-180 transition-transform" />
+                </summary>
+                <div className="mt-2 p-4 text-sm text-[var(--foreground-muted)] border-l-2 border-cyan-500 ml-4">
+                  <p className="mb-2"><strong>Definition:</strong> QAPI is a data-driven, proactive approach to improving the quality of life, care, and services in nursing homes. Required by CMS at 42 CFR 483.75.</p>
+                  <p className="mb-2"><strong>Five Elements of QAPI:</strong></p>
+                  <ol className="list-decimal ml-4 mb-2">
+                    <li><strong>Design & Scope:</strong> Ongoing program addressing all systems of care</li>
+                    <li><strong>Governance & Leadership:</strong> Board/governing body accountability</li>
+                    <li><strong>Feedback, Data Systems & Monitoring:</strong> Using data to monitor care and identify problems</li>
+                    <li><strong>Performance Improvement Projects (PIPs):</strong> Focused improvement activities</li>
+                    <li><strong>Systematic Analysis & Systemic Action:</strong> Root cause analysis for problems</li>
+                  </ol>
+                  <p><strong>Requirements:</strong> Written QAPI plan, designated QAPI officer, regular committee meetings, documented PIPs, staff training.</p>
+                </div>
+              </details>
+
+              <details className="group">
+                <summary className="cursor-pointer p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 font-medium flex items-center justify-between">
+                  <span>PDPM (Patient-Driven Payment Model)</span>
+                  <ChevronDown className="w-4 h-4 group-open:rotate-180 transition-transform" />
+                </summary>
+                <div className="mt-2 p-4 text-sm text-[var(--foreground-muted)] border-l-2 border-cyan-500 ml-4">
+                  <p className="mb-2"><strong>Definition:</strong> PDPM is the Medicare reimbursement system for skilled nursing facilities, implemented October 2019, replacing the previous RUG-IV system.</p>
+                  <p className="mb-2"><strong>Payment Components:</strong></p>
+                  <ul className="list-disc ml-4 mb-2">
+                    <li>Physical Therapy (PT)</li>
+                    <li>Occupational Therapy (OT)</li>
+                    <li>Speech-Language Pathology (SLP)</li>
+                    <li>Nursing</li>
+                    <li>Non-Therapy Ancillaries (NTA)</li>
+                  </ul>
+                  <p className="mb-2"><strong>Key Changes from RUG-IV:</strong> Removed therapy minutes as payment driver; payment based on patient characteristics and needs rather than volume of services provided.</p>
+                  <p><strong>Data Source:</strong> MDS assessments drive PDPM classification and payment.</p>
+                </div>
+              </details>
+            </div>
+          </div>
+
+          {/* Staffing Thresholds Reference */}
+          <div className="card-neumorphic p-6">
+            <h3 className="font-semibold mb-4 flex items-center gap-2">
+              <Users className="w-5 h-5 text-blue-500" />
+              CMS Staffing Rating Thresholds
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--border-color)]">
+                    <th className="text-left p-3 font-semibold">Star Rating</th>
+                    <th className="text-left p-3 font-semibold">Total Nursing HPRD</th>
+                    <th className="text-left p-3 font-semibold">RN HPRD</th>
+                    <th className="text-left p-3 font-semibold">Case-Mix Adjusted</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-[var(--border-color)] bg-green-50 dark:bg-green-900/10">
+                    <td className="p-3 font-medium">⭐⭐⭐⭐⭐ 5 Stars</td>
+                    <td className="p-3">≥ 4.08</td>
+                    <td className="p-3">≥ 0.75</td>
+                    <td className="p-3">Top 20%</td>
+                  </tr>
+                  <tr className="border-b border-[var(--border-color)] bg-emerald-50 dark:bg-emerald-900/10">
+                    <td className="p-3 font-medium">⭐⭐⭐⭐ 4 Stars</td>
+                    <td className="p-3">≥ 3.58</td>
+                    <td className="p-3">≥ 0.55</td>
+                    <td className="p-3">20-40%</td>
+                  </tr>
+                  <tr className="border-b border-[var(--border-color)] bg-yellow-50 dark:bg-yellow-900/10">
+                    <td className="p-3 font-medium">⭐⭐⭐ 3 Stars</td>
+                    <td className="p-3">≥ 3.18</td>
+                    <td className="p-3">≥ 0.40</td>
+                    <td className="p-3">40-60%</td>
+                  </tr>
+                  <tr className="border-b border-[var(--border-color)] bg-orange-50 dark:bg-orange-900/10">
+                    <td className="p-3 font-medium">⭐⭐ 2 Stars</td>
+                    <td className="p-3">≥ 2.82</td>
+                    <td className="p-3">≥ 0.30</td>
+                    <td className="p-3">60-80%</td>
+                  </tr>
+                  <tr className="bg-red-50 dark:bg-red-900/10">
+                    <td className="p-3 font-medium">⭐ 1 Star</td>
+                    <td className="p-3">{"<"} 2.82</td>
+                    <td className="p-3">{"<"} 0.30</td>
+                    <td className="p-3">Bottom 20%</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div className="mt-4 p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+              <h4 className="font-semibold text-blue-700 dark:text-blue-300 mb-2">Weekend Staffing Adjustment</h4>
+              <p className="text-sm text-[var(--foreground-muted)]">
+                CMS applies a weekend staffing adjustment. Facilities with weekend total nurse staffing levels more than 12.5% lower than weekday levels receive a one-star reduction in their staffing rating. This ensures adequate care coverage throughout the week.
+              </p>
+            </div>
+            <p className="text-xs text-[var(--foreground-muted)] mt-3 italic">
+              Source: CMS Five-Star Quality Rating System Technical Users' Guide, October 2024
+            </p>
+          </div>
+
+          {/* Plan Templates */}
+          <div className="card-neumorphic p-6">
+            <h3 className="font-semibold mb-4 flex items-center gap-2">
+              <FileText className="w-5 h-5 text-purple-500" />
+              Plan Templates & Tools
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[
-                { name: 'QAPI Project Template', desc: 'Performance improvement project framework', icon: Target },
-                { name: 'Action Plan Template', desc: 'Structured improvement action tracker', icon: CheckCircle2 },
-                { name: 'Root Cause Analysis', desc: 'Five Whys and fishbone diagram templates', icon: Search },
-                { name: 'Staff Training Log', desc: 'Track education and competency', icon: BookOpen },
+                { name: 'QAPI Project Template', desc: 'Performance improvement project framework per CMS guidelines', icon: Target },
+                { name: 'Action Plan Template', desc: 'Structured improvement action tracker with SMART goals', icon: CheckCircle2 },
+                { name: 'Root Cause Analysis', desc: 'Five Whys and fishbone diagram templates for systematic analysis', icon: Search },
+                { name: 'Staff Training Log', desc: 'Track education, competency, and annual requirements', icon: BookOpen },
+                { name: 'Mock Survey Checklist', desc: 'Comprehensive survey readiness self-assessment tool', icon: ClipboardList },
+                { name: 'Plan of Correction Template', desc: 'POC template meeting CMS format requirements', icon: FileText },
               ].map((template) => (
                 <button key={template.name} className="btn-neumorphic p-4 text-left flex items-start gap-3">
                   <template.icon className="w-5 h-5 text-cyan-500 mt-0.5" />
@@ -6289,50 +6629,101 @@ function PlanPreviewView({
             </div>
           </div>
 
-          {/* Training Resources */}
+          {/* Official CMS Resources */}
           <div className="card-neumorphic p-6">
             <h3 className="font-semibold mb-4 flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-green-500" />
-              Training Resources
+              <ExternalLink className="w-5 h-5 text-green-500" />
+              Official CMS Resources
             </h3>
             <div className="space-y-3">
               {[
-                { category: 'Quality Measures', topics: ['Pressure Ulcer Prevention', 'Falls Prevention', 'Antipsychotic Reduction'] },
-                { category: 'Staffing', topics: ['PBJ Reporting', 'Scheduling Best Practices', 'Retention Strategies'] },
-                { category: 'Survey Readiness', topics: ['F-Tag Deep Dives', 'Mock Survey Training', 'POC Development'] },
-              ].map((section) => (
-                <div key={section.category} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50">
-                  <h4 className="font-medium mb-2">{section.category}</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {section.topics.map((topic) => (
-                      <span key={topic} className="text-xs px-3 py-1 rounded-full bg-white dark:bg-slate-700 border border-[var(--border-color)]">
-                        {topic}
-                      </span>
-                    ))}
+                { name: 'CMS Care Compare', desc: 'Official nursing home comparison tool', url: 'https://www.medicare.gov/care-compare/' },
+                { name: 'Five-Star Technical Users Guide', desc: 'Complete methodology documentation', url: 'https://www.cms.gov/medicare/health-safety-standards/certification-compliance/nursing-homes/five-star-quality-rating-system' },
+                { name: 'State Operations Manual (SOM)', desc: 'Appendix PP - Guidance to Surveyors for Long-Term Care', url: 'https://www.cms.gov/regulations-and-guidance/guidance/manuals/downloads/som107ap_pp_guidelines_ltcf.pdf' },
+                { name: 'Quality Measure Specifications', desc: 'Technical specifications for all nursing home QMs', url: 'https://www.cms.gov/medicare/quality/nursing-home-improvement/quality-measures' },
+                { name: 'PBJ Policy Manual', desc: 'Complete PBJ submission guidance', url: 'https://www.cms.gov/medicare/quality/nursing-home-improvement/staffing-data-submission-pbj' },
+                { name: 'QSO Memos & Letters', desc: 'Survey and certification guidance updates', url: 'https://www.cms.gov/medicare/health-safety-standards/quality-safety-oversight-guidance-information' },
+                { name: 'CMS Minimum Staffing Rule', desc: 'Final rule on minimum staffing requirements', url: 'https://www.cms.gov/newsroom/fact-sheets/medicare-and-medicaid-programs-minimum-staffing-standards-long-term-care-facilities-and-medicaid' },
+                { name: 'QAPI Resources', desc: 'CMS Quality Assurance & Performance Improvement tools', url: 'https://www.cms.gov/medicare/health-safety-standards/quality-safety-oversight-guidance-information/qapi' },
+              ].map((resource) => (
+                <a
+                  key={resource.name}
+                  href={resource.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full text-left p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-between transition-colors group"
+                >
+                  <div>
+                    <span className="font-medium group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">{resource.name}</span>
+                    <p className="text-xs text-[var(--foreground-muted)] mt-0.5">{resource.desc}</p>
                   </div>
-                </div>
+                  <ExternalLink className="w-4 h-4 text-[var(--foreground-muted)] group-hover:text-cyan-500" />
+                </a>
               ))}
             </div>
           </div>
 
-          {/* External Resources */}
+          {/* Additional Professional Resources */}
           <div className="card-neumorphic p-6">
             <h3 className="font-semibold mb-4 flex items-center gap-2">
-              <ExternalLink className="w-5 h-5 text-purple-500" />
-              CMS Resources
+              <Building className="w-5 h-5 text-indigo-500" />
+              Professional & Industry Resources
             </h3>
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[
-                { name: 'CMS State Operations Manual', url: '#' },
-                { name: 'Quality Measure Specifications', url: '#' },
-                { name: 'PBJ Policy Manual', url: '#' },
-                { name: 'QSO Memos & Guidance', url: '#' },
+                { name: 'AHCA/NCAL', desc: 'American Health Care Association / National Center for Assisted Living', url: 'https://www.ahcancal.org/' },
+                { name: 'LeadingAge', desc: 'Community of nonprofit aging services providers', url: 'https://www.leadingage.org/' },
+                { name: 'AANAC', desc: 'American Association of Nurse Assessment Coordination', url: 'https://www.aanac.org/' },
+                { name: 'NADONA', desc: 'National Association Directors of Nursing Administration', url: 'https://www.nadona.org/' },
+                { name: 'Pioneer Network', desc: 'Culture change in long-term care', url: 'https://www.pioneernetwork.net/' },
+                { name: 'The Eden Alternative', desc: 'Person-centered care resources', url: 'https://www.edenalt.org/' },
               ].map((resource) => (
-                <button key={resource.name} className="w-full text-left p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 flex items-center justify-between">
-                  <span>{resource.name}</span>
-                  <ExternalLink className="w-4 h-4 text-[var(--foreground-muted)]" />
-                </button>
+                <a
+                  key={resource.name}
+                  href={resource.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-neumorphic p-4 text-left flex items-start gap-3 group"
+                >
+                  <ExternalLink className="w-5 h-5 text-indigo-400 mt-0.5" />
+                  <div>
+                    <div className="font-medium group-hover:text-indigo-600 dark:group-hover:text-indigo-400">{resource.name}</div>
+                    <div className="text-sm text-[var(--foreground-muted)]">{resource.desc}</div>
+                  </div>
+                </a>
               ))}
+            </div>
+          </div>
+
+          {/* Support & Help */}
+          <div className="card-neumorphic p-6 bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-cyan-900/20 dark:to-blue-900/20">
+            <h3 className="font-semibold mb-4 flex items-center gap-2">
+              <HelpCircle className="w-5 h-5 text-cyan-600" />
+              Support & Help
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h4 className="font-semibold mb-3">Understanding Your Data</h4>
+                <div className="space-y-2 text-sm text-[var(--foreground-muted)]">
+                  <p><strong>Data Source:</strong> All facility data comes directly from CMS Care Compare, updated monthly.</p>
+                  <p><strong>Rating Calculations:</strong> Star ratings are calculated by CMS using their published methodology in the Five-Star Technical Users' Guide.</p>
+                  <p><strong>Data Lag:</strong> Survey data may be 2-3 months old; staffing data is from the most recent PBJ quarter; QM data reflects the most recent reporting period.</p>
+                </div>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-3">Contact & Support</h4>
+                <div className="space-y-2 text-sm text-[var(--foreground-muted)]">
+                  <p><strong>Technical Support:</strong> support@my5starreport.com</p>
+                  <p><strong>Data Questions:</strong> For questions about CMS data, contact CMS directly at 1-800-MEDICARE or visit medicare.gov</p>
+                  <p><strong>Feature Requests:</strong> We welcome suggestions for improving the platform</p>
+                </div>
+              </div>
+            </div>
+            <div className="mt-6 p-4 rounded-xl bg-white/50 dark:bg-slate-800/50">
+              <h4 className="font-semibold mb-2">Important Disclaimer</h4>
+              <p className="text-xs text-[var(--foreground-muted)]">
+                This tool is for informational and educational purposes only. It is not a substitute for official CMS guidance, legal advice, or professional consultation. Always verify information with official CMS sources (cms.gov, medicare.gov) before making regulatory or operational decisions. The data presented reflects publicly available CMS data and may not capture the most recent surveys, staffing changes, or quality measure updates.
+              </p>
             </div>
           </div>
         </div>
