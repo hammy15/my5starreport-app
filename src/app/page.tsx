@@ -111,6 +111,7 @@ import { FacilitySearch } from '@/components/dashboard/facility-search';
 import { FacilityOverview } from '@/components/dashboard/facility-overview';
 import { PlanBuilder } from '@/components/plans/plan-builder';
 import { PhilReportModal } from '@/components/PhilReportModal';
+import { MDSScrubberModal } from '@/components/MDSScrubberModal';
 import type { Facility, ImprovementRecommendation, ActionPlan, MedicaidRateLetter, MedicareRate, CostReport, RateBenchmark, RateTrend } from '@/types/facility';
 import { generateMedicaidRateLetters, generateMedicareRates, generateCostReport, generateBenchmarks, generateTrends } from '@/lib/sample-rates-data';
 import { generateFacilityReport, generateComparisonReport, generateScenarioReport, generateExecutiveReport } from '@/lib/pdf-export';
@@ -443,6 +444,7 @@ export default function HomePage() {
   const [showPhilChat, setShowPhilChat] = useState(false);
   const [philGlow, setPhilGlow] = useState(false);
   const [showProMenu, setShowProMenu] = useState(false);
+  const [showMDSScrubber, setShowMDSScrubber] = useState(false);
   const [showHamburgerMenu, setShowHamburgerMenu] = useState(false);
   // User authentication state
   const [user, setUser] = useState<AppUser | null>(null);
@@ -719,6 +721,12 @@ export default function HomePage() {
         />
       )}
 
+      {/* MDS Scrubber Modal */}
+      <MDSScrubberModal
+        isOpen={showMDSScrubber}
+        onClose={() => setShowMDSScrubber(false)}
+      />
+
       {/* Header */}
       <header className="card-neumorphic sticky top-0 z-50 mx-4 mt-4 mb-6 lg:mx-8">
         <div className="px-4 py-3 lg:px-6">
@@ -806,6 +814,11 @@ export default function HomePage() {
                         <Gauge className="w-5 h-5 text-cyan-500" />
                         <div><div className="font-medium text-sm">Tinker Star</div><div className="text-xs text-[var(--foreground-muted)]">What-If scenarios</div></div>
                         <span className="ml-auto text-[10px] font-bold text-white bg-gradient-to-r from-cyan-500 to-blue-500 px-2 py-0.5 rounded-full">NEW</span>
+                      </button>
+                      <button onClick={() => { setShowMDSScrubber(true); setShowProMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[var(--background)] transition-colors text-left bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20">
+                        <FileCheck className="w-5 h-5 text-emerald-500" />
+                        <div><div className="font-medium text-sm">MDS Scrubber</div><div className="text-xs text-[var(--foreground-muted)]">GG Calculator & QM exclusions</div></div>
+                        <span className="ml-auto text-[10px] font-bold text-white bg-gradient-to-r from-emerald-500 to-teal-500 px-2 py-0.5 rounded-full">NEW</span>
                       </button>
                       <button onClick={() => { setCurrentView('benchmarking'); setShowProMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[var(--background)] transition-colors text-left">
                         <Scale className="w-5 h-5 text-purple-500" />
